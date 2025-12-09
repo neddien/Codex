@@ -1,5 +1,4 @@
-#ifndef CODEX_FILE_SYSTEM_H
-#define CODEX_FILE_SYSTEM_H
+#pragma once
 
 #include <sdafx.h>
 
@@ -24,5 +23,3 @@ namespace codex::fs {
         return GetAllFilesWithExtensions(directory, { "*" });
     }
 } // namespace codex::fs
-
-#endif // CODEX_FILE_SYSTEM_H

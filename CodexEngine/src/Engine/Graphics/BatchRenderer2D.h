@@ -9,8 +9,9 @@
 #include <Engine/Scene/Public/Camera.h>
 #include <Engine/Scene/Public/Sprite.h>
 
-#include "Shader.h"
-#include "Texture2D.h"
+#include "Public/Shader.h"
+#include "Public/Texture2D.h"
+#include "RenderBatch.h"
 
 namespace codex {
     // Forward decelerations

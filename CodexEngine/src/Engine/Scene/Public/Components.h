@@ -1,16 +1,14 @@
-#ifndef CODEX_SCENE_COMPONENTS_H
-#define CODEX_SCENE_COMPONENTS_H
+#pragma once
 
 #include <sdafx.h>
 
-#include <Engine/Core/Public/Geomtryd.h>
 #include <Engine/Core/Public/UUID.h>
 #include <Engine/Memory/Public/Memory.h>
 #include <Engine/NativeBehaviour/Public/NativeBehaviour.h>
 #include <Engine/Physics/Public/PhysicsMaterial2D.h>
 
-#include "Public/Camera.h"
-#include "Public/Sprite.h"
+#include "Camera.h"
+#include "Sprite.h"
 
 namespace codex {
     // Forward decelerations
@@ -198,12 +196,16 @@ namespace codex {
 
             mem::Box<NativeBehaviour> bh(new T(std::forward<TArgs>(args)...));
             bh->OnInit();
-            bh->Serialize();
+            // FIXME: Serialize properly w new serializaiton system
+            //bh->Serialize();
+            /*
             const std::string& name = bh->m_SerializedData.begin().key();
             if (!m_Behaviours.contains(name))
                 m_Behaviours[name] = std::move(bh);
+            */
 
-            return *reinterpret_cast<T*>(m_Behaviours[name].Get());
+            return *((T*)bh.Get());
+            //return *reinterpret_cast<T*>(m_Behaviours[name].Get());
         }
     };
 
@@ -340,6 +342,7 @@ namespace codex {
                        GridRendererComponent, TilemapComponent, TilesetAnimationComponent>;
 } // namespace codex
 
+/*
 namespace nlohmann {
     template <>
     struct adl_serializer<codex::TilemapComponent::Tile>
@@ -356,5 +359,4 @@ namespace nlohmann {
         }
     };
 }; // namespace nlohmann
-
-#endif // CODEX_SCENE_COMPONENTS_H
+*/

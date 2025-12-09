@@ -1,9 +1,8 @@
-#ifndef CODEX_CORE_GEOMETRY_DEFS_H
-#define CODEX_CORE_GEOMETRY_DEFS_H
+#pragma once
 
 #include <sdafx.h>
 
-#include <MGL.h>
+#include <Platform/OpenGL/MGL/include/MGL.h>
 
 namespace codex::math {
     using Matrix4f = glm::mat4;
@@ -19,4 +18,3 @@ namespace codex::math {
 } // namespace codex::math
 
 using namespace codex::math;
-#endif // CODEX_CORE_GEOMETRY_DEFS_H

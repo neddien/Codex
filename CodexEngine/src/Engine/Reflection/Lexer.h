@@ -159,6 +159,7 @@ namespace codex::rf {
 
 } // namespace codex::rf
 
+/*
 namespace nlohmann {
     template <>
     struct adl_serializer<codex::rf::TokenType>
@@ -272,6 +273,7 @@ namespace nlohmann {
     };
 
 } // namespace nlohmann
+*/
 
 std::ostream& operator<<(std::ostream& stream, const codex::rf::TextSpan& span) noexcept;
 std::ostream& operator<<(std::ostream& stream, const codex::rf::Token& token) noexcept;

@@ -1,5 +1,4 @@
-#ifndef CODEX_SYSTEM_DYNAMIC_LIBRARY_H
-#define CODEX_SYSTEM_DYNAMIC_LIBRARY_H
+#pragma once
 
 #include <sdafx.h>
 
@@ -51,5 +50,3 @@ namespace codex::sys {
         }
     };
 } // namespace codex::sys
-
-#endif // CODEX_CORE_DYNAMIC_LIBRARY_H

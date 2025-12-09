@@ -1,4 +1,4 @@
-#include "Components.h"
+#include "Public/Components.h"
 
 #include <Engine/Core/Application.h>
 #include <Engine/Core/Window.h>

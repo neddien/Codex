@@ -1,4 +1,4 @@
-#include "Camera.h"
+#include "Public/Camera.h"
 
 namespace codex::scene {
     [[nodiscard]] Vector3f Camera::ScreenCoordinatesToWorld(const Camera& camera, const Vector2f& screenCoord,

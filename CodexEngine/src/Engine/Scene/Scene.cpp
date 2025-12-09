@@ -1,4 +1,7 @@
-#include "Scene.h"
+#include "Public/Scene.h"
+
+#include <box2d/box2d.h>
+#include <entt.hpp>
 
 #include <Debug/Public/Profiler.h>
 #include <Debug/Public/TimeScope.h>
@@ -6,10 +9,9 @@
 #include <Engine/NativeBehaviour/Public/NativeBehaviour.h>
 #include <Engine/Reflection/Reflector.h>
 #include <Engine/Utils/Box2DUtils.h>
-#include <Engine/Utils/Public/Math.h>
 
-#include "Public/Components.h"
-#include "Public/ECS.h"
+//#include "Public/Components.h"
+//#include "Public/Entity.inl"
 
 namespace codex {
     // TODO: NBMan is shared across all scenes, Scene being the owner of NBMan does not seem correct.
@@ -94,13 +96,37 @@ namespace codex {
         other.m_PhysicsProperties = m_PhysicsProperties;
     }
 
+    u32 Scene::GetEntityCount() const noexcept
+    {
+        return m_Registry->view<entt::entity>().size_hint();
+    }
+
+    void Scene::Swap(Scene& other) noexcept
+    {
+        {
+            auto reg       = m_Registry.Lock();
+            auto other_reg = other.m_Registry.Lock();
+            std::swap(*reg, *other_reg);
+        }
+
+        std::swap(m_Name, other.m_Name);
+        std::swap(s_ScriptModule, other.s_ScriptModule);
+        std::swap(m_FixedUpdateThread, other.m_FixedUpdateThread);
+        std::swap(m_PhysicsWorld, other.m_PhysicsWorld);
+    }
+
+    bool Scene::IsValid(const Entity entity) const noexcept
+    {
+        return m_Registry->valid(entity.m_Handle);
+    }
+
     Entity Scene::CreateEntity(const std::string_view defaultTag, UUID uuid) noexcept
     {
         auto entity = m_Registry->create();
         m_Registry->emplace<IDComponent>(entity, uuid);
         m_Registry->emplace<TransformComponent>(entity);
         m_Registry->emplace<TagComponent>(entity, defaultTag);
-        return { entity, this };
+        return { entity, &m_Registry };
     }
 
     void Scene::RemoveEntity(const Entity entity)
@@ -113,50 +139,6 @@ namespace codex {
     {
         m_Registry->destroy(static_cast<entt::entity>(entity));
     }
-
-    // NOTE: Okay so if T is movable then view<T> will provide the
-    // size() method, otherwise the size_hint() method.
-    template <typename T>
-        requires(std::is_move_constructible_v<T>)
-    std::vector<Entity> SceneGetAllEntitiesWithComponent(Scene& scene) noexcept
-    {
-        auto                view = scene.m_Registry->view<T>();
-        std::vector<Entity> entities;
-        entities.reserve(view.size());
-        for (auto& e : view)
-            entities.emplace_back(e, &scene);
-        return entities;
-    }
-
-    template <typename T>
-        requires(!std::is_move_constructible_v<T>)
-    std::vector<Entity> SceneGetAllEntitiesWithComponent(Scene& scene) noexcept
-    {
-        auto                view = scene.m_Registry->view<T>();
-        std::vector<Entity> entities;
-        entities.reserve(view.size_hint());
-        for (auto& e : view)
-            entities.emplace_back(e, &scene);
-        return entities;
-    }
-
-    template <typename T>
-    std::vector<Entity> Scene::GetAllEntitiesWithComponent() noexcept
-    {
-        return SceneGetAllEntitiesWithComponent<T>(*this);
-    }
-
-    // NOTE: Don't forget to update this when new components get added, lol.
-    template std::vector<Entity> Scene::GetAllEntitiesWithComponent<TagComponent>() noexcept;
-    template std::vector<Entity> Scene::GetAllEntitiesWithComponent<TransformComponent>() noexcept;
-    template std::vector<Entity> Scene::GetAllEntitiesWithComponent<SpriteRendererComponent>() noexcept;
-    template std::vector<Entity> Scene::GetAllEntitiesWithComponent<NativeBehaviourComponent>() noexcept;
-    template std::vector<Entity> Scene::GetAllEntitiesWithComponent<CameraComponent>() noexcept;
-    template std::vector<Entity> Scene::GetAllEntitiesWithComponent<RigidBody2DComponent>() noexcept;
-    template std::vector<Entity> Scene::GetAllEntitiesWithComponent<BoxCollider2DComponent>() noexcept;
-    template std::vector<Entity> Scene::GetAllEntitiesWithComponent<CircleCollider2DComponent>() noexcept;
-    template std::vector<Entity> Scene::GetAllEntitiesWithComponent<GridRendererComponent>() noexcept;
-    template std::vector<Entity> Scene::GetAllEntitiesWithComponent<TilemapComponent>() noexcept;
 
     [[nodiscard]] std::vector<Entity> Scene::GetAllEntitesWithTag(const std::string_view tag)
     {
@@ -177,7 +159,7 @@ namespace codex {
         entities.reserve(GetEntityCount());
         for (auto entities_view = m_Registry->view<entt::entity>(); const auto& e : entities_view)
         {
-            const auto entity = Entity(e, this);
+            const auto entity = Entity(e, &m_Registry);
             if (!entity)
                 break;
             entities.push_back(entity);
@@ -646,7 +628,7 @@ namespace codex {
                     // Lock the registry only for one statement because user scripts can also possibly lock the registry
                     // for interactions (such as calls to GetComponent<T>, HasComponent<T> etc...) instead of
                     // locking for the entire scope.
-                    auto view = self.m_Registry->view<NativeBehaviourComponent>();
+                    auto view = (*self.m_Registry)->view<NativeBehaviourComponent>();
                     for (auto& e : view)
                     {
                         auto& nbc = view.get<NativeBehaviourComponent>(e);
@@ -683,6 +665,7 @@ namespace codex {
         }
     }
 
+    /*
     // TODO: Use ADL Serializer.
     void to_json(nlohmann::ordered_json& j, const Scene& scene)
     {
@@ -690,4 +673,5 @@ namespace codex {
         j["Name"]           = scene.m_Name;
         j["Entities"]       = entities;
     }
+    */
 } // namespace codex

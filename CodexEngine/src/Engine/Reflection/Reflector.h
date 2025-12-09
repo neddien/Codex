@@ -3,8 +3,7 @@
 
 #include <sdafx.h>
 
-#include <Engine/Core/Public/Exception.h>
-#include <Engine/Public/NativeBehaviour/NativeBehaviour.h>
+// #include <Engine/NativeBehaviour/Public/NativeBehaviour.h>
 
 #include "Lexer.h"
 
@@ -25,6 +24,12 @@ private:                                                                        
                                                                   codex::Entity parent) noexcept;                      \
     void                                        Serialize() const noexcept override;                                   \
     codex::object                               GetField(const std::string_view fieldName) noexcept override;
+
+// Forward declerations
+namespace codex {
+    class NativeBehaviour;
+    class Entity;
+} // namespace codex
 
 extern "C" CODEX_EXPORT codex::NativeBehaviour* Rf_CreateInstance(const char* className, codex::Entity parent) noexcept;
 extern "C" CODEX_EXPORT bool                    Rf_DoesInstanceExist(const char* className) noexcept;

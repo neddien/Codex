@@ -1,4 +1,4 @@
-#include "Public/Exception.h"
+#include "./Public/Exception.h"
 
 namespace codex {
     CodexException::CodexException(const std::string_view message) noexcept

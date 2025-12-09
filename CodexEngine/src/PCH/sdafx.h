@@ -76,6 +76,8 @@
 // Codex specific
 #include <Engine/Core/Public/CommonDef.h>
 #include <Engine/Math/Public/Math.h>
+#include <Engine/Core/Public/Geomtryd.h>
+#include <Engine/Utils/Public/Util.h>
 
 // Library specific
 /*
@@ -107,8 +109,8 @@
 #include <nlohmann/ordered_map.hpp>
 */
 
-// Project specific
-#include "../Engine/Utils/Public/Math.h"
-#include "../Engine/Utils/Public/Util.h"
+// Public Libraries
+#include <Logger.h>
+#include <MGL.h>
 
 #endif // CODEX_PCH_H

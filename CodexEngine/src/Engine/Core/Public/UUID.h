@@ -47,6 +47,7 @@ namespace fmt {
     };
 } // namespace fmt
 
+/*
 namespace nlohmann {
     template <>
     struct adl_serializer<codex::UUID>
@@ -58,5 +59,6 @@ namespace nlohmann {
         }
     };
 } // namespace nlohmann
+*/
 
 #endif // CODEX_CORE_UUID_H

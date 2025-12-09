@@ -1,5 +1,4 @@
-#ifndef CODEX_GRAPHICS_IMAGE_2D_H
-#define CODEX_GRAPHICS_IMAGE_2D_H
+#pragma once
 
 #include <sdafx.h>
 
@@ -41,6 +40,9 @@ namespace codex::gfx {
         Image2D&  operator=(const Image2D& other);
         Image2D&  operator=(Image2D&& other) noexcept;
 
+    private:
+        void Load();
+
     public:
         u8*                          GetRaw() noexcept { return m_RawData; }
         const u8*                    GetRaw() const noexcept { return m_RawData; }
@@ -51,7 +53,21 @@ namespace codex::gfx {
 
     public:
         void friend std::swap(Image2D& lhv, Image2D& rhv) noexcept;
+
+    public:
+        void Serialize(ISerializationNode& node) const override
+        {
+            node.Write("id", GetId());
+            node.Write("file_path", m_Path);
+        }
+        void Deserialize(const ISerializationNode& node) override
+        {
+            auto        path  = std::filesystem::path{};
+
+            node.Read("id", m_Id);
+            node.Read("path", path);
+
+            Load();
+        }
     };
 } // namespace codex::gfx
-
-#endif // CODEX_GRAPHICS_IMAGE_2D_H

@@ -1,7 +1,7 @@
-#include "ResourceHandler.h"
+#include "Public/ResourceHandler.h"
 
-#include <Engine/Graphics/Shader.h>
-#include <Engine/Graphics/Texture2D.h>
+#include <Engine/Graphics/Public/Shader.h>
+#include <Engine/Graphics/Public/Texture2D.h>
 
 namespace codex {
     using namespace codex::gfx;

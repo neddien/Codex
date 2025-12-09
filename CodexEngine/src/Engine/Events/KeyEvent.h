@@ -1,5 +1,4 @@
-#ifndef CODEX_EVENTS_KEY_EVENT_H
-#define CODEX_EVENTS_KEY_EVENT_H
+#pragma once
 
 #include <sdafx.h>
 
@@ -59,5 +58,3 @@ namespace codex::events {
         EVENT_CLASS_TYPE(KeyUp);
     };
 } // namespace codex::events
-
-#endif // CODEX_EVENTS_KEY_EVENT_H

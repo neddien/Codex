@@ -6,6 +6,8 @@
 #include <Engine/Core/Layer.h>
 #include <Engine/Events/Event.h>
 
+#include <imgui.h>
+
 namespace codex::imgui {
     class CODEX_API ImGuiLayer : public Layer
     {

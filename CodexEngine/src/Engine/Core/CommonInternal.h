@@ -1,10 +1,11 @@
 #pragma once
 
-#include <Engine/Core/Public/Geometryd.h>
+#include <Engine/Core/Public/Geomtryd.h>
 
-#include <fmt/fmt.h>
+#include <fmt/core.h>
 #include <nlohmann/json.hpp>
 
+/*
 namespace nlohmann {
     template <>
     struct adl_serializer<codex::math::Vector2f>
@@ -128,6 +129,7 @@ namespace nlohmann {
         }
     };
 } // namespace nlohmann
+*/
 
 namespace std {
     template <>

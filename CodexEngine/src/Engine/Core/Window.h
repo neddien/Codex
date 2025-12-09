@@ -3,9 +3,9 @@
 
 #include <sdafx.h>
 
-#include "Public/CommonDef.h"
-#include "Public/Exception.h"
-#include "Public/Geomtryd.h"
+#include "./Public/CommonDef.h"
+#include "./Public/Exception.h"
+#include "./Public/Geomtryd.h"
 
 #include <Engine/Events/Event.h>
 #include <Engine/Graphics/Renderer.h>

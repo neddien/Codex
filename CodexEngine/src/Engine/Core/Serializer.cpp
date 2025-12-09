@@ -1,11 +1,11 @@
-#include "Serializer.h"
+#include "Public/Serializer.h"
 
-#include <Engine/Scene/ECS.h>
-#include <Engine/Scene/Scene.h>
+#include <sdafx.h>
 
 namespace codex {
     namespace stdfs = std::filesystem;
 
+    /*
     void Serializer::SerializeScene(const stdfs::path path, const Scene& scene)
     {
         std::ofstream fs{ path };
@@ -45,4 +45,6 @@ namespace codex {
             // throw exception
         }
     }
+    */
+
 } // namespace codex

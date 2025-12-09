@@ -3,10 +3,13 @@
 
 #include <sdafx.h>
 
-#include <Engine/Public/Core/Geomtryd.h>
-#include <Engine/Public/Scene/Sprite.h>
+#include <Engine/Core/Public/Geomtryd.h>
+#include <Engine/Scene/Public/Sprite.h>
+#include <Engine/Graphics/BatchRenderer2D.h>
+#include <Engine/Graphics/Line2D.h>
+#include <Engine/Graphics/DebugDraw.h>
 
-#include "Shader.h"
+#include "Public/Shader.h"
 
 namespace codex::gfx {
     // TODO: This is bad... fix it please.

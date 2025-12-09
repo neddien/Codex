@@ -1,8 +1,11 @@
 #ifndef CODEX_UTILS_BOX2D_UTILITIES_H
 #define CODEX_UTILS_BOX2D_UTILITIES_H
 
-#include <Engine/Core/CommonDef.h>
-#include <Engine/Scene/Components.h>
+#include <sdafx.h>
+
+#include <box2d/box2d.h>
+
+#include <Engine/Scene/Public/Components.h>
 
 namespace codex::utils {
     [[nodiscard]] CODEX_API b2BodyType ToB2Type(const RigidBody2DComponent::BodyType& type) noexcept;

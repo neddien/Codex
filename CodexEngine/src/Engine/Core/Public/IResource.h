@@ -1,12 +1,12 @@
-#ifndef CODEX_CORE_IRESOURCE_H
-#define CODEX_CORE_IRESOURCE_H
+#pragma once
 
 #include <sdafx.h>
 
 #include <Engine/Memory/Public/Memory.h>
+#include <Engine/Core/Public/Serializer.h>
 
 namespace codex {
-    class IResource
+    class IResource : public ISerializable
     {
     protected:
         usize m_Id = 0;
@@ -23,5 +23,3 @@ namespace codex {
         requires(std::is_base_of_v<IResource, T>)
     using ResRef = mem::Shared<T>;
 } // namespace codex
-
-#endif // CODEX_CORE_IRESROUCE_H

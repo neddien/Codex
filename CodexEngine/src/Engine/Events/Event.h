@@ -1,7 +1,8 @@
-#ifndef CODEX_EVENTS_EVENT_H
-#define CODEX_EVENTS_EVENT_H
+#pragma once
 
 #include <sdafx.h>
+
+#include <fmt/core.h>
 
 #define EVENT_CLASS_TYPE(type)                                                                                         \
     static EventType GetStaticType()                                                                                   \
@@ -130,5 +131,3 @@ namespace fmt {
         }
     };
 } // namespace fmt
-
-#endif // CODEX_EVENTS_EVENT_H

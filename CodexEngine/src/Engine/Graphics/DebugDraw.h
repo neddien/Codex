@@ -1,5 +1,4 @@
-#ifndef CODEX_RENDERER_DEBUG_DRAW_H
-#define CODEX_RENDERER_DEBUG_DRAW_H
+#pragma once
 
 #include <sdafx.h>
 
@@ -8,7 +7,7 @@
 #include <Engine/Scene/Public/Components.h>
 
 #include "Line2D.h"
-#include "Shader.h"
+#include "Public/Shader.h"
 
 namespace codex::gfx {
     constexpr auto LINE2D_MAX_COUNT              = 5000; // Maximum amount of a line a single batch can contain.
@@ -53,5 +52,3 @@ namespace codex::gfx {
         static void Dispose() noexcept;
     };
 } // namespace codex::gfx
-
-#endif // CODEX_RENDERER_DEBUG_DRAW_H

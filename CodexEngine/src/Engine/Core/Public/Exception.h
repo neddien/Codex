@@ -3,6 +3,8 @@
 
 #include <sdafx.h>
 
+#include <fmt/core.h>
+
 #ifndef CX_CONFIG_DEBUG
 template <typename T, typename... TArgs>
 inline void cx_throw_trap(TArgs&&... args)

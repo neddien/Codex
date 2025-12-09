@@ -1,27 +1,25 @@
-#ifndef CODEX_SCENE_NATIVE_BEHAVIOUR_H
-#define CODEX_SCENE_NATIVE_BEHAVIOUR_H
+#pragma once
 
 #include <sdafx.h>
 
-#include <Engine/Scene/Public/ECS.h>
+#include <Engine/Scene/Public/Entity.inl>
+#include <Engine/Core/Public/Serializer.h>
 
 namespace codex {
     // Forward declarations.
-    class Scene;
     struct NativeBehaviourComponent;
 
-    class CODEX_API NativeBehaviour
+    class CODEX_API NativeBehaviour : public ISerializable
     {
         friend class Scene;
         friend struct NativeBehaviourComponent;
 
     protected:
-        Entity                         m_Parent;
-        mutable nlohmann::ordered_json m_SerializedData;
+        Entity m_Parent;
 
     public:
-        constexpr const nlohmann::ordered_json& GetSerializedData() const noexcept { return m_SerializedData; }
-        inline void                             SetOwner(const Entity entity) noexcept { m_Parent = entity; }
+        // constexpr const nlohmann::ordered_json& GetSerializedData() const noexcept { return m_SerializedData; }
+        inline void SetOwner(const Entity entity) noexcept { m_Parent = entity; }
 
     public:
         virtual ~NativeBehaviour() { lgx::Get("engine").Log(lgx::Info, "~NativeBehaviour()"); };
@@ -42,6 +40,7 @@ namespace codex {
 
     public:
         template <typename T>
+            requires(std::is_base_of_v<Component, T>)
         [[nodiscard]] auto GetAllEntitiesWithComponent()
         {
             return m_Parent.m_Scene->GetAllEntitiesWithComponent<T>();
@@ -64,7 +63,7 @@ namespace codex {
         template <typename T>
         [[nodiscard]] const T& GetComponent() const
         {
-            return (NativeBehaviour*)(this)->GetComponent<T>();
+            return reinterpret_cast<NativeBehaviour*>(this->GetComponent<T>());
         }
         template <typename T>
         [[nodiscard]] bool HasComponent() const
@@ -75,14 +74,11 @@ namespace codex {
         // FIXME: Mark these methods protected!
         // protected:
     public:
-        virtual void OnInit() = 0;
-        virtual void OnUpdate([[maybe_unused]] const f32 deltaTime) {}
-        virtual void OnFixedUpdate([[maybe_unused]] const f32 deltaTime) {}
-        virtual void OnDispose() {}
-        virtual void Serialize() const noexcept { m_SerializedData[typeid(*this).name()]["Id"] = -1; };
+        virtual void                                    OnInit() = 0;
+        virtual void                                    OnUpdate([[maybe_unused]] const f32 deltaTime) {}
+        virtual void                                    OnFixedUpdate([[maybe_unused]] const f32 deltaTime) {}
+        virtual void                                    OnDispose() {}
         [[nodiscard]] virtual mem::Box<NativeBehaviour> Clone() const = 0;
         [[nodiscard]] virtual object GetField([[maybe_unused]] const std::string_view name) noexcept { return nullobj; }
     };
 } // namespace codex
-
-#endif // CODEX_SCENE_NATIVE_BEHAVIOUR_H

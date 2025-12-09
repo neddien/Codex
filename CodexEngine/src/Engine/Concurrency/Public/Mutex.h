@@ -3,7 +3,7 @@
 
 #include <sdafx.h>
 
-#include <Engine/Core/CommonDef.h>
+#include <Engine/Core/Public/CommonDef.h>
 
 namespace codex::cc {
     // TODO: Rename to Sync and create Codex Exceptions for CC stuff and handle them here.

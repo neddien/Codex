@@ -28,7 +28,7 @@
 #elif CX_COMPILER_MSVC
 #define CX_DEBUG_TRAP()    __debugbreak()
 #define CX_PRETTY_FUNCTION __FUNCSIG__
-#define CX_PACKED(x) __pragma(pack(push, 1)) cx __pragma(pack(pop))
+#define CX_PACKED(x) __pragma(pack(push, 1)) x __pragma(pack(pop))
 #elif CX_COMPILER_CLANG
 #define CX_DEBUG_TRAP()    __builtin_debugtrap()
 #define CX_PRETTY_FUNCTION __PRETTY_FUNCTION__
@@ -102,8 +102,6 @@ namespace codex {
 #define CX_MACRO_STRINGFY(x) #x
 
 #define CX_COMPONENT                                                                                                   \
-    friend void from_json(const nlohmann::ordered_json& j, Entity& entity);                                            \
-    friend class Serializer;                                                                                           \
     friend class Entity;                                                                                               \
     friend class Scene;
 

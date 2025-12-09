@@ -1,4 +1,4 @@
-#include "Image2D.h"
+#include "Public/Image2D.h"
 
 #include <stb_image.h>
 
@@ -7,15 +7,7 @@ namespace codex::gfx {
 
     Image2D::Image2D(fs::path file) : m_Path(std::move(file))
     {
-        const auto& str_path = m_Path.string();
-
-        if (!fs::exists(m_Path))
-            cx_throw(FileNotFoundException, "Image was not found. Path: {}", str_path);
-
-        if (!stbi_info(str_path.c_str(), &m_Width, &m_Height, &m_Channels))
-            cx_throw(ImageLoadException, "Could not query information about the supplied image. Path: {}", str_path);
-
-        m_RawData = stbi_load(m_Path.string().c_str(), &m_Width, &m_Height, &m_Channels, STBI_rgb_alpha);
+        Load();
     }
 
     Image2D::Image2D(const Image2D& other)
@@ -40,6 +32,19 @@ namespace codex::gfx {
         m_Height   = 0;
         m_Channels = 0;
         m_Path     = fs::path{};
+    }
+
+    void Image2D::Load()
+    {
+        const auto& str_path = m_Path.string();
+
+        if (!fs::exists(m_Path))
+            cx_throw(FileNotFoundException, "Image was not found. Path: {}", str_path);
+
+        if (!stbi_info(str_path.c_str(), &m_Width, &m_Height, &m_Channels))
+            cx_throw(ImageLoadException, "Could not query information about the supplied image. Path: {}", str_path);
+
+        m_RawData = stbi_load(m_Path.string().c_str(), &m_Width, &m_Height, &m_Channels, STBI_rgb_alpha);
     }
 
     constexpr Image2D::operator bool() const noexcept

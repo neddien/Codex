@@ -18,7 +18,7 @@ namespace codex::gfx {
     using FrameBuffer           = mgl::FrameBuffer;
     using FrameBufferProperties = mgl::FrameBufferProperties;
 
-    class Texture2D : public IResource
+    class Texture2D : public codex::IResource
     {
         friend class ResourceHandler;
 
@@ -48,14 +48,27 @@ namespace codex::gfx {
         }
 
     public:
-        friend void to_json(nlohmann::ordered_json& j, const Texture2D& texture)
+        void Serialize(ISerializationNode& node) const override
         {
-            const auto& props = texture.m_RawTexture->GetProperties();
-            j                 = { { "m_Id", texture.m_Id },
-                                  { "m_FilePath", texture.GetFilePath() },
-                                  { "filterMode", props.filterMode },
-                                  { "wrapMode", props.wrapMode },
-                                  { "format", props.format } };
+            const auto& props = GetProperties();
+            node.Write("id", GetId());
+            node.Write("file_path", GetFilePath());
+            node.Write("filter_mode", static_cast<u32>(props.filterMode));
+            node.Write("wrap_mode", static_cast<u32>(props.wrapMode));
+            node.Write("format", static_cast<u32>(props.format));
+        }
+        void Deserialize(const ISerializationNode& node) override
+        {
+            auto props = TextureProperties{};
+            auto path  = std::filesystem::path{};
+
+            node.Read("id", m_Id);
+            node.Read("file_path", path);
+            node.Read("filter_mode", *reinterpret_cast<u32*>(&props.filterMode));
+            node.Read("wrap_mode", *reinterpret_cast<u32*>(&props.wrapMode));
+            node.Read("format", *reinterpret_cast<u32*>(&props.format));
+
+            m_RawTexture = mem::Box<mgl::Texture>::New(std::move(path), props);
         }
     };
 } // namespace codex::gfx

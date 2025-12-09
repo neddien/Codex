@@ -5,8 +5,8 @@
 
 #include <Engine/Core/Public/Geomtryd.h>
 
-#include "Shader.h"
-#include "Texture2D.h"
+#include "Public/Shader.h"
+#include "Public/Texture2D.h"
 
 namespace codex::gfx {
     constexpr auto QUAD2D_VERTEX_COUNT = 4; // How many vertices does the buffer have?

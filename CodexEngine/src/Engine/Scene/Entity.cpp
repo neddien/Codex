@@ -1,23 +1,25 @@
-#include "Public/ECS.h"
+#include "Public/Entity.h"
+#include "Entity.inl"
 
 #include "Public/Components.h"
 
 namespace codex {
-    [[nodiscard]] UUID Entity::GetUUID() const noexcept
+    UUID Entity::GetUUID() const noexcept
     {
         return GetComponent<IDComponent>().uuid;
     }
 
-    [[nodiscard]] TransformComponent& Entity::GetTransform() noexcept
+    TransformComponent& Entity::GetTransform() noexcept
     {
         return GetComponent<TransformComponent>();
     }
 
-    [[nodiscard]] const TransformComponent& Entity::GetTransform() const noexcept
+    const TransformComponent& Entity::GetTransform() const noexcept
     {
         return GetComponent<TransformComponent>();
     }
 
+    /*
     void to_json(nlohmann::ordered_json& j, const Entity& entity)
     {
         nlohmann::ordered_json jentity;
@@ -241,5 +243,5 @@ namespace codex {
             }
         }
     }
-
+    */
 } // namespace codex

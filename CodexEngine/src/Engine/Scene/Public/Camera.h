@@ -3,8 +3,6 @@
 
 #include <sdafx.h>
 
-#include <Engine/Core/Public/Geomtryd.h>
-
 namespace codex::scene {
     class CODEX_API Camera
     {

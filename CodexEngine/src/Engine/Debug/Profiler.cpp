@@ -1,6 +1,6 @@
-#include "Public/Profiler.h"
+#include "./Public/Profiler.h"
 
-#include "Public/TimeScope.h"
+#include "./Public/TimeScope.h"
 
 namespace codex::dbg {
     Profiler*                                  Profiler::s_Instance = nullptr;

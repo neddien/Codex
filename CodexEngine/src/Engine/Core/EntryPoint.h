@@ -1,11 +1,10 @@
-#ifndef CODEX_CORE_ENTRY_POINT_H
-#define CODEX_CORE_ENTRY_POINT_H
+#pragma once
 
 #include <sdafx.h>
 
-#include "Core/Application.h"
-
 #include <imgui.h>
+
+#include "Core/Application.h"
 
 extern codex::Application* codex::CreateApplication(ApplicationCLIArgs args);
 
@@ -29,5 +28,3 @@ int main(int argc, char** argv)
     }
     return 0;
 }
-
-#endif // CODEX_CORE_ENTRY_POINT_H

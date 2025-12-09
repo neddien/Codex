@@ -4,10 +4,11 @@
 #include <Engine/Core/Public/Geomtryd.h>
 #include <Engine/Core/Public/IResource.h>
 #include <Engine/Core/Public/ResourceHandler.h>
-#include <Engine/Graphics/Public/Texture2D.h"
+#include <Engine/Core/Public/Serializer.h>
+#include <Engine/Graphics/Public/Texture2D.h>
 
 namespace codex {
-    class CODEX_API Sprite
+    class CODEX_API Sprite : public ISerializable
     {
     private:
         ResRef<gfx::Texture2D> m_Texture = nullptr;
@@ -50,7 +51,7 @@ namespace codex {
 
     public:
         inline void Swap(Sprite& other) noexcept
-        { 
+        {
             std::swap(m_Texture, other.m_Texture);
             std::swap(m_TextureCoords, other.m_TextureCoords);
             std::swap(m_Size, other.m_Size);
@@ -62,30 +63,23 @@ namespace codex {
         inline operator bool() const noexcept { return m_Texture; }
 
     public:
-        friend void to_json(nlohmann::ordered_json& j, const Sprite& sprite)
+        void Serialize(ISerializationNode& node) const override
         {
-            j = { { "m_Texture", *sprite.m_Texture },
-                  { "m_TextureCoords", sprite.m_TextureCoords },
-                  { "m_Size", sprite.m_Size },
-                  { "m_Colour", sprite.m_Colour },
-                  { "m_ZIndex", sprite.m_ZIndex } };
+            auto& texture_child = node.CreateChild("texture");
+            m_Texture->Serialize(texture_child);
+            node.Write("texture_coords", m_TextureCoords);
+            node.Write("size", m_Size);
+            node.Write("colour", m_Colour);
+            node.Write("z_index", m_ZIndex);
         }
-        friend void from_json(const nlohmann::ordered_json& j, Sprite& sprite)
+        void Deserialize(const ISerializationNode& node) override
         {
-            using namespace codex::gfx;
-
-            std::string       path;
-            TextureProperties props;
-            j.at("m_Texture").at("m_FilePath").get_to(path);
-            j.at("m_Texture").at("filterMode").get_to(props.filterMode);
-            j.at("m_Texture").at("wrapMode").get_to(props.wrapMode);
-            j.at("m_Texture").at("format").get_to(props.format);
-
-            j.at("m_TextureCoords").get_to(sprite.m_TextureCoords);
-            j.at("m_Size").get_to(sprite.m_Size);
-            j.at("m_Colour").get_to(sprite.m_Colour);
-            j.at("m_ZIndex").get_to(sprite.m_ZIndex);
-            sprite.m_Texture = Resources::Load<Texture2D>(path, props);
+            auto& texture_child = node.GetChild("texture");
+            m_Texture->Deserialize(texture_child);
+            node.Read("texture_coords", m_TextureCoords);
+            node.Read("size", m_Size);
+            node.Read("colour", m_Colour);
+            node.Read("z_index", m_ZIndex);
         }
     }; // namespace codex
 } // namespace codex

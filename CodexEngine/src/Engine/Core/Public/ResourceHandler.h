@@ -3,8 +3,8 @@
 
 #include <sdafx.h>
 
-#include "Public/Exception.h"
-#include "Public/IResource.h"
+#include "Exception.h"
+#include "IResource.h"
 
 #include <Engine/Graphics/Public/Shader.h>
 #include <Engine/Graphics/Public/Texture2D.h>

@@ -1,16 +1,14 @@
-#ifndef CODEX_SCENE_H
-#define CODEX_SCENE_H
+#pragma once
 
 #include <Engine/Concurrency/Public/Mutex.h>
-#include <Engine/Core/Public/Input.h>
-#include <Engine/Core/Public/ResourceHandler.h>
-#include <Engine/Core/Public/UUID.h>
-#include <Engine/Graphics/Renderer.h>
 #include <Engine/Memory/Public/Memory.h>
-#include <Engine/Scene/EditorCamera.h>
-#include <Engine/Scene/Public/Camera.h>
-#include <Engine/Scene/Public/SpriteSheet.h>
 #include <Engine/System/DynamicLibrary.h>
+#include <Engine/Scene/EditorCamera.h>
+#include <Engine/Scene/Public/Entity.h>
+
+#include <entt.hpp>
+
+class b2World;
 
 namespace codex {
     // Forward declarations
@@ -73,27 +71,23 @@ namespace codex {
         // TODO: Have a IDisplay trait which allows for
         // displaying the names of the objects just like in UE.
         [[nodiscard]] inline std::string_view GetName() const noexcept { return m_Name; }
-        [[nodiscard]] inline usize            GetEntityCount() const noexcept
-        {
-            return m_Registry->view<entt::entity>().size_hint();
-        }
-        inline void Swap(Scene& other) noexcept
-        {
-            {
-                auto reg       = m_Registry.Lock();
-                auto other_reg = other.m_Registry.Lock();
-                std::swap(*reg, *other_reg);
-            }
 
-            std::swap(m_Name, other.m_Name);
-            std::swap(s_ScriptModule, other.s_ScriptModule);
-            std::swap(m_FixedUpdateThread, other.m_FixedUpdateThread);
-            std::swap(m_PhysicsWorld, other.m_PhysicsWorld);
-        }
+    public:
+        [[nodiscard]] u32 GetEntityCount() const noexcept;
+        void              Swap(Scene& other) noexcept;
+        bool              IsValid(const Entity entity) const noexcept;
 
     public:
         template <typename T>
-        std::vector<Entity> GetAllEntitiesWithComponent() noexcept;
+        std::vector<Entity> GetAllEntitiesWithComponent() noexcept
+        {
+            auto                view = m_Registry->view<T>();
+            std::vector<Entity> entities;
+            entities.reserve(view.size_hint());
+            for (auto& e : view)
+                entities.emplace_back(e, this);
+            return entities;
+        }
 
     public:
         void   CopyTo(Scene& other) const noexcept;
@@ -127,17 +121,5 @@ namespace codex {
 
     private:
         static void OnFixedUpdate(Scene& self) noexcept;
-
-    public:
-        friend void to_json(nlohmann::ordered_json& j, const Scene& scene);
-        template <typename T>
-            requires(std::is_move_constructible_v<T>)
-        friend std::vector<Entity> SceneGetAllEntitiesWithComponent(Scene& scene) noexcept;
-
-        template <typename T>
-            requires(!std::is_move_constructible_v<T>)
-        friend std::vector<Entity> SceneGetAllEntitiesWithComponent(Scene& scene) noexcept;
     };
 } // namespace codex
-
-#endif // CODEX_SCENE_H

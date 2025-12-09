@@ -3,13 +3,9 @@
 
 #include <sdafx.h>
 
-#include "Core/LayerStack.h"
-#include "Core/Public/CommonDef.h"
-#include "Core/Public/Exception.h"
-#include "Core/Window.h"
-
-#include <Engine/Events/Event.h>
-#include <Engine/ImGui/ImGuiLayer.h>
+#include <Engine/Core/Public/Exception.h>
+#include <Engine/Core/Window.h>
+#include <Engine/Core/LayerStack.h>
 
 int main(int argc, char** argv);
 

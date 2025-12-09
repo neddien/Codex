@@ -1,6 +1,6 @@
 #include "WindowsProcess.h"
 
-#include "../../src/Engine/Memory/Memory.h"
+#include <Engine/Memory/Public/Memory.h>
 
 namespace codex::sys {
     NTProcess::NTProcess(ProcessInfo info) noexcept

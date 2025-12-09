@@ -3,7 +3,7 @@
 
 #include <sdafx.h>
 
-#include <Engine/Core/Input.h>
+#include <Engine/Core/Public/Input.h>
 
 #include "Event.h"
 

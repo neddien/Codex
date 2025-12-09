@@ -55,6 +55,25 @@ namespace codex::gfx {
         {
             return m_RawShader->CompileShader(compileDefinitions);
         }
+
+    public:
+        void Serialize(ISerializationNode& node) const override
+        {
+            node.Write("id", GetId());
+            node.Write("file_path", m_RawShader->GetFilePath());
+            node.Write("version", m_RawShader->GetVersion());
+        }
+        void Deserialize(const ISerializationNode& node) override
+        {
+            auto path  = std::filesystem::path{};
+            auto version = std::string{};
+
+            node.Read("id", m_Id);
+            node.Read("file_path", path);
+            node.Read("version", version);
+
+            m_RawShader = mem::Box<mgl::Shader>::New(std::move(path), version);
+        }
     };
 } // namespace codex::gfx
 

@@ -26,6 +26,10 @@ namespace mgl {
         ~Shader();
 
     public:
+        [[nodiscard]] std::filesystem::path GetFilePath() const noexcept { return m_FilePath; }
+        [[nodiscard]] std::string_view      GetVersion() const noexcept { return m_Version; }
+
+    public:
         void Bind() const;
         void Unbind() const;
         void SetUniform1i(const char* name, const int32_t value);

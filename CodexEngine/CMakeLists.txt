@@ -48,6 +48,7 @@ set(ENGINE_PLATFORM_DIR "src/Platform")
 # Fetch all the source and header files and the then add them automatically
 file(GLOB_RECURSE ENGINE_SOURCES "src/Engine/*.cpp")
 file(GLOB_RECURSE ENGINE_HEADERS "src/Engine/*.h")
+file(GLOB_RECURSE ENGINE_INLINES "src/Engine/*.inl")
 file(GLOB_RECURSE PLATFORM_WINDOWS_SOURCES "src/Platform/Windows/*.cpp")
 file(GLOB_RECURSE PLATFORM_LINUX_SOURCES "src/Platform/Linux/*.cpp")
 file(GLOB_RECURSE PLATFORM_POSIX_SOURCES "src/Platform/POSIX/*.cpp")
@@ -59,7 +60,7 @@ set(CX_ENGINE_ROOT_DIR
     ${CMAKE_CURRENT_SOURCE_DIR}
     PARENT_SCOPE)
 
-add_library(CodexEngine SHARED ${ENGINE_HEADERS} ${ENGINE_SOURCES})
+add_library(CodexEngine SHARED ${ENGINE_HEADERS} ${ENGINE_INLINES} ${ENGINE_SOURCES})
 add_library(CodexEngine-static STATIC ${ENGINE_HEADERS} ${ENGINE_SOURCES})
 
 # Set the C++ Standard to 20 for this target.

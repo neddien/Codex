@@ -1,4 +1,4 @@
-#include "NativeBehaviour.h"
+#include "Public/NativeBehaviour.h"
 
 #include <Engine/Scene/Public/Components.h>
 
