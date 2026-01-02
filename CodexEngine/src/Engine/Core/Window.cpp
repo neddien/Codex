@@ -1,6 +1,6 @@
 #include "Window.h"
 
-#include "Core/Application.h"
+#include "Application.h"
 
 #include <Engine/Events/ApplicationEvent.h>
 #include <Engine/Events/KeyEvent.h>
@@ -548,9 +548,9 @@ namespace codex {
     // TODO: Remove, legacy code.
     void Window::OnUpdate([[maybe_unused]] const f32 delta_time)
     {
-        // static mgl::FrameBufferProperties props(GetWidth(), GetHeight(), {
-        // mgl::TextureFormat::RGBA8, mgl::TextureFormat::RedInt32 }); static
-        // mgl::FrameBuffer* fb = new mgl::FrameBuffer(props);
+        // static opengl::FrameBufferProperties props(GetWidth(), GetHeight(), {
+        // opengl::TextureFormat::RGBA8, opengl::TextureFormat::RedInt32 }); static
+        // opengl::FrameBuffer* fb = new opengl::FrameBuffer(props);
         m_Renderer->SetClearColour(0.2f, 0.2f, 0.2f, 1.0f);
         m_Renderer->Clear();
 

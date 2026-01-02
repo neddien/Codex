@@ -49,10 +49,11 @@ set(ENGINE_PLATFORM_DIR "src/Platform")
 file(GLOB_RECURSE ENGINE_SOURCES "src/Engine/*.cpp")
 file(GLOB_RECURSE ENGINE_HEADERS "src/Engine/*.h")
 file(GLOB_RECURSE ENGINE_INLINES "src/Engine/*.inl")
-file(GLOB_RECURSE PLATFORM_WINDOWS_SOURCES "src/Platform/Windows/*.cpp")
-file(GLOB_RECURSE PLATFORM_LINUX_SOURCES "src/Platform/Linux/*.cpp")
-file(GLOB_RECURSE PLATFORM_POSIX_SOURCES "src/Platform/POSIX/*.cpp")
-file(GLOB_RECURSE PLATFORM_OSX_SOURCES "src/Platform/OSX/*.cpp")
+file(GLOB_RECURSE PLATFORM_WINDOWS_SOURCES "${ENGINE_PLATFORM_DIR}/Windows/*.cpp")
+file(GLOB_RECURSE PLATFORM_LINUX_SOURCES "${ENGINE_PLATFORM_DIR}/Linux/*.cpp")
+file(GLOB_RECURSE PLATFORM_POSIX_SOURCES "${ENGINE_PLATFORM_DIR}/POSIX/*.cpp")
+file(GLOB_RECURSE PLATFORM_OSX_SOURCES "${ENGINE_PLATFORM_DIR}/OSX/*.cpp")
+file(GLOB_RECURSE PLATFORM_OPENGL_SOURCES "${ENGINE_PLATFORM_DIR}/OpenGL/*.cpp")
 
 # Export all symbols on Windows (NOTE TO SELF: Do not uncomment).
 #set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
@@ -193,16 +194,28 @@ endif()
 
 # ============= # Graphics API # ============= #
 if(CX_GRAPHICS_API STREQUAL "OpenGL")
-  add_subdirectory(${ENGINE_PLATFORM_DIR}/OpenGL/MGL/MGL
-                   ${PROJECT_BINARY_DIR}/MGL EXCLUDE_FROM_ALL)
-  set(MGL_INCLUDE_DIR ${ENGINE_PLATFORM_DIR}/OpenGL/MGL/include)
-  set(MGL_LIBRARIES MGL)
+  target_sources(CodexEngine PUBLIC ${PLATFORM_OPENGL_SOURCES})
+  target_sources(CodexEngine-static PUBLIC ${PLATFORM_OPENGL_SOURCES})
+    
+  # glad
+  set(GLAD_INCLUDE_DIR "vendor/glad")
+  target_include_directories(CodexEngine PUBLIC ${GLAD_INCLUDE_DIR})
+  target_sources(CodexEngine PUBLIC ${GLAD_INCLUDE_DIR}/glad.cpp)
+  target_include_directories(CodexEngine-static PUBLIC ${GLAD_INCLUDE_DIR})
+  target_sources(CodexEngine-static PUBLIC ${GLAD_INCLUDE_DIR}/glad.cpp)
 
-  target_include_directories(CodexEngine PUBLIC ${MGL_INCLUDE_DIR})
-  target_link_libraries(CodexEngine PUBLIC ${MGL_LIBRARIES})
+  # stb
+  target_include_directories(CodexEngine PUBLIC "vendor/stb")
+  target_include_directories(CodexEngine-static PUBLIC "vendor/stb")
 
-  target_include_directories(CodexEngine-static PUBLIC ${MGL_INCLUDE_DIR})
-  target_link_libraries(CodexEngine-static PUBLIC ${MGL_LIBRARIES})
+  # glm
+  add_subdirectory(vendor/glm ${PROJECT_BINARY_DIR}/glm)
+  set(GLM_INCLUDE_DIR "vendor/glm/glm")
+  set(GLM_LIBRARIES glm)
+  target_include_directories(CodexEngine PUBLIC ${GLM_INCLUDE_DIR})
+  target_link_libraries(CodexEngine PRIVATE ${GLM_LIBRARIES})
+  target_include_directories(CodexEngine-static PUBLIC ${GLM_INCLUDE_DIR})
+  target_link_libraries(CodexEngine-static PRIVATE ${GLM_LIBRARIES})
 endif()
 
 # ============= # Libraries   # ============= #
@@ -239,14 +252,8 @@ target_include_directories(CodexEngine-static PUBLIC ${JSON_INCLUDE_DIR})
 target_link_libraries(CodexEngine-static PRIVATE ${JSON_LIBRARIES})
 
 # ImGui
-# Define these so ImGui doesn't try and load OpenGL functions because we have
-# GLAD for that.
-target_compile_definitions(CodexEngine PRIVATE IMGUI_IMPL_OPENGL_LOADER_CUSTOM)
-target_compile_definitions(CodexEngine-static
-                           PRIVATE IMGUI_IMPL_OPENGL_LOADER_CUSTOM)
-
 set(IMGUI_INCLUDE_DIR ${imgui_SOURCE_DIR}/ ${imgui_SOURCE_DIR}/backends
-                      ${imgui_SOURCE_DIR}/examples ${imgui_SOURCE_DIR}/misc)
+                      ${imgui_SOURCE_DIR}/examples ${imgui_SOURCE_DIR}/misc ${imgui_SOURCE_DIR}/misc/cpp)
 file(
   GLOB_RECURSE
   IMGUI_HEADER_FILES
@@ -256,6 +263,7 @@ file(
   "${imgui_SOURCE_DIR}/imstb_rectpack.h"
   "${imgui_SOURCE_DIR}/imstb_textedit.h"
   "${imgui_SOURCE_DIR}/imstb_truetype.h")
+  #"${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.h") 
 file(
   GLOB_RECURSE
   IMGUI_SOURCE_FILES
@@ -266,6 +274,7 @@ file(
   "${imgui_SOURCE_DIR}/imgui_tables.cpp"
   "${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp"
   "${imgui_SOURCE_DIR}/backends/imgui_impl_sdl2.cpp")
+  #"${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.cpp")
 target_sources(CodexEngine PUBLIC ${IMGUI_HEADER_FILES} ${IMGUI_SOURCE_FILES})
 target_sources(CodexEngine-static PUBLIC ${IMGUI_HEADER_FILES}
                                          ${IMGUI_SOURCE_FILES})
@@ -273,10 +282,12 @@ target_sources(CodexEngine-static PUBLIC ${IMGUI_HEADER_FILES}
 target_include_directories(CodexEngine PUBLIC ${IMGUI_INCLUDE_DIR})
 target_include_directories(CodexEngine-static PUBLIC ${IMGUI_INCLUDE_DIR})
 
-# glm add_subdirectory(vendor/glm ${PROJECT_BINARY_DIR}/glm EXCLUDE_FROM_ALL)
+# glm
 set(GLM_LIBRARIES glm)
 target_link_libraries(CodexEngine PRIVATE ${GLM_LIBRARIES})
 target_link_libraries(CodexEngine-static PRIVATE ${GLM_LIBRARIES})
+target_include_directories(CodexEngine PUBLIC "vendor/glm")
+target_include_directories(CodexEngine-static PUBLIC "vendor/glm")
 
 # box2d Disable box2d's test sub-project, we don't need it.
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
@@ -356,7 +367,6 @@ target_compile_definitions(
 if(DEFINED CX_PLATFORM_WINDOWS)
   install(TARGETS SDL2 SDL2main glm nlohmann_json CodexEngine DESTINATION bin)
   install(FILES ${FMOD_LIB} ${FMOD_STUDIO_LIB} DESTINATION bin)
-  install(TARGETS CodexEngine-static MGL DESTINATION "bin/Object Libraries")
 
   # Program Files (or same location as the binary) for unmodifiable file data.
   # App Data for modifidable file data.
@@ -366,7 +376,6 @@ elseif(DEFINED CX_PLATFORM_UNIX)
             SDL2main
             glm
             nlohmann_json
-            MGL
             CodexEngine
             CodexEngine-static
     DESTINATION lib)
@@ -425,8 +434,8 @@ target_precompile_headers(CodexEngine-static PRIVATE src/PCH/sdafx.h)
 # Add the Engine and Platform folders
 target_include_directories(CodexEngine PRIVATE src/Engine)
 target_include_directories(CodexEngine-static PRIVATE src/Engine)
-target_include_directories(CodexEngine PRIVATE src/Platform)
-target_include_directories(CodexEngine-static PRIVATE src/Platform)
+target_include_directories(CodexEngine PRIVATE ${ENGINE_PLATFORM_DIR})
+target_include_directories(CodexEngine-static PRIVATE ${ENGINE_PLATFORM_DIR})
 
 # Multicore compilation for MSVC if CX_PARALLEL is not 0.
 if(DEFINED CX_COMPILER_MSVC AND NOT CX_PARALLEL EQUAL 0)

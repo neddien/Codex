@@ -15,7 +15,7 @@ namespace codex::editor {
         scene::EditorCamera        m_Camera;
         Vector2f                   m_ViewportBounds[2]{};
         Vector2f                   m_ViewportSize{};
-        mem::Box<gfx::FrameBuffer> m_PalleteFb = nullptr;
+        mem::Box<opengl::FrameBuffer> m_PalleteFb = nullptr;
         Scene                      m_PalleteScene;
         Entity                     m_PalleteEntity   = Entity::None();
         bool                       m_ViewportFocused = false;

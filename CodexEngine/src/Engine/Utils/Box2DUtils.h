@@ -5,7 +5,7 @@
 
 #include <box2d/box2d.h>
 
-#include <Engine/Scene/Public/Components.h>
+#include <Engine/Scene/Public/Components.inl>
 
 namespace codex::utils {
     [[nodiscard]] CODEX_API b2BodyType ToB2Type(const RigidBody2DComponent::BodyType& type) noexcept;

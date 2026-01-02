@@ -1,7 +1,7 @@
 #include "Public/Entity.h"
-#include "Entity.inl"
+#include "Public/Entity.inl"
 
-#include "Public/Components.h"
+#include "Public/Components.inl"
 
 namespace codex {
     UUID Entity::GetUUID() const noexcept

@@ -2,21 +2,23 @@
 
 #include <sdafx.h>
 
-#include <Engine/Memory/Public/Memory.h>
 #include <Engine/Core/Public/Serializer.h>
+#include <Engine/Memory/Public/Memory.h>
 
 namespace codex {
     class IResource : public ISerializable
     {
     protected:
-        usize m_Id = 0;
+        usize                 m_Id = 0;
+        std::filesystem::path m_Path;
 
     public:
         IResource()          = default;
         virtual ~IResource() = default;
 
     public:
-        constexpr usize GetId() const noexcept { return m_Id; }
+        usize                 GetId() const noexcept { return m_Id; }
+        std::filesystem::path GetPath() const noexcept { return m_Path; }
     };
 
     template <typename T>

@@ -75,8 +75,8 @@
 
 // Codex specific
 #include <Engine/Core/Public/CommonDef.h>
-#include <Engine/Math/Public/Math.h>
 #include <Engine/Core/Public/Geomtryd.h>
+#include <Engine/Math/Public/Math.h>
 #include <Engine/Utils/Public/Util.h>
 
 // Library specific
@@ -111,6 +111,5 @@
 
 // Public Libraries
 #include <Logger.h>
-#include <MGL.h>
 
 #endif // CODEX_PCH_H

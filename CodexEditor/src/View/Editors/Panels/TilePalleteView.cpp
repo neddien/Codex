@@ -9,7 +9,8 @@ namespace codex::editor {
         {
             m_Entity            = std::move(newEntity);
             m_PositionedPallete = false;
-            m_Camera            = scene::EditorCamera{ 1280, 720 }; if (m_Entity.HasComponent<TilemapComponent>())
+            m_Camera            = scene::EditorCamera{ 1280, 720 };
+            if (m_Entity.HasComponent<TilemapComponent>())
             {
                 if (!m_PalleteEntity)
                 {
@@ -24,21 +25,21 @@ namespace codex::editor {
     void TilePalleteView::OnInit()
     {
         const auto cwd      = EditorApplication::GetAppDataPath();
-        const auto tex_spec = gfx::TextureProperties{ .format     = gfx::TextureFormat::RGBA8,
-                                                      .mipmapMode = gfx::TextureMipmapMode::LinearNearest };
+        const auto tex_spec = opengl::TextureProperties{ .format     = opengl::TextureFormat::RGBA8,
+                                                      .mipmapMode = opengl::TextureMipmapMode::LinearNearest };
 
         m_BrushIcon = gfx::Texture2D(cwd / "Resources/brush.png", tex_spec);
         m_EraseIcon = gfx::Texture2D(cwd / "Resources/eraser.png", tex_spec);
 
         m_Camera = scene::EditorCamera{ 1280, 720 };
 
-        gfx::FrameBufferProperties props;
+        opengl::FrameBufferProperties props;
         props.width       = 1280;
         props.height      = 720;
-        props.attachments = { { .format = gfx::TextureFormat::RGBA8 } };
+        props.attachments = { { .format = opengl::TextureFormat::RGBA8 } };
 
-        // FIXME: Fix mgl::FrameBuffer's copy and move operators.
-        m_PalleteFb = mem::Box<gfx::FrameBuffer>::New(props);
+        // FIXME: Fix opengl::FrameBuffer's copy and move operators.
+        m_PalleteFb = mem::Box<opengl::FrameBuffer>::New(props);
     }
 
     void TilePalleteView::OnUpdate(const f32 deltaTime)
@@ -102,7 +103,8 @@ namespace codex::editor {
 
         if (ImGui::Begin("Tile pallete", &m_Show))
         {
-            if (ImGui::ImageButton("#brush", reinterpret_cast<ImTextureID>(m_BrushIcon.GetGlId()), size, { 0, 1 }, { 1, 0 }))
+            if (ImGui::ImageButton("#brush", reinterpret_cast<ImTextureID>(m_BrushIcon.GetGlId()), size, { 0, 1 },
+                                   { 1, 0 }))
             {
                 if (m_Entity)
                 {
@@ -114,7 +116,8 @@ namespace codex::editor {
 
             ImGui::SameLine();
 
-            if (ImGui::ImageButton("#eraser", reinterpret_cast<ImTextureID>(m_EraseIcon.GetGlId()), size, { 0, 1 }, { 1, 0 }))
+            if (ImGui::ImageButton("#eraser", reinterpret_cast<ImTextureID>(m_EraseIcon.GetGlId()), size, { 0, 1 },
+                                   { 1, 0 }))
             {
                 if (m_Entity)
                 {
@@ -201,7 +204,7 @@ namespace codex::editor {
         mouse_pos.y = (m_ViewportBounds[1] - m_ViewportBounds[0]).y - mouse_pos.y;
         if (mouse_pos.x >= 0 && mouse_pos.y >= 0 && mouse_pos.x <= m_ViewportSize.x && mouse_pos.y <= m_ViewportSize.y)
         {
-            if (Input::IsMouseDown(Mouse::RightMouse))
+            if (Input::IsMouseDown(Mouse::MiddleMouse))
             {
                 if (Input::IsMouseDragging())
                 {

@@ -51,7 +51,7 @@ namespace codex::editor {
         friend class EditorPanel;
 
     private:
-        mem::Box<mgl::FrameBuffer>         m_Framebuffer = nullptr;
+        mem::Box<opengl::FrameBuffer>         m_Framebuffer = nullptr;
         Vector2f                           m_ViewportBounds[2]{};
         Vector2f                           m_ViewportSize{};
         bool                               m_GizmoActive = false;

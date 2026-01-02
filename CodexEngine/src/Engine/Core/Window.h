@@ -3,10 +3,11 @@
 
 #include <sdafx.h>
 
-#include "./Public/CommonDef.h"
-#include "./Public/Exception.h"
-#include "./Public/Geomtryd.h"
+#include "Public/CommonDef.h"
+#include "Public/Exception.h"
+#include "Public/Geomtryd.h"
 
+#include <Engine/Memory/Public/Memory.h>
 #include <Engine/Events/Event.h>
 #include <Engine/Graphics/Renderer.h>
 
@@ -79,6 +80,7 @@ namespace codex {
         using EventCallbackDelegate = std::function<void(events::Event&)>;
 
         friend class Application;
+        friend class mem::Box<Window>;
 
     private:
         std::string                                        m_Title;

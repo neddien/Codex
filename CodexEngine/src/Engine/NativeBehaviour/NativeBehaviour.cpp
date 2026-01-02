@@ -1,6 +1,6 @@
 #include "Public/NativeBehaviour.h"
 
-#include <Engine/Scene/Public/Components.h>
+#include <Engine/Scene/Public/Components.inl>
 
 namespace codex {
     TransformComponent& NativeBehaviour::GetTransform() noexcept

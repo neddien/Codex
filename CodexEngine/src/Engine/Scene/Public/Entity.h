@@ -51,8 +51,8 @@ namespace codex {
         }
 
     public:
-        [[nodiscard]] operator bool() const noexcept;
-        [[nodiscard]] bool operator==(const Entity& other) const noexcept { return other.m_Handle == m_Handle; }
+        [[nodiscard]] inline operator bool() const noexcept;
+        [[nodiscard]] inline bool operator==(const Entity& other) const noexcept { return other.m_Handle == m_Handle; }
 
     public:
         [[nodiscard]] UUID                      GetUUID() const noexcept;
@@ -63,6 +63,9 @@ namespace codex {
         template <typename T, typename... TArgs>
             requires(std::is_base_of_v<Component, T>)
         T& AddComponent(TArgs&&... args);
+        template <typename T, typename... TArgs>
+            requires(std::is_base_of_v<Component, T>)
+        T& AddOrReplaceComponent(TArgs&&... args);
         template <typename T>
             requires(std::is_base_of_v<Component, T>)
         void RemoveComponent();

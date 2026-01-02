@@ -3,7 +3,8 @@
 #include <Engine/Core/Application.h>
 #include <Engine/Core/Public/ResourceHandler.h>
 #include <Engine/Debug/Public/Debug.h>
-#include <Engine/Scene/Public/Components.h>
+#include <Engine/Scene/Public/Components.inl>
+#include <Platform/OpenGL/GraphicsCapabilities.h>
 
 namespace codex::gfx {
     namespace stdfs = std::filesystem;
@@ -46,7 +47,7 @@ namespace codex::gfx {
             s_QuadShader = new Shader(std::move(shaderPath));
             // TODO: Retrieve the maximum active texture slot count from the GPU instead of hard coding.
             s_QuadShader->CompileShader(
-                { { "CX_MAX_SLOT_COUNT", std::to_string(mgl::GraphicsCapabilities::GetMaxTextureSlotCount()) } });
+                { { "CX_MAX_SLOT_COUNT", std::to_string(opengl::capabilities::GetMaxTextureSlotCount()) } });
 
             s_Batches.reserve(s_Capacity);
             for (i32 i = 0; i < s_Capacity; ++i)

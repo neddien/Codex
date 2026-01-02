@@ -2,7 +2,8 @@
 
 #include <sdafx.h>
 
-#include <Platform/OpenGL/MGL/include/MGL.h>
+#include <Platform/OpenGL/Geometry.h>
+#include <glm/glm.hpp>
 
 namespace codex::math {
     using Matrix4f = glm::mat4;
@@ -13,8 +14,8 @@ namespace codex::math {
     using Vector2  = glm::ivec2;
     using Vector3  = glm::ivec3;
     using Vector4  = glm::ivec4;
-    using Rect     = mgl::Rect;
-    using Rectf    = mgl::Rectf;
+    using Rect     = opengl::Rect;
+    using Rectf    = opengl::Rectf;
 } // namespace codex::math
 
 using namespace codex::math;

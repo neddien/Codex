@@ -4,10 +4,10 @@
 #include <sdafx.h>
 
 #include <Engine/Core/Public/Geomtryd.h>
-#include <Engine/Scene/Public/Sprite.h>
 #include <Engine/Graphics/BatchRenderer2D.h>
-#include <Engine/Graphics/Line2D.h>
 #include <Engine/Graphics/DebugDraw.h>
+#include <Engine/Graphics/Line2D.h>
+#include <Engine/Scene/Public/Sprite.h>
 
 #include "Public/Shader.h"
 
@@ -16,9 +16,9 @@ namespace codex::gfx {
     class CODEX_API Renderer
     {
     private:
-        static i32            m_Width;
-        static i32            m_Height;
-        static mgl::Renderer* m_InternalRenderer;
+        static i32               m_Width;
+        static i32               m_Height;
+        static opengl::Renderer* m_InternalRenderer;
 
     public:
         Renderer() = default;
@@ -30,8 +30,8 @@ namespace codex::gfx {
     public:
         static void Clear();
         static void SetClearColour(const f32 r, const f32 g, const f32 b, const f32 a);
-        static void Render(const mgl::VertexArray* vertexArray, const mgl::IndexBuffer* indexBuffer,
-                           const mgl::Shader* shader);
+        static void Render(const opengl::VertexArray* vertexArray, const opengl::IndexBuffer* indexBuffer,
+                           const opengl::Shader* shader);
     };
 } // namespace codex::gfx
 

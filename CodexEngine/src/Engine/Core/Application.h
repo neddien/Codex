@@ -3,9 +3,14 @@
 
 #include <sdafx.h>
 
+#include <Engine/Core/LayerStack.h>
 #include <Engine/Core/Public/Exception.h>
 #include <Engine/Core/Window.h>
-#include <Engine/Core/LayerStack.h>
+#include <Engine/Events/ApplicationEvent.h>
+#include <Engine/Events/KeyEvent.h>
+#include <Engine/Events/MouseEvent.h>
+#include <Engine/ImGui/ImGuiLayer.h>
+#include <Engine/Memory/Public/Memory.h>
 
 int main(int argc, char** argv);
 
@@ -15,6 +20,11 @@ namespace codex {
     namespace events {
         class WindowResizeEvent;
     } // namespace events
+    namespace imgui {
+        class ImGuiLayer;
+    } // namespace imgui
+    class Window;
+    class LayerStack;
 
     CX_CUSTOM_EXCEPTION(InvalidPathException, "The path supplied is invalid.");
 
@@ -47,7 +57,7 @@ namespace codex {
 
     protected:
         ApplicationProperties m_Properties;
-        Window::Box           m_Window    = nullptr;
+        mem::Box<Window>      m_Window    = nullptr;
         bool                  m_Running   = true;
         bool                  m_Minimized = false;
         LayerStack            m_LayerStack;
@@ -100,11 +110,14 @@ namespace codex {
             }
         }
 
+    private:
+        void InternalInit();
+
     public:
         auto OnWindowResize_Event(const events::WindowResizeEvent& event) -> bool;
 
     public:
-        virtual auto OnInit() -> void{};
+        virtual auto OnInit() -> void {};
 
     public:
         auto Run() -> void;

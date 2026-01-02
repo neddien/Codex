@@ -2,8 +2,6 @@
 
 #include <sdafx.h>
 
-#include <Engine/Core/Application.h>
-
 #include "Geomtryd.h"
 
 namespace codex {

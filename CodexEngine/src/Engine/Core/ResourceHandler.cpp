@@ -29,7 +29,7 @@ namespace codex {
         }
     }
 
-    ResRef<Texture2D> Resources::Load_Texture2D(const std::filesystem::path filePath, const TextureProperties props)
+    ResRef<Texture2D> Resources::Load_Texture2D(const std::filesystem::path filePath, const opengl::TextureProperties props)
     {
         // I could use .c_str() but on MSVC c_str() is of value_type type which itself is wchar_t.
         // To put it short, It is for compatability reasons.

@@ -2,11 +2,12 @@
 
 #include <sdafx.h>
 
-#include <Engine/Scene/Public/Entity.inl>
 #include <Engine/Core/Public/Serializer.h>
+#include <Engine/Scene/Public/Entity.inl>
 
 namespace codex {
     // Forward declarations.
+    class Entity;
     struct NativeBehaviourComponent;
 
     class CODEX_API NativeBehaviour : public ISerializable

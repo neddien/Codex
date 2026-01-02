@@ -1,32 +1,34 @@
 #include "RenderBatch.h"
 
+#include <Platform/OpenGL/GraphicsCapabilities.h>
+
 namespace codex::gfx {
     RenderBatch::RenderBatch(const i32 maxQuadCount, Shader* shader)
         : m_MaxQuadCount(maxQuadCount)
         , m_Shader(shader)
     {
-        m_MaxTextureSlotCount = mgl::GraphicsCapabilities::GetMaxTextureSlotCount();
+        m_MaxTextureSlotCount = opengl::capabilities::GetMaxTextureSlotCount();
 
         m_Verticies = new QuadVertex[maxQuadCount * QUAD2D_VERTEX_COUNT];
         m_VertexPtr = m_Verticies;
         m_TextureList.resize(m_MaxTextureSlotCount);
 
-        m_Vao = std::make_unique<mgl::VertexArray>();
+        m_Vao = std::make_unique<opengl::VertexArray>();
         m_Vao->Bind();
 
-        m_Vbo = std::make_unique<mgl::VertexBuffer>();
+        m_Vbo = std::make_unique<opengl::VertexBuffer>();
         m_Vbo->Bind();
         m_Vbo->SetBuffer<QuadVertex>(nullptr, sizeof(QuadVertex) * QUAD2D_VERTEX_COUNT * m_MaxQuadCount,
-                                     mgl::BufferUsage::DYNAMIC_DRAW); // you basically allocate space and then upload
-                                                                      // the data
+                                     opengl::BufferUsage::DYNAMIC_DRAW); // you basically allocate space and then upload
+                                                                         // the data
 
-        m_Ebo = std::make_unique<mgl::IndexBuffer>();
+        m_Ebo = std::make_unique<opengl::IndexBuffer>();
         m_Ebo->Bind();
         u32  size              = 0;
         auto index_buffer_data = GenerateIndicies(size);
         m_Ebo->SetBuffer(index_buffer_data.data(), size);
 
-        m_Layout = std::make_unique<mgl::VertexBufferLayout>();
+        m_Layout = std::make_unique<opengl::VertexBufferLayout>();
         m_Layout->Push<f32>(4); // a_MatCol0
         m_Layout->Push<f32>(4); // a_MatCol1
         m_Layout->Push<f32>(4); // a_MatCol2

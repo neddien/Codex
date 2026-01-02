@@ -33,14 +33,14 @@ namespace codex::gfx {
         if (!s_Shader)
             cx_throw(InvalidOperationException, "Tried creating a DebugDraw object before calling DebugDraw::Init().");
 
-        m_Vao = mem::Box<mgl::VertexArray>::New();
+        m_Vao = mem::Box<opengl::VertexArray>::New();
         m_Vao->Bind();
 
-        m_Vbo = mem::Box<mgl::VertexBuffer>::New();
+        m_Vbo = mem::Box<opengl::VertexBuffer>::New();
         m_Vbo->Bind();
-        m_Vbo->SetBuffer<f32>(nullptr, m_Verticies.size() * sizeof(f32), mgl::BufferUsage::DYNAMIC_DRAW);
+        m_Vbo->SetBuffer<f32>(nullptr, m_Verticies.size() * sizeof(f32), opengl::BufferUsage::DYNAMIC_DRAW);
 
-        m_Layout = mem::Box<mgl::VertexBufferLayout>::New();
+        m_Layout = mem::Box<opengl::VertexBufferLayout>::New();
         m_Layout->Push<f32>(3); // a_Pos
         m_Layout->Push<f32>(4); // a_Colour
 

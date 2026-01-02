@@ -8,8 +8,8 @@ namespace codex::editor {
     void ToolbarView::OnInit()
     {
         const auto cwd      = EditorApplication::GetAppDataPath();
-        const auto tex_spec = gfx::TextureProperties{ .format     = gfx::TextureFormat::RGBA8,
-                                                      .mipmapMode = gfx::TextureMipmapMode::LinearNearest };
+        const auto tex_spec = opengl::TextureProperties{ .format     = opengl::TextureFormat::RGBA8,
+                                                      .mipmapMode = opengl::TextureMipmapMode::LinearNearest };
 
         m_PlayIcon     = gfx::Texture2D(cwd / "Resources/play.png", tex_spec);
         m_StopIcon     = gfx::Texture2D(cwd / "Resources/stop.png", tex_spec);
@@ -25,7 +25,7 @@ namespace codex::editor {
         ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(0, 0));
 
         ImGuiWindowClass toolbar_win_class;
-        toolbar_win_class.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar;
+        // toolbar_win_class.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar;
         ImGui::SetNextWindowClass(&toolbar_win_class);
         ImGui::Begin("##toolbar", nullptr,
                      ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |

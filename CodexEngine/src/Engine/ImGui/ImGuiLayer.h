@@ -1,5 +1,4 @@
-#ifndef CODEX_IMGUI_LAYER_H
-#define CODEX_IMGUI_LAYER_H
+#pragma once
 
 #include <sdafx.h>
 
@@ -7,6 +6,7 @@
 #include <Engine/Events/Event.h>
 
 #include <imgui.h>
+#include <imgui_stdlib.h>
 
 namespace codex::imgui {
     class CODEX_API ImGuiLayer : public Layer
@@ -35,5 +35,3 @@ namespace codex::imgui {
         auto GetActiveWidgetID() const -> u32;
     };
 } // namespace codex::imgui
-
-#endif // CODEX_IMGUI_LAYER_H

@@ -1,34 +1,14 @@
 cmake_minimum_required(VERSION 3.16)
 
-project("TestProj")
+project("TemplateProject")
 
-# Fetch modules
+include(FetchContent)
+
 FetchContent_Declare(
   logex
   GIT_REPOSITORY git@github.com:neddien/Logex
   GIT_TAG master)
-FetchContent_Declare(
-  sdl
-  GIT_REPOSITORY git@github.com:libsdl-org/SDL
-  GIT_TAG release-2.32.10)
-FetchContent_Declare(
-  box2d
-  GIT_REPOSITORY git@github.com:erincatto/box2d
-  GIT_TAG v2.4.2)
-FetchContent_Declare(
-  imgui
-  GIT_REPOSITORY git@github.com:ocornut/imgui
-  GIT_TAG a028c2d)
-FetchContent_Declare(
-  json
-  GIT_REPOSITORY git@github.com:nlohmann/json
-  GIT_TAG v3.12.0)
-
-FetchContent_MakeAvailable(Logex)
-FetchContent_MakeAvailable(SDL)
-FetchContent_MakeAvailable(box2d)
-FetchContent_MakeAvailable(imgui)
-FetchContent_MakeAvailable(json)
+FetchContent_MakeAvailable(logex)
 
 # For LSPs.
 set(CMAKE_EXPORT_COMPILE_COMMANDS on)
@@ -137,18 +117,11 @@ add_custom_command(
 
 # Expose Codex's dependencies.
 # TODO: Automate this please cause we have to add an entry here everytime we add a new library.
-target_include_directories(NBMan PUBLIC Engine/vendor/SDL/include)
-target_include_directories(NBMan PUBLIC Engine/vendor/MGL/include)
-target_include_directories(NBMan PUBLIC Engine/vendor/json/include)
-target_include_directories(NBMan PUBLIC Engine/vendor/imgui)
-target_include_directories(NBMan PUBLIC Engine/vendor/glm)
-target_include_directories(NBMan PUBLIC Engine/vendor/fmt/include)
 target_include_directories(NBMan PUBLIC Engine/vendor/entt)
-target_include_directories(NBMan PUBLIC Engine/vendor/glad)
-target_include_directories(NBMan PUBLIC Engine/vendor/box2d/include)
-target_include_directories(NBMan PUBLIC Engine/vendor/Logex/include)
-target_include_directories(NBMan PUBLIC Engine/vendor/Logex/Logger/vendor/fmt/include)
+target_include_directories(NBMan PUBLIC Engine/vendor/glm)
 target_include_directories(NBMan PUBLIC Engine/src/PCH)
+target_include_directories(NBMan PUBLIC "${logex_SOURCE_DIR}/Logger/src")
+target_include_directories(NBMan PUBLIC "${logex_SOURCE_DIR}/Logger/vendor/fmt/include")
 
 # For ease of use.
 target_include_directories(NBMan PUBLIC Engine/src)

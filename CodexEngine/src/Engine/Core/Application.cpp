@@ -4,10 +4,9 @@
 
 #include <Engine/Debug/Public/Profiler.h>
 #include <Engine/Debug/Public/TimeScope.h>
-#include <Engine/Events/ApplicationEvent.h>
-#include <Engine/Events/KeyEvent.h>
-#include <Engine/Events/MouseEvent.h>
 #include <Engine/Scene/Public/Scene.h>
+#include <Engine/Scene/ComponentFactory.h>
+#include <Engine/Scene/Public/Components.inl>
 
 #include "Public/Exception.h"
 #include "Public/Input.h"
@@ -22,6 +21,18 @@ namespace codex {
 
     Application::Application(ApplicationProperties args)
         : m_Properties(std::move(args))
+    {
+        InternalInit();
+    }
+
+    Application::~Application()
+    {
+        Resources::Destroy();
+        Input::Dispose();
+        s_Instance = nullptr;
+    }
+
+    void Application::InternalInit()
     {
         // Create the engine logger.
         lgx::Get("engine") = lgx::Logger{ lgx::Logger::Properties{
@@ -45,13 +56,14 @@ namespace codex {
             }
 
             s_Instance = this;
-            m_Window   = Window::Box(new Window(), [](Window* window) { delete window; });
+            m_Window   = mem::Box<Window>::New();
             m_Window->Init(m_Properties.windowProperties);
             m_Window->SetEventCallback(BindEventDelegate(this, &Application::OnEvent));
 
             m_Input = Input::Get();
 
             Resources::Init();
+            RegisterAllComponents();
 
             m_ImGuiLayer = new ImGuiLayer();
             PushOverlay(m_ImGuiLayer);
@@ -61,13 +73,6 @@ namespace codex {
             m_Logger->Log(lgx::Fatal, ex.to_string());
             std::exit(EXIT_FAILURE);
         }
-    }
-
-    Application::~Application()
-    {
-        Resources::Destroy();
-        Input::Dispose();
-        s_Instance = nullptr;
     }
 
     auto Application::OnWindowResize_Event(const WindowResizeEvent& event) -> bool

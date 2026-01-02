@@ -101,10 +101,6 @@ namespace codex {
 
 #define CX_MACRO_STRINGFY(x) #x
 
-#define CX_COMPONENT                                                                                                   \
-    friend class Entity;                                                                                               \
-    friend class Scene;
-
 #define CX_PROPERTY(name)                                                                                              \
     [[nodiscard]] inline auto Get##name() const noexcept                                                               \
     {                                                                                                                  \

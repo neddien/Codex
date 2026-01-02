@@ -139,6 +139,8 @@ namespace codex::editor {
                     {
                         auto& [k, v] = *it;
 
+                        // TODO: Come back
+                        /*
                         const auto& j = v->GetSerializedData();
                         if (j.empty())
                             v->Serialize();
@@ -205,6 +207,7 @@ namespace codex::editor {
                                 }
                             }
                         }
+                        */
                     }
                     for (const auto& e : possible_scripts_to_detach)
                         c.Detach(e);
@@ -229,7 +232,8 @@ namespace codex::editor {
 
                         ImGui::BeginGroup();
                         if (sprite)
-                            ImGui::Image(reinterpret_cast<ImTextureID>(texture->GetGlId()), { 100.0f, 100.0f }, { 0, 1 }, { 1, 0 });
+                            ImGui::Image(reinterpret_cast<ImTextureID>(texture->GetGlId()), { 100.0f, 100.0f },
+                                         { 0, 1 }, { 1, 0 });
                         else
                             ImGui::Text("No bound texture.");
 
@@ -274,26 +278,26 @@ namespace codex::editor {
                         const auto& props        = texture->GetProperties();
                         switch (props.filterMode)
                         {
-                            case gfx::TextureFilterMode::Linear: preview_item = "Linear"; break;
-                            case gfx::TextureFilterMode::Nearest: preview_item = "Nearest"; break;
+                            case opengl::TextureFilterMode::Linear: preview_item = "Linear"; break;
+                            case opengl::TextureFilterMode::Nearest: preview_item = "Nearest"; break;
                         }
                         if (ImGui::BeginCombo("##texture_filter_mode", preview_item))
                         {
-                            if (ImGui::Selectable("Nearest", props.filterMode == gfx::TextureFilterMode::Nearest))
+                            if (ImGui::Selectable("Nearest", props.filterMode == opengl::TextureFilterMode::Nearest))
                             {
-                                if (props.filterMode != gfx::TextureFilterMode::Nearest)
+                                if (props.filterMode != opengl::TextureFilterMode::Nearest)
                                 {
                                     auto new_props       = props;
-                                    new_props.filterMode = gfx::TextureFilterMode::Nearest;
+                                    new_props.filterMode = opengl::TextureFilterMode::Nearest;
                                     texture->New(texture->GetFilePath(), new_props);
                                 }
                             }
-                            if (ImGui::Selectable("Linear", props.filterMode == gfx::TextureFilterMode::Linear))
+                            if (ImGui::Selectable("Linear", props.filterMode == opengl::TextureFilterMode::Linear))
                             {
-                                if (props.filterMode != gfx::TextureFilterMode::Linear)
+                                if (props.filterMode != opengl::TextureFilterMode::Linear)
                                 {
                                     auto new_props       = props;
-                                    new_props.filterMode = gfx::TextureFilterMode::Linear;
+                                    new_props.filterMode = opengl::TextureFilterMode::Linear;
                                     texture->New(texture->GetFilePath(), new_props);
                                 }
                             }
@@ -635,8 +639,8 @@ namespace codex::editor {
 
                             ImGui::BeginGroup();
                             if (c.sprite)
-                                ImGui::Image(reinterpret_cast<ImTextureID>(c.sprite.GetTexture()->GetGlId()), { 100.0f, 100.0f },
-                                             { 0, 1 }, { 1, 0 });
+                                ImGui::Image(reinterpret_cast<ImTextureID>(c.sprite.GetTexture()->GetGlId()),
+                                             { 100.0f, 100.0f }, { 0, 1 }, { 1, 0 });
                             else
                                 ImGui::Text("No bound texture.");
 
@@ -670,26 +674,26 @@ namespace codex::editor {
                             const auto& props        = texture->GetProperties();
                             switch (props.filterMode)
                             {
-                                case gfx::TextureFilterMode::Linear: preview_item = "Linear"; break;
-                                case gfx::TextureFilterMode::Nearest: preview_item = "Nearest"; break;
+                                case opengl::TextureFilterMode::Linear: preview_item = "Linear"; break;
+                                case opengl::TextureFilterMode::Nearest: preview_item = "Nearest"; break;
                             }
                             if (ImGui::BeginCombo("##texture_filter_mode", preview_item))
                             {
-                                if (ImGui::Selectable("Nearest", props.filterMode == gfx::TextureFilterMode::Nearest))
+                                if (ImGui::Selectable("Nearest", props.filterMode == opengl::TextureFilterMode::Nearest))
                                 {
-                                    if (props.filterMode != gfx::TextureFilterMode::Nearest)
+                                    if (props.filterMode != opengl::TextureFilterMode::Nearest)
                                     {
                                         auto new_props       = props;
-                                        new_props.filterMode = gfx::TextureFilterMode::Nearest;
+                                        new_props.filterMode = opengl::TextureFilterMode::Nearest;
                                         texture->New(texture->GetFilePath(), new_props);
                                     }
                                 }
-                                if (ImGui::Selectable("Linear", props.filterMode == gfx::TextureFilterMode::Linear))
+                                if (ImGui::Selectable("Linear", props.filterMode == opengl::TextureFilterMode::Linear))
                                 {
-                                    if (props.filterMode != gfx::TextureFilterMode::Linear)
+                                    if (props.filterMode != opengl::TextureFilterMode::Linear)
                                     {
                                         auto new_props       = props;
-                                        new_props.filterMode = gfx::TextureFilterMode::Linear;
+                                        new_props.filterMode = opengl::TextureFilterMode::Linear;
                                         texture->New(texture->GetFilePath(), new_props);
                                     }
                                 }
@@ -754,8 +758,8 @@ namespace codex::editor {
 
                             ImGui::BeginGroup();
                             if (c.sprite)
-                                ImGui::Image(reinterpret_cast<ImTextureID>(c.sprite.GetTexture()->GetGlId()), { 100.0f, 100.0f },
-                                             { 0, 1 }, { 1, 0 });
+                                ImGui::Image(reinterpret_cast<ImTextureID>(c.sprite.GetTexture()->GetGlId()),
+                                             { 100.0f, 100.0f }, { 0, 1 }, { 1, 0 });
                             else
                                 ImGui::Text("No bound texture.");
 
@@ -789,26 +793,26 @@ namespace codex::editor {
                             const auto& props        = texture->GetProperties();
                             switch (props.filterMode)
                             {
-                                case gfx::TextureFilterMode::Linear: preview_item = "Linear"; break;
-                                case gfx::TextureFilterMode::Nearest: preview_item = "Nearest"; break;
+                                case opengl::TextureFilterMode::Linear: preview_item = "Linear"; break;
+                                case opengl::TextureFilterMode::Nearest: preview_item = "Nearest"; break;
                             }
                             if (ImGui::BeginCombo("##texture_filter_mode", preview_item))
                             {
-                                if (ImGui::Selectable("Nearest", props.filterMode == gfx::TextureFilterMode::Nearest))
+                                if (ImGui::Selectable("Nearest", props.filterMode == opengl::TextureFilterMode::Nearest))
                                 {
-                                    if (props.filterMode != gfx::TextureFilterMode::Nearest)
+                                    if (props.filterMode != opengl::TextureFilterMode::Nearest)
                                     {
                                         auto new_props       = props;
-                                        new_props.filterMode = gfx::TextureFilterMode::Nearest;
+                                        new_props.filterMode = opengl::TextureFilterMode::Nearest;
                                         texture->New(texture->GetFilePath(), new_props);
                                     }
                                 }
-                                if (ImGui::Selectable("Linear", props.filterMode == gfx::TextureFilterMode::Linear))
+                                if (ImGui::Selectable("Linear", props.filterMode == opengl::TextureFilterMode::Linear))
                                 {
-                                    if (props.filterMode != gfx::TextureFilterMode::Linear)
+                                    if (props.filterMode != opengl::TextureFilterMode::Linear)
                                     {
                                         auto new_props       = props;
-                                        new_props.filterMode = gfx::TextureFilterMode::Linear;
+                                        new_props.filterMode = opengl::TextureFilterMode::Linear;
                                         texture->New(texture->GetFilePath(), new_props);
                                     }
                                 }
@@ -867,8 +871,8 @@ namespace codex::editor {
 
                                 ImGui::BeginGroup();
                                 if (c.sprite)
-                                    ImGui::Image(reinterpret_cast<ImTextureID>(c.sprite.GetTexture()->GetGlId()), { 100.0f, 100.0f },
-                                                 { 0, 1 }, { 1, 0 });
+                                    ImGui::Image(reinterpret_cast<ImTextureID>(c.sprite.GetTexture()->GetGlId()),
+                                                 { 100.0f, 100.0f }, { 0, 1 }, { 1, 0 });
                                 else
                                     ImGui::Text("No bound texture.");
 

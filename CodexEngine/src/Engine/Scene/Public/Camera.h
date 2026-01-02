@@ -3,8 +3,10 @@
 
 #include <sdafx.h>
 
+#include <Engine/Core/Public/Serializer.h>
+
 namespace codex::scene {
-    class CODEX_API Camera
+    class CODEX_API Camera : public ISerializable
     {
     public:
         enum class ProjectionType
@@ -82,6 +84,10 @@ namespace codex::scene {
     public:
         [[nodiscard]] static Vector3f ScreenCoordinatesToWorld(const Camera& camera, const Vector2f& screenCoord,
                                                                const Vector3f& cameraPosition) noexcept;
+
+    public:
+        void Serialize(ISerializationNode& node) const override;
+        void Deserialize(const ISerializationNode& node) override;
     };
 } // namespace codex::scene
 

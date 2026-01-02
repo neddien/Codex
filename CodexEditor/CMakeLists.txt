@@ -102,6 +102,14 @@ foreach(PROJECT_DIR ${PROJECT_DIRS})
      AND IS_DIRECTORY
          "${CMAKE_CURRENT_SOURCE_DIR}/assets/Projects/${PROJECT_DIR}")
 
+    set(CX_ENGINE_COPY_SPECS 
+        "include:Engine/include:public"
+        "src/Engine:Engine/src/Engine:public"
+        "src/PCH:Engine/src/PCH:headers"
+        "src/Platform:Engine/src/Platform:headers"
+    )
+    string(REPLACE ";" "," CX_ENGINE_COPY_SPECS_PROC "${CX_ENGINE_COPY_SPECS}")
+
     # Run the python script for each project
     add_custom_command(
       TARGET engine_header_gen
@@ -112,6 +120,7 @@ foreach(PROJECT_DIR ${PROJECT_DIRS})
         "--src-dir=${CX_ENGINE_ROOT_DIR}"
         "--dest-dir=${CMAKE_CURRENT_SOURCE_DIR}/assets/Projects/${PROJECT_DIR}"
         "--root-dir=${CX_ROOT_DIR}"
+        "--copy-specs=${CX_ENGINE_COPY_SPECS_PROC}"
       COMMENT ":: Generating engine headers for ${PROJECT_DIR}...")
 
     # If we're on Windows, copy the libraries for each project
@@ -126,9 +135,6 @@ foreach(PROJECT_DIR ${PROJECT_DIRS})
           ${CMAKE_COMMAND} -E copy
           "$<TARGET_FILE_DIR:CodexEngine>/CodexEngine.lib"
           "${CMAKE_CURRENT_SOURCE_DIR}/assets/Projects/${PROJECT_DIR}/lib/CodexEngine.lib"
-        COMMAND
-          ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:MGL>"
-          "${CMAKE_CURRENT_SOURCE_DIR}/assets/Projects/${PROJECT_DIR}/lib/"
         COMMAND
           ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:fmt>"
           "${CMAKE_CURRENT_SOURCE_DIR}/assets/Projects/${PROJECT_DIR}/lib/"

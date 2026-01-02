@@ -2,6 +2,7 @@
 
 #include <Engine/Events/KeyEvent.h>
 #include <Engine/Events/MouseEvent.h>
+#include <Engine/Core/Application.h>
 
 namespace codex {
     using namespace codex::events;
@@ -579,14 +580,14 @@ namespace codex {
 
     bool Input::OnMouseUp_Event(const MouseUpEvent event)
     {
-        m_ButtonsDown[(usize)event.GetMouseButton() - 1] = false;
+        m_ButtonsDown[(usize)event.GetMouseButton()] = false;
         m_Instance->m_MouseDragging                      = false;
         return false;
     }
 
     bool Input::OnMouseDown_Event(const MouseDownEvent event)
     {
-        m_ButtonsDown[(usize)event.GetMouseButton() - 1] = true;
+        m_ButtonsDown[(usize)event.GetMouseButton()] = true;
         return false;
     }
 
@@ -604,7 +605,7 @@ namespace codex {
 
     bool Input::IsMouseDown(const Mouse button)
     {
-        return m_ButtonsDown[(usize)button - 1];
+        return m_ButtonsDown[(usize)button];
     }
     
     Vector2 Input::GetScreenMousePos() noexcept

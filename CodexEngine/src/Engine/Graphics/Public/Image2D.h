@@ -26,7 +26,6 @@ namespace codex::gfx {
         i32                   m_Width    = 0;
         i32                   m_Height   = 0;
         i32                   m_Channels = 0;
-        std::filesystem::path m_Path{};
 
     public:
         Image2D() = default;
@@ -58,14 +57,16 @@ namespace codex::gfx {
         void Serialize(ISerializationNode& node) const override
         {
             node.Write("id", GetId());
-            node.Write("file_path", m_Path);
+            node.Write("file_path", m_Path.string());
         }
         void Deserialize(const ISerializationNode& node) override
         {
-            auto        path  = std::filesystem::path{};
+            auto        path  = std::string{};
 
             node.Read("id", m_Id);
             node.Read("path", path);
+
+            m_Path = path;
 
             Load();
         }

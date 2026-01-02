@@ -6,6 +6,7 @@
 #include <Engine/Core/Public/Exception.h>
 #include <Engine/Core/Public/IResource.h>
 #include <Engine/Memory/Public/Memory.h>
+#include <Platform/OpenGL/Shader.h>
 
 namespace codex::gfx {
     CX_CUSTOM_EXCEPTION(ShaderException, "Bad shader.")
@@ -16,12 +17,13 @@ namespace codex::gfx {
         friend class ResourceHandler;
 
     private:
-        mem::Box<mgl::Shader> m_RawShader;
+        mem::Box<opengl::Shader> m_RawShader;
 
     public:
         Shader(std::filesystem::path filePath, const std::string_view version = "330 core")
         {
-            m_RawShader = mem::Box<mgl::Shader>::New(std::move(filePath), version);
+            m_Path      = filePath;
+            m_RawShader = mem::Box<opengl::Shader>::New(std::move(filePath), version);
         }
 
     public:
@@ -60,19 +62,19 @@ namespace codex::gfx {
         void Serialize(ISerializationNode& node) const override
         {
             node.Write("id", GetId());
-            node.Write("file_path", m_RawShader->GetFilePath());
+            node.Write("file_path", m_RawShader->GetFilePath().string());
             node.Write("version", m_RawShader->GetVersion());
         }
         void Deserialize(const ISerializationNode& node) override
         {
-            auto path  = std::filesystem::path{};
+            auto path    = std::string{};
             auto version = std::string{};
 
             node.Read("id", m_Id);
             node.Read("file_path", path);
             node.Read("version", version);
 
-            m_RawShader = mem::Box<mgl::Shader>::New(std::move(path), version);
+            m_RawShader = mem::Box<opengl::Shader>::New(std::move(path), version);
         }
     };
 } // namespace codex::gfx

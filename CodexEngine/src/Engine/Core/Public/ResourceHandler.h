@@ -39,8 +39,8 @@ namespace codex {
         static void Destroy();
 
     private:
-        static ResRef<gfx::Texture2D> Load_Texture2D(const std::filesystem::path  filePath,
-                                                     const gfx::TextureProperties props = {});
+        static ResRef<gfx::Texture2D> Load_Texture2D(const std::filesystem::path     filePath,
+                                                     const opengl::TextureProperties props = {});
         static ResRef<gfx::Shader>    Load_Shader(const std::filesystem::path filePath,
                                                   const std::string_view      version = "330 core");
 
@@ -57,6 +57,22 @@ namespace codex {
 
             static_assert("Type not supported.");
             return nullptr;
+        }
+        template <typename T>
+        static ResRef<T> From(T&& resource)
+        {
+            auto res = mem::Shared<T>::New(std::move(resource));
+
+            if (HasResource(res->GetPath()))
+            {
+                cx_throw(ResourceException, "Resource with the same path already exists.");
+            }
+
+            const usize id = util::Crypto::DJB2Hash(res->GetPath().string());
+            lgx::Get("engine").Log(lgx::Info, "[ResourceHandler] >> File: '{}' Id: {}", res->GetPath().string(), id);
+            m_Instance->m_Resources[id] = res;
+
+            return res;
         }
 
     public:

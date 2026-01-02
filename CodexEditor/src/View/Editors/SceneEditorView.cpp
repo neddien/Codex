@@ -9,7 +9,9 @@
 #include "Panels/PropertiesView.h"
 #include "Panels/SceneHierarchyView.h"
 #include "Panels/ToolbarView.h"
-#include "imgui.h"
+
+#include <imgui.h>
+#include <imgui_internal.h>
 
 namespace codex::editor {
     namespace stdfs = std::filesystem;
@@ -44,13 +46,13 @@ namespace codex::editor {
         this->AttachPanel<PropertiesView>();
         this->AttachPanel<ToolbarView>();
 
-        gfx::FrameBufferProperties props;
-        props.attachments = { { .format = gfx::TextureFormat::RGBA8 }, { .format = gfx::TextureFormat::RedInt32 } };
+        opengl::FrameBufferProperties props;
+        props.attachments = { { .format = opengl::TextureFormat::RGBA8 }, { .format = opengl::TextureFormat::RedInt32 } };
 
         // TODO: This is the scene render resolution so you should not hard code this.
         props.width   = 1920;
         props.height  = 1080;
-        m_Framebuffer = mem::Box<mgl::FrameBuffer>::New(props);
+        m_Framebuffer = mem::Box<opengl::FrameBuffer>::New(props);
 
         // EditorLayer::GetCamera().SetProjectionType(scene::Camera::ProjectionType::Perspective);
 
@@ -301,14 +303,15 @@ namespace codex::editor {
                                 tinyfd_saveFileDialog("Save Project", "default.cxproj", 1, filter_patterns, NULL);
                             if (save_dir)
                             {
+                                // TODO: project->Save(path);
                                 d->selectedEntity.Deselect();
-                                Serializer::SerializeScene(save_dir, *d->activeScene.Lock());
+                                SerializationManager::SaveToFile(*d->activeScene.Lock(), save_dir);
                             }
                         }
                         else
                         {
                             d->selectedEntity.Deselect();
-                            Serializer::SerializeScene(save_dir, *d->activeScene.Lock());
+                            SerializationManager::SaveToFile(*d->activeScene.Lock(), save_dir);
                         }
                     }
                     if (ImGui::MenuItem("Exit", "Alt+F4"))
@@ -505,7 +508,7 @@ namespace codex::editor {
         {
             auto& d = m_Descriptor;
 
-            if (Input::IsMouseDown(Mouse::RightMouse))
+            if (Input::IsMouseDown(Mouse::MiddleMouse))
             {
                 if (Input::IsMouseDragging())
                 {
@@ -710,7 +713,8 @@ namespace codex::editor {
 
         try
         {
-            if (CompileProject(true) == 0) {
+            if (true || CompileProject(true) == 0)
+            {
                 Scene::LoadScriptModule(d->scriptModulePath);
                 ConsoleMan::AppendMessage("-- Script build finished.");
 
@@ -729,7 +733,8 @@ namespace codex::editor {
 
                 ConsoleMan::AppendMessage("-- Metadata generation finished");
             }
-            else {
+            else
+            {
                 cx_throw(InvalidOperationException, "Project failed to compile");
             }
         }
@@ -738,7 +743,7 @@ namespace codex::editor {
             lgx::Get("editor").Log(lgx::Error, "Failed to load compile and load NBMan: {}", ex.to_string());
         }
 
-        Serializer::DeserializeScene(cxproj, *d->editorScene);
+        SerializationManager::LoadFromFile(*d->editorScene, cxproj);
 
         // FIXME: Cannot unload the script module while we have attached scripts, invalidates the
         // vptr of our class effetively invalidating the whole thing really.

@@ -1,9 +1,12 @@
-#ifndef CODEX_RENDERER_RENDER_BATCH_H
-#define CODEX_RENDERER_RENDER_BATCH_H
+#pragma once
 
 #include <sdafx.h>
 
 #include <Engine/Core/Public/Geomtryd.h>
+#include <Platform/OpenGL/IndexBuffer.h>
+#include <Platform/OpenGL/VertexArray.h>
+#include <Platform/OpenGL/VertexBuffer.h>
+#include <Platform/OpenGL/VertexBufferLayout.h>
 
 #include "Public/Shader.h"
 #include "Public/Texture2D.h"
@@ -24,20 +27,20 @@ namespace codex::gfx {
     class CODEX_API RenderBatch
     {
     private:
-        i32                                      m_QuadCount           = 0;
-        i32                                      m_MaxTextureSlotCount = 32;
-        i32                                      m_MaxQuadCount        = 1000;
-        i32                                      m_ZIndex              = 0;
-        bool                                     m_HasRoom             = true;
-        QuadVertex*                              m_Verticies           = nullptr;
-        QuadVertex*                              m_VertexPtr           = nullptr;
-        std::unique_ptr<mgl::VertexArray>        m_Vao                 = nullptr;
-        std::unique_ptr<mgl::VertexBuffer>       m_Vbo                 = nullptr;
-        std::unique_ptr<mgl::IndexBuffer>        m_Ebo                 = nullptr;
-        std::unique_ptr<mgl::VertexBufferLayout> m_Layout              = nullptr;
-        Shader*                                  m_Shader              = nullptr;
-        std::vector<Texture2D*>                  m_TextureList;
-        u16                                      m_CurrentTexIndex = 0;
+        i32                                         m_QuadCount           = 0;
+        i32                                         m_MaxTextureSlotCount = 32;
+        i32                                         m_MaxQuadCount        = 1000;
+        i32                                         m_ZIndex              = 0;
+        bool                                        m_HasRoom             = true;
+        QuadVertex*                                 m_Verticies           = nullptr;
+        QuadVertex*                                 m_VertexPtr           = nullptr;
+        std::unique_ptr<opengl::VertexArray>        m_Vao                 = nullptr;
+        std::unique_ptr<opengl::VertexBuffer>       m_Vbo                 = nullptr;
+        std::unique_ptr<opengl::IndexBuffer>        m_Ebo                 = nullptr;
+        std::unique_ptr<opengl::VertexBufferLayout> m_Layout              = nullptr;
+        Shader*                                     m_Shader              = nullptr;
+        std::vector<Texture2D*>                     m_TextureList;
+        u16                                         m_CurrentTexIndex = 0;
 
     public:
         RenderBatch() = default;
@@ -79,5 +82,3 @@ namespace codex::gfx {
         void             Render();
     };
 } // namespace codex::gfx
-
-#endif // CODEX_RENDERER_RENDER_BATCH_H

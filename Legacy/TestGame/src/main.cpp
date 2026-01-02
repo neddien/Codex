@@ -12,7 +12,7 @@ private:
     std::unique_ptr<Scene>            m_Scene       = nullptr;
     ResRef<Shader>                    m_BatchShader = nullptr;
     std::unique_ptr<Camera>           m_Camera      = nullptr;
-    std::unique_ptr<mgl::FrameBuffer> m_Framebuffer = nullptr;
+    std::unique_ptr<opengl::FrameBuffer> m_Framebuffer = nullptr;
     Entity                            m_Entity      = Entity::None();
 
 public:
@@ -28,21 +28,21 @@ public:
         Renderer::Init(width, height);
         BatchRenderer2D::BindShader(m_BatchShader.get());
 
-        mgl::FrameBufferProperties props;
+        opengl::FrameBufferProperties props;
 
-        mgl::TextureProperties main;
-        main.format     = mgl::TextureFormat::RGBA8;
-        main.filterMode = mgl::TextureFilterMode::Nearest;
+        opengl::TextureProperties main;
+        main.format     = opengl::TextureFormat::RGBA8;
+        main.filterMode = opengl::TextureFilterMode::Nearest;
 
-        mgl::TextureProperties id;
-        id.format     = mgl::TextureFormat::RedInt32;
-        id.filterMode = mgl::TextureFilterMode::Nearest;
+        opengl::TextureProperties id;
+        id.format     = opengl::TextureFormat::RedInt32;
+        id.filterMode = opengl::TextureFilterMode::Nearest;
 
         props.attachments.push_back(main);
         props.attachments.push_back(id);
         props.width   = Application::GetWindow().GetWidth();
         props.height  = Application::GetWindow().GetHeight();
-        //m_Framebuffer = std::make_unique<mgl::FrameBuffer>(props);
+        //m_Framebuffer = std::make_unique<opengl::FrameBuffer>(props);
         //m_Framebuffer->Unbind();
 
         m_Entity = m_Scene->CreateEntity();

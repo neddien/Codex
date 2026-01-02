@@ -4,8 +4,11 @@
 #include <sdafx.h>
 
 #include <Engine/Core/Public/CommonDef.h>
+#include <Engine/Core/Public/Exception.h>
 
 namespace codex::cc {
+    CX_CUSTOM_EXCEPTION(ConcurrencyException, "A Concurrency exception occured.")
+
     // TODO: Rename to Sync and create Codex Exceptions for CC stuff and handle them here.
     // TODO: Like Sync in mgrd, add debug checking for the same thread trying to lock twice.
     template <typename T>
@@ -64,11 +67,17 @@ namespace codex::cc {
         }
 
     private:
-        inline void MutexLock() const noexcept
+        inline void MutexLock() const
         {
-            m_Mutex.lock();
-            m_OwnerThread = std::this_thread::get_id();
-            m_Locked.store(true, std::memory_order_release);
+            if (IsLockedByCurrentThread()) {
+                cx_throw(ConcurrencyException, "Same Thread tried locking the same Mutex more than once.");
+            }
+            else
+            {
+                m_Mutex.lock();
+                m_OwnerThread = std::this_thread::get_id();
+                m_Locked.store(true, std::memory_order_release);
+            }
         }
         [[nodiscard]] inline bool MutexTryLock() const noexcept
         {

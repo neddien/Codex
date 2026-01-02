@@ -74,7 +74,17 @@ namespace codex {
         }
         void Deserialize(const ISerializationNode& node) override
         {
-            auto& texture_child = node.GetChild("texture");
+            if (m_Texture)
+            {
+                m_Texture.Reset();
+            }
+
+            auto&          texture_child = node.GetChild("texture");
+            gfx::Texture2D texture;
+            texture.Deserialize(texture_child);
+
+            m_Texture = Resources::From<gfx::Texture2D>(std::move(texture));
+
             m_Texture->Deserialize(texture_child);
             node.Read("texture_coords", m_TextureCoords);
             node.Read("size", m_Size);

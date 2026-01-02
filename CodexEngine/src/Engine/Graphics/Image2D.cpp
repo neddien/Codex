@@ -5,14 +5,17 @@
 namespace codex::gfx {
     namespace fs = std::filesystem;
 
-    Image2D::Image2D(fs::path file) : m_Path(std::move(file))
+    Image2D::Image2D(fs::path file)
     {
+        m_Path = std::move(file);
         Load();
     }
 
     Image2D::Image2D(const Image2D& other)
-        : m_Width(other.m_Width), m_Height(other.m_Height), m_Channels(other.m_Channels), m_Path(other.m_Path)
+        : m_Width(other.m_Width), m_Height(other.m_Height), m_Channels(other.m_Channels)
     {
+        m_Path                = other.m_Path;
+
         const auto total_size = m_Width * m_Height * m_Channels;
 
         m_RawData = new u8[total_size];

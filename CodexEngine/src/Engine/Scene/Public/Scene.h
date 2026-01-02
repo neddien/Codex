@@ -5,6 +5,7 @@
 #include <Engine/System/DynamicLibrary.h>
 #include <Engine/Scene/EditorCamera.h>
 #include <Engine/Scene/Public/Entity.h>
+#include <Engine/Core/Public/Serializer.h>
 
 #include <entt.hpp>
 
@@ -17,7 +18,7 @@ namespace codex {
     class Serializer;
     class NativeBehaviour;
 
-    class CODEX_API Scene
+    class CODEX_API Scene : public ISerializable
     {
         friend class Window;
         friend class Entity;
@@ -83,7 +84,7 @@ namespace codex {
         {
             auto                view = m_Registry->view<T>();
             std::vector<Entity> entities;
-            entities.reserve(view.size_hint());
+            entities.reserve(view.size());
             for (auto& e : view)
                 entities.emplace_back(e, this);
             return entities;
@@ -121,5 +122,9 @@ namespace codex {
 
     private:
         static void OnFixedUpdate(Scene& self) noexcept;
+
+    public:
+        void Serialize(ISerializationNode& node) const override;
+        void Deserialize(const ISerializationNode& node) override;
     };
 } // namespace codex

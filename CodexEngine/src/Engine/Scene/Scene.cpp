@@ -5,13 +5,13 @@
 
 #include <Debug/Public/Profiler.h>
 #include <Debug/Public/TimeScope.h>
+#include <Engine/Core/Application.h>
 #include <Engine/Graphics/Renderer.h>
 #include <Engine/NativeBehaviour/Public/NativeBehaviour.h>
 #include <Engine/Reflection/Reflector.h>
+#include <Engine/Scene/ComponentFactory.h>
 #include <Engine/Utils/Box2DUtils.h>
-
-//#include "Public/Components.h"
-//#include "Public/Entity.inl"
+#include <Engine/Utils/Public/Math.h>
 
 namespace codex {
     // TODO: NBMan is shared across all scenes, Scene being the owner of NBMan does not seem correct.
@@ -122,11 +122,17 @@ namespace codex {
 
     Entity Scene::CreateEntity(const std::string_view defaultTag, UUID uuid) noexcept
     {
-        auto entity = m_Registry->create();
-        m_Registry->emplace<IDComponent>(entity, uuid);
-        m_Registry->emplace<TransformComponent>(entity);
-        m_Registry->emplace<TagComponent>(entity, defaultTag);
-        return { entity, &m_Registry };
+        Entity cx_entity;
+        {
+            auto registry = m_Registry.Lock();
+            auto entity   = registry->create();
+            cx_entity     = Entity{ entity, this };
+            registry->emplace<IDComponent>(entity, uuid);
+        }
+
+        cx_entity.AddComponent<TransformComponent>();
+        cx_entity.AddComponent<TagComponent>(defaultTag);
+        return cx_entity;
     }
 
     void Scene::RemoveEntity(const Entity entity)
@@ -159,7 +165,7 @@ namespace codex {
         entities.reserve(GetEntityCount());
         for (auto entities_view = m_Registry->view<entt::entity>(); const auto& e : entities_view)
         {
-            const auto entity = Entity(e, &m_Registry);
+            const auto entity = Entity(e, this);
             if (!entity)
                 break;
             entities.push_back(entity);
@@ -674,4 +680,57 @@ namespace codex {
         j["Entities"]       = entities;
     }
     */
+
+    void Scene::Serialize(ISerializationNode& node) const
+    {
+        node.Write("name", m_Name);
+        auto& entities = node.BeginArray("entities");
+
+        for (auto entities_view = m_Registry->view<entt::entity>(); const auto e : entities_view)
+        {
+            const auto entity = Entity(e, const_cast<Scene*>(this));
+            if (!entity)
+                break;
+
+            auto&            node   = entities.AddArrayElement();
+            auto&            idcomp = entity.GetComponent<IDComponent>();
+            const Component* comp   = &idcomp;
+
+            auto& components = node.BeginArray("components");
+
+            while (comp)
+            {
+                auto& node = components.AddArrayElement();
+                comp->Serialize(node);
+                comp = comp->m_Next;
+            }
+
+            components.EndArray();
+        }
+
+        entities.EndArray();
+    }
+
+    void Scene::Deserialize(const ISerializationNode& node)
+    {
+        node.Read("name", m_Name);
+
+        auto& entities = node.GetArray("entities");
+        entities.ForEachArrayElement(
+            [this](const ISerializationNode& inode)
+            {
+                auto entity = CreateEntity();
+
+                auto& components = inode.GetArray("components");
+                components.ForEachArrayElement(
+                    [&entity](const ISerializationNode& jnode)
+                    {
+                        std::string type_name;
+                        if (jnode.Read("type", type_name))
+                        {
+                            ComponentFactory::Get().DeserializeComponent(type_name, jnode, entity);
+                        }
+                    });
+            });
+    }
 } // namespace codex

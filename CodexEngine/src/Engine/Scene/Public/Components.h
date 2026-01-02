@@ -4,29 +4,58 @@
 
 #include <Engine/Core/Public/UUID.h>
 #include <Engine/Memory/Public/Memory.h>
-#include <Engine/NativeBehaviour/Public/NativeBehaviour.h>
 #include <Engine/Physics/Public/PhysicsMaterial2D.h>
 
 #include "Camera.h"
 #include "Sprite.h"
+
+#define CX_COMPONENT(name)                                                                                             \
+    friend class Entity;                                                                                               \
+    friend class Scene;                                                                                                \
+                                                                                                                       \
+public:                                                                                                                \
+    std::string_view TypeName() const override                                                                         \
+    {                                                                                                                  \
+        return #name;                                                                                                  \
+    }
 
 namespace codex {
     // Forward decelerations
     class Scene;
     class Entity;
     class Serializer;
+    class NativeBehaviour;
 
-    struct Component
+    struct Component : public ISerializable
     {
-        CX_COMPONENT
+        friend class Entity;
+        friend class Scene;
 
     protected:
         virtual void OnInit() {}
-        virtual ~Component() = default;
+        virtual ~Component()                      = default;
+        virtual std::string_view TypeName() const = 0;
+
+    public:
+        void Serialize(ISerializationNode& node) const
+        {
+            node.Write("type", TypeName());
+            SerializeImpl(node);
+        }
+        void Deserialize(const ISerializationNode& node) { DeserializeImpl(node); }
+
+    protected:
+        virtual void SerializeImpl(ISerializationNode& node) const   = 0;
+        virtual void DeserializeImpl(const ISerializationNode& node) = 0;
+
+    protected:
+        Component* m_Next = nullptr;
     };
 
     struct IDComponent : public Component
     {
+        CX_COMPONENT(IDComponent)
+
     public:
         UUID uuid;
 
@@ -36,11 +65,15 @@ namespace codex {
             : uuid(std::move(uuid))
         {
         }
+
+    public:
+        void SerializeImpl(ISerializationNode& node) const override;
+        void DeserializeImpl(const ISerializationNode& node) override;
     };
 
     struct CODEX_API TagComponent : public Component
     {
-        CX_COMPONENT
+        CX_COMPONENT(TagComponent)
 
     public:
         std::string tag;
@@ -48,11 +81,15 @@ namespace codex {
     public:
         TagComponent();
         TagComponent(const std::string_view tag);
+
+    public:
+        void SerializeImpl(ISerializationNode& node) const override;
+        void DeserializeImpl(const ISerializationNode& node) override;
     };
 
     struct CODEX_API TransformComponent : public Component
     {
-        CX_COMPONENT
+        CX_COMPONENT(TransformComponent)
 
     public:
         Vector3f position;
@@ -74,11 +111,15 @@ namespace codex {
             transform_mat          = glm::scale(transform_mat, scale);
             return transform_mat;
         }
+
+    public:
+        void SerializeImpl(ISerializationNode& node) const override;
+        void DeserializeImpl(const ISerializationNode& node) override;
     };
 
     struct CODEX_API SpriteRendererComponent : public Component
     {
-        CX_COMPONENT
+        CX_COMPONENT(SpriteRendererComponent)
 
     private:
         // TODO: Handle sprite renderers that do not have an actual sprite.
@@ -91,6 +132,10 @@ namespace codex {
     public:
         inline Sprite&       GetSprite() noexcept { return m_Sprite; }
         inline const Sprite& GetSprite() const noexcept { return m_Sprite; }
+
+    public:
+        void SerializeImpl(ISerializationNode& node) const override;
+        void DeserializeImpl(const ISerializationNode& node) override;
     };
 
     CX_CUSTOM_EXCEPTION(ScriptException, "An unknown behaviour exception occured.")
@@ -98,7 +143,7 @@ namespace codex {
 
     struct CODEX_API NativeBehaviourComponent : public Component
     {
-        CX_COMPONENT
+        CX_COMPONENT(NativeBehaviourComponent)
 
     public:
         using BehaviourMap  = std::unordered_map<std::string, mem::Box<NativeBehaviour>>;
@@ -157,71 +202,39 @@ namespace codex {
         void                      Attach(mem::Box<NativeBehaviour> bh);
         mem::Box<NativeBehaviour> Detach(const std::string& className);
         void                      InstantiateBehaviour(const std::string& className);
+        void                      OnUpdate(const f32 deltaTime);
+        void                      OnFixedUpdate(const f32 deltaTime);
+        void                      DisposeBehaviours();
+        void                      SetParent(const Entity entity) const noexcept;
         void                      Dispose(const std::string& className);
-
-    public:
-        inline void DisposeBehaviours()
-        {
-            m_Behaviours.clear();
-            m_BehaviourList.clear();
-        }
-        inline void OnUpdate(const f32 deltaTime)
-        {
-            // TODO: This guy should NOT be inline, it throws an exception?
-            for (auto& e : m_BehaviourList)
-                e->OnUpdate(deltaTime);
-        }
-        inline void OnFixedUpdate(const f32 deltaTime)
-        {
-            // TODO: This guy should NOT be inline, it throws an exception?
-            for (auto& e : m_BehaviourList)
-                e->OnFixedUpdate(deltaTime);
-        }
-        inline void SetParent(const Entity entity) const noexcept
-        {
-            for (auto& e : m_BehaviourList)
-                e->m_Parent = entity;
-        }
 
     public:
         template <typename T, typename... TArgs>
         T& New(TArgs&&... args)
-            requires(std::is_base_of_v<NativeBehaviour, T>)
-        {
-            for (const auto& [k, v] : m_Behaviours)
-            {
-                if (typeid(v) == typeid(T))
-                    cx_throwd(DuplicateBehaviourException);
-            }
+            requires(std::is_base_of_v<NativeBehaviour, T>);
 
-            mem::Box<NativeBehaviour> bh(new T(std::forward<TArgs>(args)...));
-            bh->OnInit();
-            // FIXME: Serialize properly w new serializaiton system
-            //bh->Serialize();
-            /*
-            const std::string& name = bh->m_SerializedData.begin().key();
-            if (!m_Behaviours.contains(name))
-                m_Behaviours[name] = std::move(bh);
-            */
-
-            return *((T*)bh.Get());
-            //return *reinterpret_cast<T*>(m_Behaviours[name].Get());
-        }
+    public:
+        void SerializeImpl(ISerializationNode& node) const override;
+        void DeserializeImpl(const ISerializationNode& node) override;
     };
 
     struct CameraComponent : public Component
     {
-        CX_COMPONENT
+        CX_COMPONENT(CameraComponent)
 
     public:
         scene::Camera camera;
         bool          primary = true;
         Vector3f      focalPoint{ 0.0f };
+
+    public:
+        void SerializeImpl(ISerializationNode& node) const override;
+        void DeserializeImpl(const ISerializationNode& node) override;
     };
 
     struct CODEX_API RigidBody2DComponent : public Component
     {
-        CX_COMPONENT
+        CX_COMPONENT(RigidBody2DComponent)
 
     public:
         enum class BodyType
@@ -243,11 +256,15 @@ namespace codex {
         void ApplyTorque(const f32 torque) noexcept;
         void ApplyLinearImpulse(const Vector2f& impulse, const std::optional<Vector2f> point = std::nullopt);
         void ApplyAngularImpulse(const f32 torque);
+
+    public:
+        void SerializeImpl(ISerializationNode& node) const override;
+        void DeserializeImpl(const ISerializationNode& node) override;
     };
 
     struct BoxCollider2DComponent : public Component
     {
-        CX_COMPONENT
+        CX_COMPONENT(BoxCollider2DComponent)
 
     public:
         Vector2f offset{ 0.0f, 0.0f };
@@ -256,11 +273,15 @@ namespace codex {
         phys::PhysicsMaterial2D physicsMaterial;
 
         void* runtimeFixture = nullptr;
+
+    public:
+        void SerializeImpl(ISerializationNode& node) const override;
+        void DeserializeImpl(const ISerializationNode& node) override;
     };
 
     struct CircleCollider2DComponent : public Component
     {
-        CX_COMPONENT
+        CX_COMPONENT(CircleCollider2DComponent)
 
     public:
         Vector2f offset{ 0.0f, 0.0f };
@@ -269,20 +290,28 @@ namespace codex {
         phys::PhysicsMaterial2D physicsMaterial;
 
         void* runtimeFixture = nullptr;
+
+    public:
+        void SerializeImpl(ISerializationNode& node) const override;
+        void DeserializeImpl(const ISerializationNode& node) override;
     };
 
     struct CODEX_API GridRendererComponent : public Component
     {
-        CX_COMPONENT
+        CX_COMPONENT(GridRendererComponent)
 
     public:
         Vector2f cellSize{ 64.0f, 64.0f };
         Vector4f colour{ 1.0f, 1.0f, 1.0f, 0.3f };
+
+    public:
+        void SerializeImpl(ISerializationNode& node) const override;
+        void DeserializeImpl(const ISerializationNode& node) override;
     };
 
     struct CODEX_API TilemapComponent : public Component
     {
-        CX_COMPONENT
+        CX_COMPONENT(TilemapComponent)
 
     public:
         enum class State
@@ -310,11 +339,15 @@ namespace codex {
         void AddTile(const Vector3f pos, const i32 tileId);
         void AddTile(const Vector3f pos, const Vector2f atlas);
         void RemoveTile(const Vector3f pos);
+
+    public:
+        void SerializeImpl(ISerializationNode& node) const override;
+        void DeserializeImpl(const ISerializationNode& node) override;
     };
 
     struct TilesetAnimationComponent : public Component
     {
-        CX_COMPONENT
+        CX_COMPONENT(TilesetAnimationComponent)
 
     public:
         struct Animation
@@ -327,36 +360,9 @@ namespace codex {
     public:
         Sprite                                     sprite;
         std::unordered_map<std::string, Animation> animations;
-    };
 
-    template <typename... Components>
-    struct ComponentGroup
-    {
+    public:
+        void SerializeImpl(ISerializationNode& node) const override;
+        void DeserializeImpl(const ISerializationNode& node) override;
     };
-
-    // NOTE: Do not forget to add a new entry for Scene::GetAllEntitiesWithComponent<T>() and for AllComponents<T...>
-    // when adding a new component!
-    using AllComponents =
-        ComponentGroup<IDComponent, TransformComponent, TagComponent, SpriteRendererComponent, NativeBehaviourComponent,
-                       CameraComponent, RigidBody2DComponent, BoxCollider2DComponent, CircleCollider2DComponent,
-                       GridRendererComponent, TilemapComponent, TilesetAnimationComponent>;
 } // namespace codex
-
-/*
-namespace nlohmann {
-    template <>
-    struct adl_serializer<codex::TilemapComponent::Tile>
-    {
-        static void to_json(ordered_json& j, const codex::TilemapComponent::Tile& tile)
-        {
-            j = ordered_json{ { "Position", tile.pos }, { "Atlas", tile.atlas }, { "Layer", tile.layer } };
-        }
-        static void from_json(const ordered_json& j, codex::TilemapComponent::Tile& tile)
-        {
-            j.at("Position").get_to(tile.pos);
-            j.at("Atlas").get_to(tile.atlas);
-            j.at("Layer").get_to(tile.layer);
-        }
-    };
-}; // namespace nlohmann
-*/

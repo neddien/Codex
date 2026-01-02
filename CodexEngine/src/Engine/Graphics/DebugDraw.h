@@ -4,7 +4,10 @@
 
 #include <Engine/Scene/EditorCamera.h>
 #include <Engine/Scene/Public/Camera.h>
-#include <Engine/Scene/Public/Components.h>
+#include <Engine/Scene/Public/Components.inl>
+#include <Platform/OpenGL/VertexArray.h>
+#include <Platform/OpenGL/VertexBuffer.h>
+#include <Platform/OpenGL/VertexBufferLayout.h>
 
 #include "Line2D.h"
 #include "Public/Shader.h"
@@ -20,9 +23,9 @@ namespace codex::gfx {
     class CODEX_API DebugDraw
     {
     private:
-        mem::Box<mgl::VertexArray>                             m_Vao;
-        mem::Box<mgl::VertexBuffer>                            m_Vbo;
-        mem::Box<mgl::VertexBufferLayout>                      m_Layout;
+        mem::Box<opengl::VertexArray>                             m_Vao;
+        mem::Box<opengl::VertexBuffer>                            m_Vbo;
+        mem::Box<opengl::VertexBufferLayout>                      m_Layout;
         std::vector<Line2D>                                    m_Lines;
         std::array<f32, LINE2D_MAX_COUNT * LINE2D_VERTEX_SIZE> m_Verticies;
         const scene::Camera*                                   m_CurrentCamera;
