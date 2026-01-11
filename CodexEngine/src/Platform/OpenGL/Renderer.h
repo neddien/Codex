@@ -16,7 +16,7 @@ namespace codex::opengl {
     struct Rect;
     struct Rectf;
 
-    class Renderer
+    class CODEX_API Renderer
     {
     private:
         int      m_Width;

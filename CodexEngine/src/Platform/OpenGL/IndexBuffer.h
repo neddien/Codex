@@ -1,14 +1,12 @@
 #pragma once
 
-#include <cstdint>
-
 #include "Constants.h"
 
 namespace codex::opengl {
     // Forward declerations
     class Renderer;
 
-    class IndexBuffer
+    class CODEX_API IndexBuffer
     {
         friend class Renderer;
 

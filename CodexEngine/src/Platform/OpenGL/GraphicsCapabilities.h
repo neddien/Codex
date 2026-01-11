@@ -1,7 +1,9 @@
 #pragma once
 
+#include "Constants.h"
+
 namespace codex::opengl {
     namespace capabilities {
-        int GetMaxTextureSlotCount() noexcept;
+        CODEX_API int GetMaxTextureSlotCount() noexcept;
     }
 } // namespace codex::opengl

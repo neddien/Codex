@@ -23,8 +23,8 @@ add_executable(CodexEditor ${CEDITOR_HEADER_FILES} ${CEDITOR_SOURCE_FILES}
 # Set the C++ Standard to 20 for this target
 set_property(TARGET CodexEditor PROPERTY CXX_STANDARD 20)
 
-target_link_libraries(CodexEditor CodexEngine-static)
-add_dependencies(CodexEditor CodexEngine-static)
+target_link_libraries(CodexEditor CodexEngine)
+add_dependencies(CodexEditor CodexEngine)
 
 get_target_property(CODEX_BUILD_DIR CodexEngine BINARY_DIR)
 
@@ -107,6 +107,9 @@ foreach(PROJECT_DIR ${PROJECT_DIRS})
         "src/Engine:Engine/src/Engine:public"
         "src/PCH:Engine/src/PCH:headers"
         "src/Platform:Engine/src/Platform:headers"
+        "vendor/entt:Engine/vendor/entt:headers"
+        "vendor/glm:Engine/vendor/glm:headers"
+        "vendor/glad:Engine/vendor/glad:headers"
     )
     string(REPLACE ";" "," CX_ENGINE_COPY_SPECS_PROC "${CX_ENGINE_COPY_SPECS}")
 

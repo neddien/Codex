@@ -41,7 +41,8 @@ namespace codex::editor {
         f32                       columnWidth  = 140.0f;
         Vector4f                  selectColour = { 0.5f, 1.0f, 0.5f, 1.0f };
         std::filesystem::path     currentProjectPath;
-        std::vector<rf::RFScript> scripts;
+        // TODO: Scripts?
+        //std::vector<rf::RFScript> scripts;
     };
 
     // SceneEditorView is technically a layer but it is not part of Codex's layer

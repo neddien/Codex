@@ -41,9 +41,11 @@
 #include <Engine/Scene/Public/Scene.h>
 #include <Engine/Scene/Public/SceneManager.h>
 
+// Native Behaviour
+#include <Engine/NativeBehaviour/Public/NativeBehaviourManager.h>
+
 // Reflection
-#include <Engine/Reflection/Lexer.h>
-#include <Engine/Reflection/Reflector.h>
+#include <Engine/Reflection/Public/Reflection.h>
 
 // Graphics
 #include <Engine/Graphics/BatchRenderer2D.h>

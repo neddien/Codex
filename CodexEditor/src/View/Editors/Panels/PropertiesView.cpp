@@ -104,25 +104,27 @@ namespace codex::editor {
 
                     if (ImGui::BeginCombo("###script_combo", "Select a script"))
                     {
-                        for (const auto& file : d->scripts)
+                        auto vec = NBMan::GetRegisteredTypes();
+                        for (const auto& script : vec)
                         {
-                            const auto& file_name = file.GetSourceFile().filename().string();
+                            const auto& behaviours = c.GetBehaviours();
 
-                            for (const auto& script : file.GetClasses())
+                            const auto it = std::find_if(behaviours.cbegin(), behaviours.cend(),
+                                                         [&script](const auto& e) { return e.first == script; });
+
+                            if (it == behaviours.end())
                             {
-                                const auto  script_name = script.name;
-                                const auto& behaviours  = c.GetBehaviours();
-
-                                const auto it =
-                                    std::find_if(behaviours.cbegin(), behaviours.cend(),
-                                                 [&script_name](const auto& e) { return e.first == script_name; });
-                                if (it == behaviours.cend())
+                                if (ImGui::Selectable(script.c_str(), false))
                                 {
-                                    if (ImGui::Selectable(script_name.c_str(), false))
+                                    auto script_instance = NBMan::CreateInstance(script);
+                                    if (script_instance)
                                     {
-                                        auto* behaviour = d->activeScene.Lock()->CreateBehaviour(
-                                            script_name.c_str(), d->selectedEntity.entity);
-                                        c.Attach(std::move(behaviour));
+                                        c.Attach(std::move(script_instance));
+                                    }
+                                    else
+                                    {
+                                        lgx::Get("editor").Log(lgx::Error, "Failed to create an NB instance of: {}",
+                                                               script);
                                     }
                                 }
                             }
@@ -139,14 +141,10 @@ namespace codex::editor {
                     {
                         auto& [k, v] = *it;
 
-                        // TODO: Come back
-                        /*
-                        const auto& j = v->GetSerializedData();
-                        if (j.empty())
-                            v->Serialize();
+                        const auto& type_info = v->GetTypeInfo();
+                        const auto  type_name = std::string{ type_info.GetTypeName() };
 
-                        const auto& klass = j.begin();
-                        if (ImGui::CollapsingHeader(klass.key().c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+                        if (ImGui::CollapsingHeader(type_name.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
                         {
                             if (ImGui::Button("Detach script"))
                             {
@@ -154,60 +152,62 @@ namespace codex::editor {
                                 continue;
                             }
 
-                            if (klass.value().contains("Fields"))
+                            const auto properties = type_info.GetProperties();
+                            for (const auto& prop : properties)
                             {
-                                for (const auto& field : klass.value()["Fields"].items())
+                                const auto prop_id = fmt::format("##{}.{}", prop.name, std::rand());
+
+                                ImGui::Columns(2);
+                                ImGui::SetColumnWidth(0, d->columnWidth);
+                                ImGui::Text("%s", prop.name.c_str());
+                                ImGui::NextColumn();
+
+                                switch (prop.type)
                                 {
-                                    const std::string& field_name = field.key();
-                                    const auto         field_id   = fmt::format("##{}", field_name);
-                                    const rf::RFType   field_type = field.value().at("Type");
+                                    using enum rf::PropertyType;
 
-                                    ImGui::Columns(2);
-                                    ImGui::SetColumnWidth(0, d->columnWidth);
-                                    ImGui::Text("%s", field_name.c_str());
-                                    ImGui::NextColumn();
-
-                                    object field_ptr = v->GetField(field_name);
-                                    switch (field_type)
-                                    {
-                                        using enum rf::RFType;
-
-                                        case I32:
-                                        case U32: {
-                                            ImGui::DragInt(field_id.c_str(), (i32*)field_ptr);
-                                            break;
-                                        }
-                                        case F32:
-                                        case F64:
-                                        case F128: {
-                                            ImGui::DragFloat(field_id.c_str(), (f32*)field_ptr);
-                                            break;
-                                        }
-                                        case StdString: {
-                                            ImGui::InputText(field_id.c_str(), (std::string*)field_ptr);
-                                            break;
-                                        }
-                                        case Boolean: {
-                                            ImGui::Checkbox(field_id.c_str(), (bool*)field_ptr);
-                                            break;
-                                        }
-                                        case Vector2f: {
-                                            SceneEditorView::DrawVec2Control(
-                                                field_id.c_str(), *(math::Vector2f*)field_ptr, d->columnWidth);
-                                            break;
-                                        }
-                                        case Vector3f: {
-                                            SceneEditorView::DrawVec3Control(
-                                                field_id.c_str(), *(math::Vector3f*)field_ptr, d->columnWidth);
-                                            break;
-                                        }
-                                        default: break; // cx_throw(CodexException, "Should not happen."); break;
+                                    case I32:
+                                    case U32: {
+                                        ImGui::DragInt(prop_id.c_str(),
+                                                       type_info.GetPropertyValue<i32>(v.Get(), prop.name));
+                                        break;
                                     }
-                                    ImGui::Columns(1);
+                                    case F32:
+                                    case F64:
+                                    case F128: {
+                                        ImGui::DragFloat(prop_id.c_str(),
+                                                         type_info.GetPropertyValue<f32>(v.Get(), prop.name));
+                                        break;
+                                    }
+                                    case String: {
+                                        ImGui::InputText(prop_id.c_str(),
+                                                         type_info.GetPropertyValue<std::string>(v.Get(), prop.name));
+                                        break;
+                                    }
+                                    case Boolean: {
+                                        ImGui::Checkbox(prop_id.c_str(),
+                                                        type_info.GetPropertyValue<bool>(v.Get(), prop.name));
+                                        break;
+                                    }
+                                    case Vector2f: {
+                                        SceneEditorView::DrawVec2Control(
+                                            prop_id.c_str(),
+                                            *type_info.GetPropertyValue<math::Vector2f>(v.Get(), prop.name),
+                                            d->columnWidth);
+                                        break;
+                                    }
+                                    case Vector3f: {
+                                        SceneEditorView::DrawVec3Control(
+                                            prop_id.c_str(),
+                                            *type_info.GetPropertyValue<math::Vector3f>(v.Get(), prop.name),
+                                            d->columnWidth);
+                                        break;
+                                    }
+                                    default: break; // cx_throw(CodexException, "Should not happen."); break;
                                 }
+                                ImGui::Columns(1);
                             }
                         }
-                        */
                     }
                     for (const auto& e : possible_scripts_to_detach)
                         c.Detach(e);
@@ -679,7 +679,8 @@ namespace codex::editor {
                             }
                             if (ImGui::BeginCombo("##texture_filter_mode", preview_item))
                             {
-                                if (ImGui::Selectable("Nearest", props.filterMode == opengl::TextureFilterMode::Nearest))
+                                if (ImGui::Selectable("Nearest",
+                                                      props.filterMode == opengl::TextureFilterMode::Nearest))
                                 {
                                     if (props.filterMode != opengl::TextureFilterMode::Nearest)
                                     {
@@ -798,7 +799,8 @@ namespace codex::editor {
                             }
                             if (ImGui::BeginCombo("##texture_filter_mode", preview_item))
                             {
-                                if (ImGui::Selectable("Nearest", props.filterMode == opengl::TextureFilterMode::Nearest))
+                                if (ImGui::Selectable("Nearest",
+                                                      props.filterMode == opengl::TextureFilterMode::Nearest))
                                 {
                                     if (props.filterMode != opengl::TextureFilterMode::Nearest)
                                     {

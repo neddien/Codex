@@ -1,13 +1,11 @@
 #pragma once
 
-#include <cstdint>
-#include <glad.h>
-#include <vector>
-
 #include "Constants.h"
 
+#include <glad.h>
+
 namespace codex::opengl {
-    struct VertexBufferElement
+    struct CODEX_API VertexBufferElement
     {
     public:
         uint32_t type;

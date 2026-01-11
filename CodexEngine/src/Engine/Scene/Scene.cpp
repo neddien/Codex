@@ -12,12 +12,10 @@
 #include <Engine/Scene/ComponentFactory.h>
 #include <Engine/Utils/Box2DUtils.h>
 #include <Engine/Utils/Public/Math.h>
+#include <Engine/Scene/EditorCamera.h>
+#include <Engine/System/DynamicLibrary.h>
 
 namespace codex {
-    // TODO: NBMan is shared across all scenes, Scene being the owner of NBMan does not seem correct.
-    mem::Box<sys::DLib>                     Scene::s_ScriptModule = nullptr;
-    std::unordered_map<Entity, std::string> Scene::s_PossibleAttachedScripts;
-
     using EntityMap = std::unordered_map<UUID, entt::entity>;
 
     template <typename... Components>
@@ -49,7 +47,6 @@ namespace codex {
     {
         m_Registry     = std::move(other.m_Registry);
         m_Name         = std::move(other.m_Name);
-        s_ScriptModule = std::move(other.s_ScriptModule);
     }
 
     Scene& Scene::operator=(Scene&& other) noexcept
@@ -110,7 +107,6 @@ namespace codex {
         }
 
         std::swap(m_Name, other.m_Name);
-        std::swap(s_ScriptModule, other.s_ScriptModule);
         std::swap(m_FixedUpdateThread, other.m_FixedUpdateThread);
         std::swap(m_PhysicsWorld, other.m_PhysicsWorld);
     }
@@ -127,7 +123,8 @@ namespace codex {
             auto registry = m_Registry.Lock();
             auto entity   = registry->create();
             cx_entity     = Entity{ entity, this };
-            registry->emplace<IDComponent>(entity, uuid);
+            auto& id_comp = registry->emplace<IDComponent>(entity, uuid);
+            id_comp.m_Parent = cx_entity;
         }
 
         cx_entity.AddComponent<TransformComponent>();
@@ -526,89 +523,6 @@ namespace codex {
         }
     }
 
-    NativeBehaviour* Scene::CreateBehaviour(const char* className, Entity parent)
-    {
-        if (IsScriptModuleLoaded())
-        {
-            auto* ptr = RF_INSTANCE_CREATE(s_ScriptModule, className, parent);
-            if (ptr)
-                s_PossibleAttachedScripts[parent] = className;
-            return ptr;
-        }
-        return nullptr;
-    }
-
-    bool Scene::BehaviourExists(const char* className)
-    {
-        return (IsScriptModuleLoaded()) ? RF_INSTANCE_CHECK(s_ScriptModule, className) : false;
-    }
-
-    bool Scene::IsScriptModuleLoaded()
-    {
-        return s_ScriptModule;
-    }
-
-    void Scene::LoadScriptModule(std::filesystem::path modulePath)
-    {
-        if (IsScriptModuleLoaded())
-            UnloadScriptModule();
-        s_ScriptModule = mem::Box<sys::DLib>::New(std::move(modulePath));
-
-        if (!s_PossibleAttachedScripts.empty())
-        {
-            for (auto& [entity, name] : s_PossibleAttachedScripts)
-            {
-                if (entity.HasComponent<NativeBehaviourComponent>())
-                {
-                    // Why the fuck is entity const here? Whatever, fuck it, I will just cast the constness away.
-                    // I gave up with this dogshit language long time ago.
-                    auto& nbc = const_cast<NativeBehaviourComponent&>(entity.GetComponent<NativeBehaviourComponent>());
-                    if (BehaviourExists(name.c_str()))
-                        nbc.Attach(RF_INSTANCE_CREATE(s_ScriptModule, name.c_str(), entity));
-                }
-            }
-            s_PossibleAttachedScripts.clear();
-        }
-
-        lgx::Get("engine").Log(lgx::Info, "Script module loaded.");
-    }
-
-    void Scene::UnloadScriptModule()
-    {
-        if (!IsScriptModuleLoaded())
-            return;
-
-        // When unloading we need to check for possible attached scripts, if any script is attached then record its
-        // name so that we can attached them back (that is if they still exist) when the module is loaded back.
-        for (auto& [entity, name] : s_PossibleAttachedScripts)
-        {
-            auto& nbc = const_cast<NativeBehaviourComponent&>(entity.GetComponent<NativeBehaviourComponent>());
-            if (nbc.m_Behaviours.contains(name))
-                nbc.Detach(name);
-        }
-        /*
-        for (auto& e : view)
-        {
-            auto&                  nbc        = view.get<NativeBehaviourComponent>(e);
-            auto&                  behaviours = nbc.GetBehaviours();
-            auto                   it         = behaviours.begin();
-            std::list<std::string> to_be_detached;
-
-            for (auto& [name, _] : behaviours)
-            {
-                s_PossibleAttachedScripts[static_cast<Entity::HandleType>(e)] = name;
-                to_be_detached.emplace_back(name);
-            }
-
-            for (const auto& e : to_be_detached)
-                nbc.Detach(e);
-        }
-        */
-
-        s_ScriptModule.Reset();
-        lgx::Get("engine").Log(lgx::Info, "Script module unloaded.");
-    }
-
     void Scene::OnFixedUpdate(Scene& self) noexcept
     {
         using clock = std::chrono::high_resolution_clock;
@@ -670,16 +584,6 @@ namespace codex {
                 std::this_thread::sleep_for(std::chrono::duration<f32>(max_frame_interval - frame_time));
         }
     }
-
-    /*
-    // TODO: Use ADL Serializer.
-    void to_json(nlohmann::ordered_json& j, const Scene& scene)
-    {
-        const auto entities = ((Scene&)scene).GetAllEntities();
-        j["Name"]           = scene.m_Name;
-        j["Entities"]       = entities;
-    }
-    */
 
     void Scene::Serialize(ISerializationNode& node) const
     {

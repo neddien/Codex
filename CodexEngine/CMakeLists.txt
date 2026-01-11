@@ -194,15 +194,15 @@ endif()
 
 # ============= # Graphics API # ============= #
 if(CX_GRAPHICS_API STREQUAL "OpenGL")
-  target_sources(CodexEngine PUBLIC ${PLATFORM_OPENGL_SOURCES})
-  target_sources(CodexEngine-static PUBLIC ${PLATFORM_OPENGL_SOURCES})
+  target_sources(CodexEngine PRIVATE ${PLATFORM_OPENGL_SOURCES})
+  target_sources(CodexEngine-static PRIVATE ${PLATFORM_OPENGL_SOURCES})
     
   # glad
   set(GLAD_INCLUDE_DIR "vendor/glad")
   target_include_directories(CodexEngine PUBLIC ${GLAD_INCLUDE_DIR})
-  target_sources(CodexEngine PUBLIC ${GLAD_INCLUDE_DIR}/glad.cpp)
+  target_sources(CodexEngine PRIVATE ${GLAD_INCLUDE_DIR}/glad.cpp)
   target_include_directories(CodexEngine-static PUBLIC ${GLAD_INCLUDE_DIR})
-  target_sources(CodexEngine-static PUBLIC ${GLAD_INCLUDE_DIR}/glad.cpp)
+  target_sources(CodexEngine-static PRIVATE ${GLAD_INCLUDE_DIR}/glad.cpp)
 
   # stb
   target_include_directories(CodexEngine PUBLIC "vendor/stb")
@@ -262,8 +262,8 @@ file(
   "${imgui_SOURCE_DIR}/imgui_internal.h"
   "${imgui_SOURCE_DIR}/imstb_rectpack.h"
   "${imgui_SOURCE_DIR}/imstb_textedit.h"
-  "${imgui_SOURCE_DIR}/imstb_truetype.h")
-  #"${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.h") 
+  "${imgui_SOURCE_DIR}/imstb_truetype.h"
+  "${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.h") 
 file(
   GLOB_RECURSE
   IMGUI_SOURCE_FILES
@@ -273,8 +273,8 @@ file(
   "${imgui_SOURCE_DIR}/imgui_demo.cpp"
   "${imgui_SOURCE_DIR}/imgui_tables.cpp"
   "${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp"
-  "${imgui_SOURCE_DIR}/backends/imgui_impl_sdl2.cpp")
-  #"${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.cpp")
+  "${imgui_SOURCE_DIR}/backends/imgui_impl_sdl2.cpp"
+  "${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.cpp")
 target_sources(CodexEngine PUBLIC ${IMGUI_HEADER_FILES} ${IMGUI_SOURCE_FILES})
 target_sources(CodexEngine-static PUBLIC ${IMGUI_HEADER_FILES}
                                          ${IMGUI_SOURCE_FILES})

@@ -5,7 +5,7 @@
 #include "Renderer.h"
 
 namespace codex::opengl {
-    class VertexBuffer
+    class CODEX_API VertexBuffer
     {
     private:
         uint32_t m_RendererId;

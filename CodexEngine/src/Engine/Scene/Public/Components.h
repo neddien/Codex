@@ -8,6 +8,7 @@
 
 #include "Camera.h"
 #include "Sprite.h"
+#include "Entity.h"
 
 #define CX_COMPONENT(name)                                                                                             \
     friend class Entity;                                                                                               \
@@ -26,7 +27,7 @@ namespace codex {
     class Serializer;
     class NativeBehaviour;
 
-    struct Component : public ISerializable
+    struct CODEX_API Component : public ISerializable
     {
         friend class Entity;
         friend class Scene;
@@ -50,9 +51,10 @@ namespace codex {
 
     protected:
         Component* m_Next = nullptr;
+        Entity     m_Parent;
     };
 
-    struct IDComponent : public Component
+    struct CODEX_API IDComponent : public Component
     {
         CX_COMPONENT(IDComponent)
 
@@ -150,8 +152,8 @@ namespace codex {
         using BehaviourList = std::vector<NativeBehaviour*>;
 
     private:
-        BehaviourMap  m_Behaviours;
-        BehaviourList m_BehaviourList;
+        mutable BehaviourMap  m_Behaviours;
+        mutable BehaviourList m_BehaviourList; // This is for iterations.
 
     public:
         NativeBehaviourComponent() noexcept = default;
@@ -162,22 +164,19 @@ namespace codex {
         ~NativeBehaviourComponent() noexcept { DisposeBehaviours(); }
 
     public:
-        inline void Swap(NativeBehaviourComponent& other) noexcept
-        {
-            std::swap(m_Behaviours, other.m_Behaviours);
-            std::swap(m_BehaviourList, other.m_BehaviourList);
-        }
+        inline void Swap(NativeBehaviourComponent& other) noexcept { std::swap(m_Behaviours, other.m_Behaviours); }
         [[nodiscard]] inline BehaviourMap&       GetBehaviours() noexcept { return m_Behaviours; }
         [[nodiscard]] inline const BehaviourMap& GetBehaviours() const noexcept
         {
             return const_cast<NativeBehaviourComponent*>(this)->GetBehaviours();
         }
+        /*
         template <typename T>
         [[nodiscard]] inline T* GetBehaviour() noexcept
         {
             for (const auto e : m_BehaviourList)
             {
-                if (typeid(T) == typeid(e))
+                if (typeid(T) == typeid(*e))
                 {
                     return reinterpret_cast<T*>(e);
                 }
@@ -190,12 +189,13 @@ namespace codex {
         {
             for (const auto e : m_BehaviourList)
             {
-                if (typeid(T) == typeid(e))
+                if (typeid(T) == typeid(*e))
                 {
                     return *e;
                 }
             }
         }
+        */
 
     public:
         void                      OnInit() override;
@@ -218,7 +218,7 @@ namespace codex {
         void DeserializeImpl(const ISerializationNode& node) override;
     };
 
-    struct CameraComponent : public Component
+    struct CODEX_API CameraComponent : public Component
     {
         CX_COMPONENT(CameraComponent)
 
@@ -262,7 +262,7 @@ namespace codex {
         void DeserializeImpl(const ISerializationNode& node) override;
     };
 
-    struct BoxCollider2DComponent : public Component
+    struct CODEX_API BoxCollider2DComponent : public Component
     {
         CX_COMPONENT(BoxCollider2DComponent)
 
@@ -279,7 +279,7 @@ namespace codex {
         void DeserializeImpl(const ISerializationNode& node) override;
     };
 
-    struct CircleCollider2DComponent : public Component
+    struct CODEX_API CircleCollider2DComponent : public Component
     {
         CX_COMPONENT(CircleCollider2DComponent)
 
@@ -345,7 +345,7 @@ namespace codex {
         void DeserializeImpl(const ISerializationNode& node) override;
     };
 
-    struct TilesetAnimationComponent : public Component
+    struct CODEX_API TilesetAnimationComponent : public Component
     {
         CX_COMPONENT(TilesetAnimationComponent)
 

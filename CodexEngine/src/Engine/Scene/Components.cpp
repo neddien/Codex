@@ -110,11 +110,11 @@ namespace codex {
     // TODO: Should be noexcept since we're handling the exceptions here.
     void NativeBehaviourComponent::OnInit()
     {
-        for (auto& [k, v] : m_Behaviours)
+        for (auto& e : m_BehaviourList)
         {
             try
             {
-                v->OnInit();
+                e->OnInit();
             }
             catch (CodexException& ex)
             {
@@ -131,16 +131,19 @@ namespace codex {
         // TODO: This should happen OnScenePlay().
         // Optionally, you could have a OnAttach() or OnConstruct() method
         // that will be called during attachment.
-        // bh->OnInit();
 
-        // bh->Serialize();
-        // bh->m_Parent             = this->GetParent();
-        /*const std::string& name = bh->m_SerializedData.begin().key();
-        if (!m_Behaviours.contains(name))
+        auto* ptr    = bh.Get();
+        bh->m_Parent = this->m_Parent;
+        auto type    = std::string{ bh->GetTypeInfo().GetTypeName() };
+        if (!m_Behaviours.contains(type))
         {
-            m_BehaviourList.push_back(bh.Get());
-            m_Behaviours[name] = std::move(bh);
-        }*/
+            m_Behaviours[std::move(type)] = std::move(bh);
+            m_BehaviourList.push_back(ptr);
+        }
+        else
+        {
+            cx_throw(DuplicateBehaviourException, "Behaviour {} is already attached to this entity.", type);
+        }
     }
 
     mem::Box<NativeBehaviour> NativeBehaviourComponent::Detach(const std::string& className)
@@ -186,12 +189,11 @@ namespace codex {
     void NativeBehaviourComponent::DisposeBehaviours()
     {
         m_Behaviours.clear();
-        m_BehaviourList.clear();
     }
 
     void NativeBehaviourComponent::SetParent(const Entity entity) const noexcept
     {
-        for (auto& e : m_BehaviourList)
+        for (auto* e : m_BehaviourList)
             e->m_Parent = entity;
     }
 
@@ -200,12 +202,14 @@ namespace codex {
         auto it = m_Behaviours.find(className);
         if (it != m_Behaviours.end())
         {
+            auto ptr = std::move(it->second);
             m_Behaviours.erase(it, m_Behaviours.end());
+            m_BehaviourList.erase(std::remove(m_BehaviourList.begin(), m_BehaviourList.end(), ptr.Get()));
         }
         else
         {
             cx_throw(ScriptException,
-                     "Tried to dispose a behaviour ({}) that is not attach "
+                     "Tried to dispose a behaviour ({}) that is not attached "
                      "on first place.",
                      className);
         }

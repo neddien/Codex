@@ -6,26 +6,9 @@
 #endif
 
 #include <glad.h>
-#include <iostream>
-#include <stdio.h>
-#include <string>
+#include <sdafx.h>
 
-#ifdef __GNUC__
-#define MGL_DEBUG_TRAP() __builtin_trap()
-#elif _MSC_VER
-#define MGL_DEBUG_TRAP() __debugbreak()
-#elif __clang__
-#define MGL_DEBUG_TRAP() __builtin_debugtrap()
-#endif
-
-#define MGL_ASSERT(x, msg)                                                                                             \
-    if (!(x))                                                                                                          \
-    {                                                                                                                  \
-        std::cerr << "[MGL_DEBUG] :: Assertion failed: " << msg << "\n\tStack trace:"                                  \
-                  << "\n\t\tFunction: " << __FUNCTION__ << "\n\t\tFile: " << __FILE__ << "\n\t\tLine: " << __LINE__    \
-                  << std::endl;                                                                                        \
-        MGL_DEBUG_TRAP();                                                                                              \
-    }
+#define MGL_ASSERT(...) CX_ASSERT(__VA_ARGS__)
 
 #define GL_ClearError() while (glGetError() != 0)
 #ifdef MGL_DEBUG
@@ -56,12 +39,7 @@ namespace codex::opengl {
     };
 } // namespace codex::opengl
 
-inline uint32_t GL_ErrorCheck()
-{
-    while (uint32_t errorCode = glGetError())
-        return errorCode;
-    return 0;
-}
+CODEX_API uint32_t GL_ErrorCheck();
 
 /*
 inline bool GL_LogCall(const char* functionName, const char* srcFile, const int line)

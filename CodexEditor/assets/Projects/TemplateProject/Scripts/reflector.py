@@ -1,0 +1,929 @@
+#!/usr/bin/env python3
+"""
+Reflector for NativeBehaviour Scripts
+"""
+
+import sys
+import os
+from pathlib import Path
+from dataclasses import dataclass, field
+from typing import List, Dict, Optional, Set
+import argparse
+import json
+
+try:
+    import clang.cindex
+    from clang.cindex import CursorKind, TypeKind, AccessSpecifier
+except ImportError:
+    print("ERROR: python-clang not found. Install with: pip install libclang")
+    print("You may also need to install llvm/clang on your system:")
+    print("  Ubuntu/Debian: apt-get install libclang-dev")
+    print("  macOS: brew install llvm")
+    print("  Windows: Download from https://releases.llvm.org/")
+    sys.exit(1)
+
+
+@dataclass
+class PropertyInfo:
+    name: str
+    type: str
+    canonical_type: str  # The actual C++ type after typedefs
+    default_value: Optional[str] = None
+    attributes: Dict[str, str] = field(default_factory=dict)
+    is_array: bool = False
+    is_pointer: bool = False
+    is_reference: bool = False
+    element_type: Optional[str] = None  # For arrays/vectors
+    
+    def get_serialization_type(self) -> str:
+        """Convert C++ type to serialization type name"""
+        # Strip const, &, *, etc.
+        base_type = self.canonical_type.replace('const ', '').replace('&', '').replace('*', '').strip()
+        
+        type_map = {
+            "int": "Int32",
+            "int32_t": "Int32",
+            "unsigned int": "UInt32",
+            "uint32_t": "UInt32",
+            "float": "Float",
+            "double": "Double",
+            "bool": "Bool",
+            "std::string": "String",
+            "std::basic_string<char>": "String",
+            "Vector3f": "Vector3f",
+            "Vector4f": "Vector4f",
+            "Vector2f": "Vector2f",
+            "Vector3": "Vector3",
+            "Vector4": "Vector4",
+            "Vector2": "Vector2",
+        }
+        
+        return type_map.get(base_type, "UserDefined")
+
+
+@dataclass
+class ClassInfo:
+    name: str
+    qualified_name: str  # Full name including namespace
+    base_class: Optional[str] = None
+    properties: List[PropertyInfo] = field(default_factory=list)
+    namespace: Optional[str] = None
+    attributes: Dict[str, str] = field(default_factory=dict)
+    is_serializable: bool = False
+    source_file: Optional[str] = None
+    has_rf_class: bool = False
+    access_spec: str = "private"
+
+
+class LibclangReflectionParser:
+    """
+    Uses libclang to properly parse C++ headers
+    Much more robust than regex-based parsing
+    """
+    
+    def __init__(self, include_paths: List[str] = None):
+        self.index = clang.cindex.Index.create()
+        self.include_paths = include_paths or []
+        self.classes: List[ClassInfo] = []
+        self.compile_commands = None
+        
+        # Try to find libclang automatically
+        self._configure_libclang()
+    
+    def load_compilation_database(self, db_path: str) -> bool:
+        """
+        Load CMake compilation database (compile_commands.json)
+        
+        Args:
+            db_path: Path to compile_commands.json or directory containing it
+        """
+        try:
+            if os.path.isdir(db_path):
+                db_path = os.path.join(db_path, 'compile_commands.json')
+            
+            if not os.path.exists(db_path):
+                print(f"Warning: Compilation database not found at {db_path}")
+                return False
+            
+            with open(db_path, 'r') as f:
+                self.compile_commands = json.load(f)
+            
+            print(f"Loaded compilation database with {len(self.compile_commands)} entries")
+            return True
+        except Exception as e:
+            print(f"Error loading compilation database: {e}")
+            return False
+    
+    def get_compile_args_for_file(self, filepath: str) -> List[str]:
+        """
+        Get compilation arguments for a specific file from the database
+        
+        Args:
+            filepath: Path to source file
+            
+        Returns:
+            List of compiler arguments
+        """
+        if not self.compile_commands:
+            return []
+        
+        # Normalize filepath
+        abs_filepath = os.path.abspath(filepath)
+        
+        # Search for matching entry
+        for entry in self.compile_commands:
+            file_in_db = entry.get('file', '')
+            
+            # Try exact match first
+            if os.path.abspath(file_in_db) == abs_filepath:
+                return self._parse_compile_command(entry)
+            
+            # Try basename match for headers (might be different path)
+            if os.path.basename(file_in_db) == os.path.basename(abs_filepath):
+                return self._parse_compile_command(entry)
+        
+        # If no exact match, try to find similar source file (.cpp for .h)
+        if filepath.endswith('.h') or filepath.endswith('.hpp'):
+            base = os.path.splitext(abs_filepath)[0]
+            for ext in ['.cpp', '.cc', '.cxx', '.c']:
+                cpp_file = base + ext
+                for entry in self.compile_commands:
+                    if os.path.abspath(entry.get('file', '')) == cpp_file:
+                        return self._parse_compile_command(entry)
+        
+        return []
+    
+    def _parse_compile_command(self, entry: dict) -> List[str]:
+        """
+        Parse compile command entry to extract relevant flags
+        
+        Args:
+            entry: Compilation database entry
+            
+        Returns:
+            List of compiler arguments suitable for libclang
+        """
+        args = []
+        
+        # Get command
+        if 'arguments' in entry:
+            command_parts = entry['arguments']
+        elif 'command' in entry:
+            import shlex
+            command_parts = shlex.split(entry['command'])
+        else:
+            return args
+        
+        # Extract relevant flags
+        skip_next = False
+        for i, arg in enumerate(command_parts):
+            if skip_next:
+                skip_next = False
+                continue
+            
+            # Include directories
+            if arg.startswith('-I'):
+                if len(arg) > 2:
+                    args.append(arg)
+                else:
+                    # -I /path/to/include
+                    if i + 1 < len(command_parts):
+                        args.append(f'-I{command_parts[i + 1]}')
+                        skip_next = True
+            
+            # System includes
+            elif arg.startswith('-isystem'):
+                if len(arg) > 8:
+                    args.append(arg)
+                else:
+                    if i + 1 < len(command_parts):
+                        args.append(f'-isystem{command_parts[i + 1]}')
+                        skip_next = True
+            
+            # Defines
+            elif arg.startswith('-D'):
+                args.append(arg)
+            
+            # C++ standard
+            elif arg.startswith('-std='):
+                args.append(arg)
+            
+            # Framework paths (macOS)
+            elif arg.startswith('-F'):
+                args.append(arg)
+        
+        return args
+    
+    def _configure_libclang(self):
+        """Try to find and configure libclang library"""
+        possible_paths = [
+            "/usr/lib/llvm-14/lib/libclang.so.1",
+            "/usr/lib/llvm-13/lib/libclang.so.1",
+            "/usr/lib/llvm-12/lib/libclang.so.1",
+            "/usr/lib/x86_64-linux-gnu/libclang-14.so.1",
+            "/usr/local/opt/llvm/lib/libclang.dylib",  # macOS homebrew
+            "C:\\Program Files\\LLVM\\bin\\libclang.dll",  # Windows
+        ]
+        
+        # Check if already configured
+        if clang.cindex.conf.lib:
+            return
+        
+        # Try to find it
+        for path in possible_paths:
+            if os.path.exists(path):
+                clang.cindex.Config.set_library_file(path)
+                return
+        
+        # Let it try to find automatically
+        try:
+            clang.cindex.Config.set_library_path('/usr/lib/llvm-14/lib')
+        except:
+            pass
+    
+    def parse_file(self, filepath: str, compiler_args: List[str] = None) -> List[ClassInfo]:
+        """
+        Parse a C++ header file using libclang
+        
+        Args:
+            filepath: Path to header file
+            compiler_args: Additional compiler arguments (e.g., -I, -D)
+                          If None and compilation database is loaded, args from DB are used
+        """
+        # Start with default args
+        args = ['-x', 'c++', '-std=c++20']
+        
+        # If compilation database is available and no explicit args provided
+        if self.compile_commands and compiler_args is None:
+            db_args = self.get_compile_args_for_file(filepath)
+            if db_args:
+                print(f"Using compilation database args for {os.path.basename(filepath)}")
+                args.extend(db_args)
+            else:
+                print(f"No compilation database entry found for {os.path.basename(filepath)}, using defaults")
+                # Add manual include paths as fallback
+                for include_path in self.include_paths:
+                    args.append(f'-I{include_path}')
+        else:
+            # Add manual include paths
+            for include_path in self.include_paths:
+                args.append(f'-I{include_path}')
+        
+        # Add custom compiler args (override DB if provided)
+        if compiler_args:
+            args.extend(compiler_args)
+        
+        # Parse the file
+        print(f"Parsing {filepath}...")
+        if args:
+            print(f"  Compiler args: {' '.join(args[:5])}{'...' if len(args) > 5 else ''}")
+        
+        translation_unit = self.index.parse(
+            filepath,
+            args=args,
+            options=clang.cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD
+        )
+        
+        # Check for errors
+        has_errors = False
+        for diag in translation_unit.diagnostics:
+            if diag.severity >= clang.cindex.Diagnostic.Error:
+                print(f"  Error: {diag.spelling}")
+                if diag.location.file:
+                    print(f"    at {diag.location.file.name}:{diag.location.line}:{diag.location.column}")
+                has_errors = True
+            elif diag.severity == clang.cindex.Diagnostic.Warning:
+                # Only show warnings in verbose mode
+                pass
+        
+        if has_errors:
+            print(f"Warning: Parse errors encountered. Generated code may be incomplete.")
+        
+        # Walk the AST
+        self._walk_ast(translation_unit.cursor, filepath)
+        
+        return self.classes
+    
+    def _walk_ast(self, cursor, target_file: str):
+        """Recursively walk the AST looking for RF_CLASS declarations"""
+        # Only process declarations in our target file
+        if cursor.location.file and cursor.location.file.name != target_file:
+            return
+        
+        # Look for class/struct declarations
+        if cursor.kind == CursorKind.CLASS_DECL or cursor.kind == CursorKind.STRUCT_DECL:
+            self._process_class(cursor, target_file)
+        
+        # Recurse into children
+        for child in cursor.get_children():
+            self._walk_ast(child, target_file)
+    
+    def _process_class(self, cursor, source_file: str):
+        """Process a class declaration"""
+        # Check if this class has RF_CLASS macro
+        if not self._has_rf_class_annotation(cursor):
+            return
+        
+        class_info = ClassInfo(
+            name=cursor.spelling,
+            qualified_name=cursor.displayname,
+            source_file=source_file,
+            has_rf_class=True
+        )
+        
+        # Get namespace
+        namespace_parts = []
+        parent = cursor.semantic_parent
+        while parent and parent.kind == CursorKind.NAMESPACE:
+            namespace_parts.insert(0, parent.spelling)
+            parent = parent.semantic_parent
+        
+        if namespace_parts:
+            class_info.namespace = "::".join(namespace_parts)
+        
+        # Parse class attributes from comments/annotations
+        class_info.attributes = self._parse_attributes_from_tokens(cursor)
+        
+        # Get base classes
+        for child in cursor.get_children():
+            if child.kind == CursorKind.CXX_BASE_SPECIFIER:
+                base_type = child.type.spelling
+                class_info.base_class = base_type
+                break
+        
+        # Check for RF_SERIALIZABLE
+        class_info.is_serializable = self._has_rf_serializable(cursor)
+        
+        # Parse properties
+        current_access = AccessSpecifier.PRIVATE if cursor.kind == CursorKind.CLASS_DECL else AccessSpecifier.PUBLIC
+        
+        for child in cursor.get_children():
+            # Track access specifiers
+            if child.kind == CursorKind.CXX_ACCESS_SPEC_DECL:
+                current_access = child.access_specifier
+                continue
+            
+            # Look for field declarations with RF_PROPERTY
+            if child.kind == CursorKind.FIELD_DECL:
+                if self._has_rf_property_annotation(child):
+                    prop = self._process_property(child)
+                    if prop:
+                        class_info.properties.append(prop)
+        
+        if class_info.is_serializable and class_info.properties:
+            self.classes.append(class_info)
+    
+    def _has_rf_class_annotation(self, cursor) -> bool:
+        """Check if cursor has RF_CLASS annotation by looking at tokens before it"""
+        # Look at tokens before the class declaration
+        # This is a heuristic - we look for RF_CLASS in preceding tokens
+        tokens = list(cursor.get_tokens())
+        
+        # Check in the token stream before this cursor
+        file_tokens = list(cursor.translation_unit.cursor.get_tokens())
+        
+        # Find our cursor position
+        cursor_start = None
+        for i, token in enumerate(file_tokens):
+            if (token.location.file and 
+                token.location.file.name == cursor.location.file.name and
+                token.location.line == cursor.location.line and
+                token.kind.name == 'KEYWORD' and 
+                token.spelling in ['class', 'struct']):
+                cursor_start = i
+                break
+        
+        if cursor_start is not None:
+            # Look backwards for RF_CLASS
+            for i in range(max(0, cursor_start - 20), cursor_start):
+                if file_tokens[i].spelling == 'RF_CLASS':
+                    return True
+        
+        return False
+    
+    def _has_rf_serializable(self, cursor) -> bool:
+        """Check if class has RF_SERIALIZABLE macro"""
+        # Look through all tokens in the class
+        for child in cursor.get_children():
+            # Check tokens
+            for token in child.get_tokens():
+                if token.spelling == 'RF_SERIALIZABLE':
+                    return True
+        
+        # Also check directly in class tokens
+        for token in cursor.get_tokens():
+            if token.spelling == 'RF_SERIALIZABLE':
+                return True
+        
+        return False
+    
+    def _has_rf_property_annotation(self, cursor) -> bool:
+        """Check if field has RF_PROPERTY annotation"""
+        # Get tokens before the field
+        file_tokens = list(cursor.translation_unit.cursor.get_tokens())
+        
+        # Find our field position
+        field_line = cursor.location.line
+        
+        # Look backwards on same or previous lines for RF_PROPERTY
+        for token in file_tokens:
+            if (token.location.file and
+                token.location.file.name == cursor.location.file.name and
+                token.location.line <= field_line and
+                token.location.line >= field_line - 2 and
+                token.spelling == 'RF_PROPERTY'):
+                return True
+        
+        return False
+    
+    def _parse_attributes_from_tokens(self, cursor) -> Dict[str, str]:
+        """Parse attributes from RF_CLASS(attr=value, ...) or RF_PROPERTY(...)"""
+        attributes = {}
+        
+        # Get all tokens
+        tokens = list(cursor.get_tokens())
+        
+        # Look for pattern: IDENTIFIER ( ... )
+        in_parens = False
+        current_attr = None
+        
+        for i, token in enumerate(tokens):
+            if token.spelling in ['RF_CLASS', 'RF_PROPERTY']:
+                # Next should be opening paren
+                if i + 1 < len(tokens) and tokens[i + 1].spelling == '(':
+                    in_parens = True
+                    # Parse attributes between parens
+                    j = i + 2
+                    while j < len(tokens) and tokens[j].spelling != ')':
+                        # Look for pattern: name = "value"
+                        if tokens[j].kind.name == 'IDENTIFIER':
+                            attr_name = tokens[j].spelling
+                            if j + 2 < len(tokens) and tokens[j + 1].spelling == '=':
+                                # Get value (might be string literal)
+                                value_token = tokens[j + 2]
+                                value = value_token.spelling.strip('"')
+                                attributes[attr_name] = value
+                                j += 3
+                            else:
+                                j += 1
+                        else:
+                            j += 1
+                    break
+        
+        return attributes
+    
+    def _process_property(self, cursor) -> Optional[PropertyInfo]:
+        """Process a field declaration into PropertyInfo"""
+        prop_type = cursor.type.spelling
+        canonical_type = cursor.type.get_canonical().spelling
+        
+        # Check if it's an array/vector
+        is_array = False
+        element_type = None
+        
+        if 'vector<' in canonical_type or 'array<' in canonical_type:
+            is_array = True
+            # Try to extract element type
+            # This is simplified - libclang can give us the template argument
+            type_obj = cursor.type.get_canonical()
+            if type_obj.kind == TypeKind.ELABORATED:
+                type_obj = type_obj.get_named_type()
+            
+            # Get template arguments
+            if hasattr(type_obj, 'get_num_template_arguments'):
+                num_args = type_obj.get_num_template_arguments()
+                if num_args > 0:
+                    element_type = type_obj.get_template_argument_type(0).spelling
+        
+        # Get default value
+        default_value = None
+        for child in cursor.get_children():
+            if child.kind == CursorKind.INTEGER_LITERAL or \
+               child.kind == CursorKind.FLOATING_LITERAL or \
+               child.kind == CursorKind.STRING_LITERAL or \
+               child.kind == CursorKind.CXX_BOOL_LITERAL_EXPR:
+                # Get the literal value from tokens
+                tokens = list(child.get_tokens())
+                if tokens:
+                    default_value = tokens[0].spelling
+        
+        # Parse attributes
+        attributes = self._parse_property_attributes(cursor)
+        
+        return PropertyInfo(
+            name=cursor.spelling,
+            type=prop_type,
+            canonical_type=canonical_type,
+            default_value=default_value,
+            attributes=attributes,
+            is_array=is_array,
+            element_type=element_type,
+            is_pointer='*' in canonical_type,
+            is_reference='&' in canonical_type
+        )
+    
+    def _parse_property_attributes(self, cursor) -> Dict[str, str]:
+        """Parse RF_PROPERTY attributes for a specific field"""
+        # This would need to look at tokens before the field declaration
+        # For now, return empty - can be enhanced
+        return self._parse_attributes_from_tokens(cursor)
+
+
+# Reuse the CXRGenerator from the original implementation
+class CXRGenerator:
+    """Generates .cxr.cpp files with ISerializable implementation"""
+    
+    def __init__(self, class_info: ClassInfo, source_file_path: str):
+        self.class_info = class_info
+        self.source_file_path = source_file_path
+    
+    def generate(self) -> str:
+        """Generate the complete .cxr.cpp file content"""
+        output = []
+        
+        # Header
+        output.append(self._generate_header())
+        output.append("")
+        
+        # Includes
+        output.append(self._generate_includes())
+        output.append("")
+        
+        # Namespace
+        if self.class_info.namespace:
+            output.append(f"namespace {self.class_info.namespace} {{")
+            output.append("")
+        
+        # Type registration
+        output.append(self._generate_type_registration())
+        output.append("")
+        
+        # Serialize method
+        output.append(self._generate_serialize_method())
+        output.append("")
+        
+        # Deserialize method
+        output.append(self._generate_deserialize_method())
+        output.append("")
+        
+        # GetTypeInfo method
+        output.append(self._generate_type_info_method())
+        output.append("")
+        
+        # Close namespace
+        if self.class_info.namespace:
+            output.append(f"}} // namespace {self.class_info.namespace}")
+        
+        return "\n".join(output)
+    
+    def _generate_header(self) -> str:
+        return f"""// Auto-generated reflection file for {self.class_info.name}
+// Generated by Reflector
+// DO NOT MODIFY - This file is automatically generated"""
+    
+    def _get_relative_include_path(self) -> str:
+        """
+        Calculate the relative path from CWD to the source file
+        for the #include directive
+        """
+        try:
+            # Get current working directory
+            cwd = os.getcwd()
+            
+            # Get absolute path of the source file
+            abs_source = os.path.abspath(self.source_file_path)
+            
+            # Calculate relative path from CWD to source file
+            rel_path = os.path.relpath(abs_source, cwd)
+            
+            # Convert to forward slashes for consistency (works on all platforms)
+            rel_path = rel_path.replace(os.sep, '/')
+            
+            return rel_path
+        except Exception as e:
+            # Fallback to just the filename if relative path calculation fails
+            return os.path.basename(self.source_file_path)
+    
+    def _generate_includes(self) -> str:
+        # Get relative path for include
+        relative_include = self._get_relative_include_path()
+        
+        includes = [
+            '#include <Modex.h>',
+            f'#include <{relative_include}>',
+        ]
+        return "\n".join(includes)
+    
+    def _generate_type_registration(self) -> str:
+        full_name = f"{self.class_info.namespace}::{self.class_info.name}" if self.class_info.namespace else self.class_info.name
+        return f"""// Static type registration
+static bool s_{self.class_info.name}_Registered = []() {{
+    codex::NBMan::RegisterType<{full_name}>("{self.class_info.name}");
+    return true;
+}}();"""
+    
+    def _generate_serialize_method(self) -> str:
+        lines = [
+            f"void {self.class_info.name}::Serialize(ISerializationNode& node) const {{"
+        ]
+        
+        if self.class_info.base_class:
+            lines.append(f"    {self.class_info.base_class}::Serialize(node);")
+            lines.append("")
+        
+        for prop in self.class_info.properties:
+            if prop.is_array:
+                lines.extend(self._generate_array_serialization(prop))
+            else:
+                lines.append(f'    node.Write("{prop.name}", {prop.name});')
+        
+        lines.append("}")
+        return "\n".join(lines)
+    
+    def _generate_deserialize_method(self) -> str:
+        lines = [
+            f"void {self.class_info.name}::Deserialize(const ISerializationNode& node) {{"
+        ]
+        
+        if self.class_info.base_class:
+            lines.append(f"    {self.class_info.base_class}::Deserialize(node);")
+            lines.append("")
+        
+        for prop in self.class_info.properties:
+            if prop.is_array:
+                lines.extend(self._generate_array_deserialization(prop))
+            else:
+                default = prop.default_value if prop.default_value else self._get_default_value(prop.canonical_type)
+                lines.append(f'    node.Read("{prop.name}", {prop.name});')
+        
+        lines.append("}")
+        return "\n".join(lines)
+    
+    def _generate_array_serialization(self, prop: PropertyInfo) -> List[str]:
+        return [
+            f'    node.BeginArray("{prop.name}", {prop.name}.size());',
+            f'    for (size_t i = 0; i < {prop.name}.size(); ++i) {{',
+            f'        node.AddArrayElement({prop.name}[i]);',
+            f'    }}',
+            f'    node.EndArray();'
+        ]
+    
+    def _generate_array_deserialization(self, prop: PropertyInfo) -> List[str]:
+        return [
+            f'    size_t {prop.name}_count = node.GetArraySize("{prop.name}");',
+            f'    {prop.name}.resize({prop.name}_count);',
+            f'    for (size_t i = 0; i < {prop.name}_count; ++i) {{',
+            f'        node.GetArrayElement(i, {prop.name}[i]);',
+            f'    }}',
+        ]
+    
+    def _generate_type_info_method(self) -> str:
+        lines = [
+            f"const codex::rf::TypeInfo& {self.class_info.name}::GetTypeInfo() const {{",
+            f'    static codex::rf::TypeInfo type_info("{self.class_info.name}");',
+            "    static bool initialized = false;",
+            "    ",
+            "    if (!initialized) {"
+        ]
+        
+        for prop in self.class_info.properties:
+            prop_type = prop.get_serialization_type()
+            display_name = prop.attributes.get('DisplayName', prop.name)
+            category = prop.attributes.get('Category', 'General')
+            
+            lines.append(f'        type_info.AddProperty(')
+            lines.append(f'            "{prop.name}",')
+            lines.append(f'            codex::rf::TypeOf({prop.name}),')
+            lines.append(f'            offsetof({self.class_info.name}, {prop.name}),')
+            lines.append(f'            "{display_name}",')
+            lines.append(f'            "{category}"')
+            lines.append(f'        );')
+        
+        lines.append("        initialized = true;")
+        lines.append("    }")
+        lines.append("    ")
+        lines.append("    return type_info;")
+        lines.append("}")
+        
+        return "\n".join(lines)
+    
+    def _get_default_value(self, type_name: str) -> str:
+        # Clean up type
+        clean_type = type_name.replace('const ', '').replace('&', '').replace('*', '').strip()
+        
+        defaults = {
+            "int": "0",
+            "int32_t": "0",
+            "unsigned int": "0",
+            "uint32_t": "0",
+            "float": "0.0f",
+            "double": "0.0",
+            "bool": "false",
+            "std::string": '""',
+            "std::basic_string<char>": '""',
+            "Vector3": "Vector3()",
+            "Vector4": "Vector4()",
+            "Vector2": "Vector2()",
+            "Vector3f": "Vector3f()",
+            "Vector4f": "Vector4f()",
+            "Vector2f": "Vector2f()",
+        }
+        return defaults.get(clean_type, f"{clean_type}()")
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='Libclang-based reflection generator for NativeBehaviour scripts',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Single file
+  python reflection_generator_libclang.py MyScript.h -o ./generated
+  
+  # Multiple files
+  python reflection_generator_libclang.py Script1.h Script2.h Script3.h -o ./generated
+  
+  # Using wildcards (bash will expand)
+  python reflection_generator_libclang.py src/Scripts/*.h -o ./generated
+  
+  # With include paths
+  python reflection_generator_libclang.py MyScript.h -o ./generated -I./include -I../engine/include
+  
+  # Using CMake compilation database
+  python reflection_generator_libclang.py MyScript.h -o ./generated --compile-commands=build
+  
+  # Process entire directory with compilation database
+  python reflection_generator_libclang.py src/Scripts/*.h -o ./generated --compile-commands=build -v
+        """
+    )
+    
+    parser.add_argument(
+        'input_files',
+        nargs='+',
+        help='Input C++ header file(s) - can specify multiple files or use wildcards'
+    )
+    
+    parser.add_argument(
+        '-o', '--output',
+        dest='output_dir',
+        default='.',
+        help='Output directory for .cxr.cpp files (default: current directory)'
+    )
+    
+    parser.add_argument(
+        '-I', '--include',
+        action='append',
+        dest='includes',
+        default=[],
+        help='Add include directory'
+    )
+    
+    parser.add_argument(
+        '-D', '--define',
+        action='append',
+        dest='defines',
+        default=[],
+        help='Add preprocessor define'
+    )
+    
+    parser.add_argument(
+        '--std',
+        default='c++20',
+        help='C++ standard (default: c++20)'
+    )
+    
+    parser.add_argument(
+        '--compile-commands',
+        dest='compile_commands',
+        help='Path to compile_commands.json or directory containing it'
+    )
+    
+    parser.add_argument(
+        '-v', '--verbose',
+        action='store_true',
+        help='Verbose output'
+    )
+    
+    args = parser.parse_args()
+    
+    # Expand glob patterns if needed
+    import glob
+    input_files = []
+    for pattern in args.input_files:
+        if '*' in pattern or '?' in pattern:
+            # Glob pattern
+            matches = glob.glob(pattern, recursive=True)
+            input_files.extend(matches)
+        else:
+            # Regular file
+            input_files.append(pattern)
+    
+    # Remove duplicates and filter for header files
+    input_files = list(set(input_files))
+    input_files = [f for f in input_files if f.endswith(('.h', '.hpp', '.hxx'))]
+    
+    if not input_files:
+        print(f"Error: No header files found matching the input patterns")
+        sys.exit(1)
+    
+    # Check that files exist
+    missing_files = [f for f in input_files if not os.path.exists(f)]
+    if missing_files:
+        print(f"Error: The following files were not found:")
+        for f in missing_files:
+            print(f"  - {f}")
+        sys.exit(1)
+    
+    # Build compiler args
+    compiler_args = [f'-std={args.std}']
+    for define in args.defines:
+        compiler_args.append(f'-D{define}')
+    
+    # Create parser
+    parser_obj = LibclangReflectionParser(include_paths=args.includes)
+    
+    # Load compilation database if provided
+    if args.compile_commands:
+        if not parser_obj.load_compilation_database(args.compile_commands):
+            print("Warning: Failed to load compilation database, using manual include paths")
+    
+    # Only pass compiler_args if we have manual includes/defines
+    # Otherwise let it use the compilation database
+    manual_args = compiler_args if (args.includes or args.defines or args.std != 'c++20') else None
+    
+    # Create output directory
+    os.makedirs(args.output_dir, exist_ok=True)
+    
+    # Process each file
+    total_generated = 0
+    total_skipped = 0
+    total_errors = 0
+    
+    print(f"\nProcessing {len(input_files)} file(s)...")
+    print("=" * 80)
+    
+    for idx, input_file in enumerate(input_files, 1):
+        print(f"\n[{idx}/{len(input_files)}] {input_file}")
+        print("-" * 80)
+        
+        try:
+            # Parse the file
+            if args.verbose:
+                print(f"Parsing with libclang...")
+            
+            # Reset classes for each file
+            parser_obj.classes = []
+            classes = parser_obj.parse_file(input_file, compiler_args=manual_args)
+            
+            if not classes:
+                print(f"  No RF_CLASS declarations found")
+                total_skipped += 1
+                continue
+            
+            # Generate .cxr.cpp files for each class
+            for class_info in classes:
+                if not class_info.is_serializable:
+                    if args.verbose:
+                        print(f"  Skipping {class_info.name} - not marked as RF_SERIALIZABLE")
+                    total_skipped += 1
+                    continue
+                
+                generator = CXRGenerator(class_info, input_file)
+                output_content = generator.generate()
+                
+                output_filename = f"{class_info.name}.cxr.cpp"
+                output_path = os.path.join(args.output_dir, output_filename)
+                
+                with open(output_path, 'w', encoding='utf-8') as f:
+                    f.write(output_content)
+                
+                print(f"  Generated: {output_filename}")
+                if args.verbose:
+                    print(f"    Class: {class_info.qualified_name}")
+                    print(f"    Base: {class_info.base_class}")
+                    print(f"    Properties: {len(class_info.properties)}")
+                
+                total_generated += 1
+        
+        except Exception as e:
+            print(f"  Error processing file: {e}")
+            if args.verbose:
+                import traceback
+                traceback.print_exc()
+            total_errors += 1
+    
+    # Summary
+    print("\n" + "=" * 80)
+    print("SUMMARY:")
+    print(f"  Files processed: {len(input_files)}")
+    print(f"  Classes generated: {total_generated}")
+    print(f"  Skipped: {total_skipped}")
+    print(f"  Errors: {total_errors}")
+    print(f"  Output directory: {os.path.abspath(args.output_dir)}")
+    print("=" * 80)
+    
+    return 0 if total_errors == 0 else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

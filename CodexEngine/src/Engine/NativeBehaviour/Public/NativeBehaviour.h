@@ -3,6 +3,7 @@
 #include <sdafx.h>
 
 #include <Engine/Core/Public/Serializer.h>
+#include <Engine/Reflection/Public/Reflection.h>
 #include <Engine/Scene/Public/Entity.inl>
 
 namespace codex {
@@ -19,7 +20,6 @@ namespace codex {
         Entity m_Parent;
 
     public:
-        // constexpr const nlohmann::ordered_json& GetSerializedData() const noexcept { return m_SerializedData; }
         inline void SetOwner(const Entity entity) noexcept { m_Parent = entity; }
 
     public:
@@ -79,7 +79,11 @@ namespace codex {
         virtual void                                    OnUpdate([[maybe_unused]] const f32 deltaTime) {}
         virtual void                                    OnFixedUpdate([[maybe_unused]] const f32 deltaTime) {}
         virtual void                                    OnDispose() {}
-        [[nodiscard]] virtual mem::Box<NativeBehaviour> Clone() const = 0;
-        [[nodiscard]] virtual object GetField([[maybe_unused]] const std::string_view name) noexcept { return nullobj; }
+        [[nodiscard]] virtual mem::Box<NativeBehaviour> Clone() const       = 0;
+        [[nodiscard]] virtual const rf::TypeInfo&       GetTypeInfo() const = 0;
+
+    public:
+        void Serialize(ISerializationNode& node) const override;
+        void Deserialize(const ISerializationNode& node) override;
     };
 } // namespace codex

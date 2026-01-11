@@ -47,7 +47,8 @@ namespace codex::editor {
         this->AttachPanel<ToolbarView>();
 
         opengl::FrameBufferProperties props;
-        props.attachments = { { .format = opengl::TextureFormat::RGBA8 }, { .format = opengl::TextureFormat::RedInt32 } };
+        props.attachments = { { .format = opengl::TextureFormat::RGBA8 },
+                              { .format = opengl::TextureFormat::RedInt32 } };
 
         // TODO: This is the scene render resolution so you should not hard code this.
         props.width   = 1920;
@@ -251,8 +252,9 @@ namespace codex::editor {
                     if (ImGui::MenuItem("Clear build files"))
                     {
                         auto& d = m_Descriptor;
-                        d->activeScene.Lock()->UnloadScriptModule();
+                        // d->activeScene.Lock()->UnloadScriptModule();
 
+                        /*
                         const auto files =
                             fs::GetAllFilesWithExtensions(d->currentProjectPath / "Assets/", { ".h", ".hpp", ".hh" });
                         std::vector<rf::RFScript> rf_files;
@@ -262,6 +264,7 @@ namespace codex::editor {
                         for (const auto& f : files)
                             rf_files.emplace_back(f).EmitMetadata(output_path);
                         rf::RFScript::EmitBaseClass(output_path, rf_files);
+                        */
 
                         sys::ProcessInfo p_info;
 
@@ -277,7 +280,7 @@ namespace codex::editor {
                             auto& d = m_Descriptor;
                             // TODO: Scene should also be thread safe since this callback is being called from a
                             // different thread.
-                            Scene::LoadScriptModule(d->scriptModulePath); // TODO: COME BACK
+                            // Scene::LoadScriptModule(d->scriptModulePath); // TODO: COME BACK
                             ConsoleMan::AppendMessage("-- Clear finished.");
                         };
                         p_info.redirectStdOut = true;
@@ -565,18 +568,8 @@ namespace codex::editor {
     {
         auto& d = m_Descriptor;
 
-        d->scripts.clear();
-        d->activeScene.Lock()->UnloadScriptModule();
-        const auto files = fs::GetAllFilesWithExtensions(d->currentProjectPath / "Assets/", { ".h", ".hpp", ".hh" });
-        d->scripts.reserve(files.size());
-
-        const auto output_path = stdfs::absolute(d->currentProjectPath / "int/");
-        if (!stdfs::exists(output_path))
-            stdfs::create_directories(output_path);
-
-        for (const auto& f : files)
-            d->scripts.emplace_back(f).Parse().EmitMetadata(output_path);
-        rf::RFScript::EmitBaseClass(output_path, d->scripts);
+        if (NBMan::InstanceLoaded())
+            NBMan::Unload();
 
         sys::ProcessInfo p_info;
 
@@ -588,20 +581,19 @@ namespace codex::editor {
 #elif defined(CX_PLATFORM_OSX)
         p_info.command = "python3 Scripts/build.py --preset=osx-any-debug --build";
 #endif
-        /*
         p_info.onExit = [this](i32 exitCode)
         {
             if (exitCode == 0)
             {
                 auto& d = m_Descriptor;
-                Scene::LoadScriptModule(d->scriptModulePath);
+                NBMan::Load(d->scriptModulePath);
                 ConsoleMan::AppendMessage("-- Script build finished.");
             }
-            else {
+            else
+            {
                 throw new InvalidOperationException("Project failed to compile!");
             }
         };
-        */
 
 #ifndef CX_PLATFORM_UNIX
         p_info.redirectStdOut = true;
@@ -715,23 +707,8 @@ namespace codex::editor {
         {
             if (true || CompileProject(true) == 0)
             {
-                Scene::LoadScriptModule(d->scriptModulePath);
-                ConsoleMan::AppendMessage("-- Script build finished.");
-
-                ConsoleMan::AppendMessage("-- Generating metadata...");
-                const auto files =
-                    fs::GetAllFilesWithExtensions(d->currentProjectPath / "Assets/", { ".h", ".hpp", ".hh" });
-                d->scripts.reserve(files.size());
-
-                const auto output_path = stdfs::absolute(d->currentProjectPath / "int/");
-                if (!stdfs::exists(output_path))
-                    stdfs::create_directories(output_path);
-
-                for (const auto& f : files)
-                    d->scripts.emplace_back(f).Parse().EmitMetadata(output_path);
-                rf::RFScript::EmitBaseClass(output_path, d->scripts);
-
-                ConsoleMan::AppendMessage("-- Metadata generation finished");
+                NBMan::Load(d->scriptModulePath);
+                ConsoleMan::AppendMessage("-- Script module load finished.");
             }
             else
             {
@@ -747,7 +724,7 @@ namespace codex::editor {
 
         // FIXME: Cannot unload the script module while we have attached scripts, invalidates the
         // vptr of our class effetively invalidating the whole thing really.
-        // CompileProject(); // NOTE
+        CompileProject(); // NOTE
     }
 
     void SceneEditorView::UnloadProject()
@@ -755,8 +732,8 @@ namespace codex::editor {
         auto& d = m_Descriptor;
         d->selectedEntity.Deselect();
 
-        Scene::UnloadScriptModule();
-        d->scripts.clear();
+        if (NBMan::InstanceLoaded())
+            NBMan::Unload();
     }
 
     void SceneEditorView::RenderGrid(gfx::DebugDraw& renderer, const scene::EditorCamera& camera,

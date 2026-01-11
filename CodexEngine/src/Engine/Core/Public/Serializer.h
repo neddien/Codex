@@ -2,6 +2,8 @@
 
 #include <sdafx.h>
 
+#include <Engine/Reflection/Public/Reflection.h>
+
 namespace codex {
     class ISerializationNode
     {

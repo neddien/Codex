@@ -17,8 +17,14 @@ namespace codex::editor {
         const float footer_height = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
         if (ImGui::BeginChild("scroll_reg"))
         {
-            for (const auto& e : m_Output)
-                ImGui::Text("%s", e.c_str());
+            try
+            {
+                for (const auto& e : m_Output)
+                    ImGui::Text("%s", e.c_str());
+            }
+            catch (...)
+            {
+            }
         }
         ImGui::EndChild();
 

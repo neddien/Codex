@@ -13,14 +13,33 @@ FetchContent_MakeAvailable(logex)
 # For LSPs.
 set(CMAKE_EXPORT_COMPILE_COMMANDS on)
 
-# The target
+# Variables
+set(CODEGEN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/int")
+set(REFLECTOR "${CMAKE_SOURCE_DIR}/Scripts/reflector.py")
+
+# Files
 file(GLOB_RECURSE HEADER_FILES "${CMAKE_CURRENT_SOURCE_DIR}/Assets/*.h")
 file(GLOB_RECURSE SOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/Assets/*.cpp")
-file(GLOB_RECURSE CODGEN_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/int/*.h")
-file(GLOB_RECURSE CODGEN_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/int/*.cpp")
+file(GLOB_RECURSE CODGEN_HEADERS "${CODEGEN_DIR}/*.h")
+file(GLOB_RECURSE CODGEN_SOURCES "${CODEGEN_DIR}/*.cpp")
 file(GLOB_RECURSE STATIC_LIBS "${CMAKE_CURRENT_SOURCE_DIR}/lib/*.lib")
+
+
+# Reflector target
+add_custom_command(
+    OUTPUT ${CODEGEN_DIR}/refl.stamp
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CODEGEN_DIR}
+    COMMAND ${Python3_EXECUTABLE} ${REFLECTOR} ${HEADER_FILES} -o ${CODEGEN_DIR} --compile-commands=${CMAKE_BINARY_DIR}
+    DEPENDS ${HEADER_FILES}
+    COMMENT "Generating reflection code for NativeBehaviour scripts..."
+)
+add_custom_target(GenerateReflection ALL DEPENDS ${CODEGEN_DIR}/refl.stamp)
+
+# The target
 add_library(NBMan SHARED ${HEADER_FILES} ${SOURCE_FILES} ${CODGEN_HEADERS}
                          ${CODGEN_SOURCES})
+add_dependencies(NBMan GenerateReflection)
 
 if(DEFINED CX_PLATFORM_WINDOWS)
 
@@ -107,7 +126,7 @@ message(":: Platform OS: ${CMAKE_SYSTEM_NAME}")
 message(":: Platform Compiler: ${CMAKE_CXX_COMPILER_ID}")
 message(":: CPU word size: ${CMAKE_SIZEOF_VOID_P} bytes")
 message("")
-
+ 
 add_custom_command(
   TARGET NBMan
   POST_BUILD
@@ -119,20 +138,21 @@ add_custom_command(
 # TODO: Automate this please cause we have to add an entry here everytime we add a new library.
 target_include_directories(NBMan PUBLIC Engine/vendor/entt)
 target_include_directories(NBMan PUBLIC Engine/vendor/glm)
+target_include_directories(NBMan PUBLIC Engine/vendor/glad)
 target_include_directories(NBMan PUBLIC Engine/src/PCH)
 target_include_directories(NBMan PUBLIC "${logex_SOURCE_DIR}/Logger/src")
 target_include_directories(NBMan PUBLIC "${logex_SOURCE_DIR}/Logger/vendor/fmt/include")
 
 # For ease of use.
 target_include_directories(NBMan PUBLIC Engine/src)
-
+target_include_directories(NBMan PUBLIC ${CMAKE_SOURCE_DIR})
 # Reflector
 target_include_directories(NBMan PRIVATE int/)
 
 target_precompile_headers(NBMan PRIVATE Engine/src/PCH/sdafx.h)
 
 # Expose the engine API
-target_include_directories(NBMan PUBLIC Engine/include)
+target_include_directories(NBMan PUBLIC Engine/include/Public)
 
 # If we're not on VS, then copy compile_commands.json for LSPs like clangd and
 # ccls.

@@ -5,7 +5,7 @@
 #include <Engine/Core/Public/Serializer.h>
 
 namespace codex {
-    class SerializationManager
+    class CODEX_API SerializationManager
     {
     public:
         static std::string SerializeToJson(const ISerializable& object);

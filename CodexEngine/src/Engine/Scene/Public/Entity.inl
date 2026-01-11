@@ -28,7 +28,8 @@ namespace codex {
         
         auto& c = m_Scene->m_Registry->emplace<T>(m_Handle, std::forward<TArgs>(args)...);
         comp->m_Next = &c;
-        c.OnInit();
+        c.OnInit(); // TODO: This being called here is questionable
+        c.m_Parent = *this;
         return c;
     }
 
@@ -53,6 +54,7 @@ namespace codex {
         auto& c = m_Scene->m_Registry->emplace<T>(m_Handle, std::forward<TArgs>(args)...);
         comp->m_Next = &c;
         c.OnInit();
+        c.m_Parent = *this;
         return c;
     }
 

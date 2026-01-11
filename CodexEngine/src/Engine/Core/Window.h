@@ -40,8 +40,8 @@ namespace codex {
         PositionCentre = BitFlag<u32>(9)
     };
 
-    WindowFlags operator|(const WindowFlags& lhv, const WindowFlags& rhv) noexcept;
-    u32         operator&(const WindowFlags& lhv, const WindowFlags& rhv) noexcept;
+    CODEX_API WindowFlags operator|(const WindowFlags& lhv, const WindowFlags& rhv) noexcept;
+    CODEX_API u32         operator&(const WindowFlags& lhv, const WindowFlags& rhv) noexcept;
 
     enum class SystemCursor
     {

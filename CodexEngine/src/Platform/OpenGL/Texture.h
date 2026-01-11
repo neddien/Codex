@@ -62,7 +62,7 @@ namespace codex::opengl {
         TextureMipmapMode mipmapMode = TextureMipmapMode::None;
     };
 
-    class Texture
+    class CODEX_API Texture
     {
     private:
         uint32_t                    m_RendererId;

@@ -1,24 +1,21 @@
 #pragma once
 
-#include <Codex.h>
-
-#include <string>
+#include <Modex.h>
 
 using namespace codex;
 
 RF_CLASS()
 class CODEX_EXPORT MienScripten : public NativeBehaviour
 {
-    RF_GENERATE_BODY()
+    RF_SERIALIZABLE
 
 private:
-	RF_SERIALIZABLE()
-	std::string m_Str;
-    RF_SERIALIZABLE()
+    std::string m_Str;
+    RF_PROPERTY()
     bool m_Move = false;
-    RF_SERIALIZABLE()
+    RF_PROPERTY()
     f32 m_Multiplier = 1.0f;
-    RF_SERIALIZABLE()
+    RF_PROPERTY()
     Vector3f m_Axies = { 0.0f, 1.0f, 0.0f };
 
 public:

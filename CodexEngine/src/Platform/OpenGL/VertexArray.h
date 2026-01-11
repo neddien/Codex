@@ -1,13 +1,13 @@
 #pragma once
 
-#include <cstdint>
+#include "Constants.h"
 
 namespace codex::opengl {
     // Forward declerations
     class VertexBuffer;
     class VertexBufferLayout;
 
-    class VertexArray
+    class CODEX_API VertexArray
     {
     private:
         uint32_t m_RendererId;

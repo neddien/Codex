@@ -1,14 +1,12 @@
 #pragma once
 
-#include <cstdint>
-#include <filesystem>
+#include "Constants.h"
+
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <string>
-#include <unordered_map>
 
 namespace codex::opengl {
-    class Shader
+    class CODEX_API Shader
     {
     private:
         uint32_t                                 m_RendererId;

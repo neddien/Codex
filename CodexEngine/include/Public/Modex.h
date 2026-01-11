@@ -1,7 +1,6 @@
 #pragma once
 
 // Core
-#include <Engine/Core/Application.h>
 #include <Engine/Core/Public/CommonDef.h>
 #include <Engine/Core/Public/Exception.h>
 #include <Engine/Core/Public/Geomtryd.h>
@@ -35,7 +34,11 @@
 #include <Engine/Scene/Public/Scene.h>
 #include <Engine/Scene/Public/SceneManager.h>
 
+// Native Behaviour
+#include <Engine/NativeBehaviour/Public/NativeBehaviourManager.h>
+
 // Reflection
+#include <Engine/Reflection/Public/Reflection.h>
 
 // Graphics
 #include <Engine/Graphics/Public/Image2D.h>

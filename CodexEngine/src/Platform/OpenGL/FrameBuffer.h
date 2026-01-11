@@ -1,8 +1,5 @@
 #pragma once
 
-#include <cstdint>
-#include <vector>
-
 #include "Constants.h"
 #include "Texture.h"
 
@@ -26,7 +23,7 @@ namespace codex::opengl {
         }
     };
 
-    class FrameBuffer
+    class CODEX_API FrameBuffer
     {
     private:
         uint32_t                       m_RendererId = 0;

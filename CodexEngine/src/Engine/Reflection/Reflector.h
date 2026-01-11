@@ -1,29 +1,10 @@
-#ifndef CODEX_REFLECTION_REFLECTOR_H
-#define CODEX_REFLECTION_REFLECTOR_H
-
+#if 0
 #include <sdafx.h>
 
 // #include <Engine/NativeBehaviour/Public/NativeBehaviour.h>
+#include <Engine/Reflection/Public/Reflection.h>
 
 #include "Lexer.h"
-
-#define RF_CLASS(...)
-#define RF_SERIALIZABLE(...)
-#define RF_INSTANCE_CREATE(dlib, name, parent)                                                                         \
-    dlib->Invoke<NativeBehaviour*(const char*, codex::Entity)>("Rf_CreateInstance", name, parent)
-#define RF_INSTANCE_CHECK(dlib, name) dlib->Invoke<bool(const char*)>("Rf_DoesInstanceExist", name)
-#define RF_GENERATE_BODY()                                                                                             \
-public:                                                                                                                \
-    [[nodiscard]] codex::mem::Box<codex::NativeBehaviour> Clone() const override                                       \
-    {                                                                                                                  \
-        return codex::mem::Box<std::decay_t<std::remove_pointer_t<decltype(this)>>>::New(*this);                       \
-    }                                                                                                                  \
-                                                                                                                       \
-private:                                                                                                               \
-    friend CODEX_EXPORT codex::NativeBehaviour* Rf_CreateInstance(const char*   className,                             \
-                                                                  codex::Entity parent) noexcept;                      \
-    void                                        Serialize() const noexcept override;                                   \
-    codex::object                               GetField(const std::string_view fieldName) noexcept override;
 
 // Forward declerations
 namespace codex {
@@ -182,4 +163,4 @@ namespace codex::rf {
     }
 } // namespace codex::rf
 
-#endif // CODEX_REFLECTION_REFLECTOR_H
+#endif

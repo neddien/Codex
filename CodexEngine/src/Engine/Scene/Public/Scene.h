@@ -1,22 +1,23 @@
 #pragma once
 
 #include <Engine/Concurrency/Public/Mutex.h>
-#include <Engine/Memory/Public/Memory.h>
-#include <Engine/System/DynamicLibrary.h>
-#include <Engine/Scene/EditorCamera.h>
-#include <Engine/Scene/Public/Entity.h>
 #include <Engine/Core/Public/Serializer.h>
+#include <Engine/Memory/Public/Memory.h>
+#include <Engine/Scene/Public/Entity.h>
 
 #include <entt.hpp>
 
+// Forward declarations
 class b2World;
 
 namespace codex {
     // Forward declarations
     class Window;
     class Entity;
-    class Serializer;
     class NativeBehaviour;
+    namespace scene {
+        class EditorCamera;
+    } // namespace scene
 
     class CODEX_API Scene : public ISerializable
     {
@@ -48,10 +49,6 @@ namespace codex {
         std::thread               m_FixedUpdateThread;
         PhysicsProperties         m_PhysicsProperties;
         mem::Box<Entity>          m_PrimaryCameraEntity = nullptr;
-
-    private:
-        static mem::Box<sys::DLib>                     s_ScriptModule;
-        static std::unordered_map<Entity, std::string> s_PossibleAttachedScripts;
 
     public:
         Scene() noexcept                        = default;
@@ -112,13 +109,6 @@ namespace codex {
         void OnEditorUpdate(const f32 deltaTime, scene::EditorCamera& camera);
         void OnRuntimeUpdate(const f32 deltaTime);
         void OnSimulationUpdate(const f32 deltaTime, scene::EditorCamera& camera);
-
-    public:
-        [[nodiscard]] static bool             IsScriptModuleLoaded();
-        static void                           LoadScriptModule(std::filesystem::path modulePath);
-        static void                           UnloadScriptModule();
-        [[nodiscard]] static NativeBehaviour* CreateBehaviour(const char* className, Entity parent);
-        [[nodiscard]] static bool             BehaviourExists(const char* className);
 
     private:
         static void OnFixedUpdate(Scene& self) noexcept;

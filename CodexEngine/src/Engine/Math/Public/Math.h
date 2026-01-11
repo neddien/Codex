@@ -27,7 +27,7 @@ namespace codex::math {
         return radians * (180.0f / PI);
     }
 
-    bool TransformDecompose(const glm::mat4& transform, glm::vec3& translation, glm::vec3& rotation, glm::vec3& scale);
+    CODEX_API bool TransformDecompose(const glm::mat4& transform, glm::vec3& translation, glm::vec3& rotation, glm::vec3& scale);
 
     template <typename T>
     [[nodiscard]] constexpr T Clamp(const T& value, const T& min, const T& max) noexcept

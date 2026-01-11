@@ -4,6 +4,13 @@
 #include "VertexBuffer.h"
 #include "VertexBufferLayout.h"
 
+uint32_t GL_ErrorCheck()
+{
+    while (uint32_t errorCode = glGetError())
+        return errorCode;
+    return 0;
+}
+
 namespace codex::opengl {
     Renderer::Renderer(const int width, const int height)
         : m_Width(width)
