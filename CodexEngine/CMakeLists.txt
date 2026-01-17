@@ -23,7 +23,7 @@ FetchContent_Declare(
 FetchContent_Declare(
   sdl
   GIT_REPOSITORY git@github.com:libsdl-org/SDL
-  GIT_TAG release-2.32.10)
+  GIT_TAG release-2.32.x)
 FetchContent_Declare(
   box2d
   GIT_REPOSITORY git@github.com:erincatto/box2d
@@ -171,6 +171,14 @@ endif()
 if(DEFINED CX_BUILD_TYPE_DEBUG)
   target_compile_definitions(CodexEngine PUBLIC CX_BUILD_TYPE_DEBUG)
   target_compile_definitions(CodexEngine-static PUBLIC CX_BUILD_TYPE_DEBUG)
+  # Disable warnings for debug builds.
+  if(DEFINED CX_COMPILER_MSVC)
+    target_compile_options(CodexEngine PRIVATE /W0)
+    target_compile_options(CodexEngine-static PRIVATE /W0)
+  else()
+    target_compile_options(CodexEngine PRIVATE -w)
+    target_compile_options(CodexEngine-static PRIVATE -w)
+  endif()
 elseif(DEFINED CX_BUILD_TYPE_RELEASE)
   target_compile_definitions(CodexEngine PUBLIC CX_BUILD_TYPE_RELEASE)
   target_compile_definitions(CodexEngine-static PUBLIC CX_BUILD_TYPE_RELEASE)
@@ -239,7 +247,7 @@ else()
 endif()
 
 # Logex
-set(LOGEX_LIBRARIES Logex-static)
+set(LOGEX_LIBRARIES logex-static)
 target_link_libraries(CodexEngine PUBLIC ${LOGEX_LIBRARIES})
 target_link_libraries(CodexEngine-static PUBLIC ${LOGEX_LIBRARIES})
 

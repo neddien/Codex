@@ -38,6 +38,13 @@ if(DEFINED CX_BUILD_TYPE_RELEASE OR DEFINED CX_BUILD_TYPE_SHIPPING)
   elseif(DEFINED CX_COMPILER_MSVC)
 
   endif()
+elseif(DEFINED CX_BUILD_TYPE_DEBUG)
+  # Disable warnings for debug builds.
+  if(DEFINED CX_COMPILER_MSVC)
+    target_compile_options(CodexEditor PRIVATE /W0)
+  else()
+    target_compile_options(CodexEditor PRIVATE -w)
+  endif()
 endif()
 
 # tinyfiledialogs
@@ -142,7 +149,7 @@ foreach(PROJECT_DIR ${PROJECT_DIRS})
           ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:fmt>"
           "${CMAKE_CURRENT_SOURCE_DIR}/assets/Projects/${PROJECT_DIR}/lib/"
         COMMAND
-          ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:Logex-static>"
+          ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:logex-static>"
           "${CMAKE_CURRENT_SOURCE_DIR}/assets/Projects/${PROJECT_DIR}/lib/"
         COMMENT ":: Copying object libraries to ${PROJECT_DIR}/lib/...")
     endif()
