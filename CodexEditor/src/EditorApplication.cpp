@@ -56,8 +56,7 @@ namespace codex::editor {
         }
 
         logger.Log(lgx::Info, "Application data path: '{}'", m_ApplicationDataPath.string());
-        logger.Log(lgx::Info, "Variable application data path: '{}'",
-                               m_VariableApplicationDataPath.string());
+        logger.Log(lgx::Info, "Variable application data path: '{}'", m_VariableApplicationDataPath.string());
 
         PushLayer(new Editor);
         PushLayer(new ConsoleMan);

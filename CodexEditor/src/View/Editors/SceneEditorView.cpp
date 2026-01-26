@@ -5,6 +5,7 @@
 #include <EditorApplication.h>
 #include <tinyfiledialogs.h>
 
+#include "Engine/Core/Public/Exception.h"
 #include "Panels/ProjectSettingsView.h"
 #include "Panels/PropertiesView.h"
 #include "Panels/SceneHierarchyView.h"
@@ -581,19 +582,26 @@ namespace codex::editor {
 #elif defined(CX_PLATFORM_OSX)
         p_info.command = "python3 Scripts/build.py --preset=osx-any-debug --build";
 #endif
-        p_info.onExit = [this](i32 exitCode)
+        try
         {
-            if (exitCode == 0)
+            p_info.onExit = [this](i32 exitCode)
             {
-                auto& d = m_Descriptor;
-                NBMan::Load(d->scriptModulePath);
-                ConsoleMan::AppendMessage("-- Script build finished.");
-            }
-            else
-            {
-                throw new InvalidOperationException("Project failed to compile!");
-            }
-        };
+                if (exitCode == 0)
+                {
+                    auto& d = m_Descriptor;
+                    NBMan::Load(d->scriptModulePath);
+                    ConsoleMan::AppendMessage("-- Script build finished.");
+                }
+                else
+                {
+                    throw new InvalidOperationException("Project failed to compile!");
+                }
+            };
+        }
+        catch (const CodexException& ex)
+        {
+            lgx::Get("editor").Log(lgx::Level::Error, "{}", ex.what());
+        }
 
 #ifndef CX_PLATFORM_UNIX
         p_info.redirectStdOut = true;

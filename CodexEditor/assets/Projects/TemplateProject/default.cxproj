@@ -5,101 +5,6 @@
             "components": [
                 {
                     "type": "IDComponent",
-                    "uuid": 15865237271916508970
-                },
-                {
-                    "type": "TransformComponent",
-                    "position": {
-                        "x": 0.0,
-                        "y": 520.0001220703125,
-                        "z": 0.0
-                    },
-                    "rotation": {
-                        "x": 0.0,
-                        "y": 0.0,
-                        "z": 0.0
-                    },
-                    "scale": {
-                        "x": 1.0,
-                        "y": 1.0,
-                        "z": 1.0
-                    }
-                },
-                {
-                    "type": "TagComponent",
-                    "tag": "player"
-                },
-                {
-                    "type": "SpriteRendererComponent",
-                    "texture": {
-                        "id": 0,
-                        "file_path": "Assets\\Sprites\\dun_tileset.png",
-                        "filter_mode": 9728,
-                        "wrap_mode": 33648,
-                        "format": 4294967295
-                    },
-                    "texture_coords": {
-                        "x": 1136.0,
-                        "y": -288.0,
-                        "w": 16.0,
-                        "h": 16.0
-                    },
-                    "size": {
-                        "x": 64.0,
-                        "y": 64.0
-                    },
-                    "colour": {
-                        "x": 1.0,
-                        "y": 1.0,
-                        "z": 1.0,
-                        "w": 1.0
-                    },
-                    "z_index": 0
-                },
-                {
-                    "type": "NativeBehaviourComponent",
-                    "attached_scripts": [
-                        {
-                            "name": "PlayerController"
-                        }
-                    ]
-                },
-                {
-                    "type": "RigidBody2DComponent",
-                    "body_type": 1,
-                    "fixed_rotation": true,
-                    "linear_damping": 0.0,
-                    "angular_damping": 0.10000000149011612,
-                    "high_velocity": false,
-                    "enabled": true,
-                    "gravity_scale": 1.0
-                },
-                {
-                    "type": "BoxCollider2DComponent",
-                    "offset": {
-                        "x": 0.0,
-                        "y": 0.0
-                    },
-                    "size": {
-                        "x": 32.0,
-                        "y": 32.0
-                    },
-                    "physics_material": {
-                        "Density": 1.0,
-                        "Friction": 0.5,
-                        "Restitution": 0.5,
-                        "RestitutionThreshold": 0.5
-                    }
-                },
-                {
-                    "type": "CameraComponent"
-                }
-            ]
-        },
-        {
-            "components": [
-                {
-                    "type": "IDComponent",
                     "uuid": 3869573844858773623
                 },
                 {
@@ -896,6 +801,101 @@
                         "Restitution": 0.5,
                         "RestitutionThreshold": 0.5
                     }
+                }
+            ]
+        },
+        {
+            "components": [
+                {
+                    "type": "IDComponent",
+                    "uuid": 15865237271916508970
+                },
+                {
+                    "type": "TransformComponent",
+                    "position": {
+                        "x": 0.0,
+                        "y": 520.0001220703125,
+                        "z": 0.0
+                    },
+                    "rotation": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": 0.0
+                    },
+                    "scale": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    }
+                },
+                {
+                    "type": "TagComponent",
+                    "tag": "player"
+                },
+                {
+                    "type": "SpriteRendererComponent",
+                    "texture": {
+                        "id": 0,
+                        "file_path": "Assets\\Sprites\\dun_tileset.png",
+                        "filter_mode": 9728,
+                        "wrap_mode": 33648,
+                        "format": 4294967295
+                    },
+                    "texture_coords": {
+                        "x": 1136.0,
+                        "y": -288.0,
+                        "w": 16.0,
+                        "h": 16.0
+                    },
+                    "size": {
+                        "x": 64.0,
+                        "y": 64.0
+                    },
+                    "colour": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0,
+                        "w": 1.0
+                    },
+                    "z_index": 0
+                },
+                {
+                    "type": "NativeBehaviourComponent",
+                    "attached_scripts": [
+                        {
+                            "name": "PlayerController"
+                        }
+                    ]
+                },
+                {
+                    "type": "RigidBody2DComponent",
+                    "body_type": 1,
+                    "fixed_rotation": true,
+                    "linear_damping": 20.0,
+                    "angular_damping": 0.10000000149011612,
+                    "high_velocity": false,
+                    "enabled": true,
+                    "gravity_scale": 0.0
+                },
+                {
+                    "type": "BoxCollider2DComponent",
+                    "offset": {
+                        "x": 0.0,
+                        "y": 0.0
+                    },
+                    "size": {
+                        "x": 32.0,
+                        "y": 32.0
+                    },
+                    "physics_material": {
+                        "Density": 1.0,
+                        "Friction": 0.5,
+                        "Restitution": 0.5,
+                        "RestitutionThreshold": 0.5
+                    }
+                },
+                {
+                    "type": "CameraComponent"
                 }
             ]
         }

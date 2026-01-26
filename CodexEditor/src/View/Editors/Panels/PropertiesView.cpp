@@ -155,7 +155,7 @@ namespace codex::editor {
                             const auto properties = type_info.GetProperties();
                             for (const auto& prop : properties)
                             {
-                                const auto prop_id = fmt::format("##{}.{}", prop.name, std::rand());
+                                const auto prop_id = fmt::format("##nb-{}", prop.name);
 
                                 ImGui::Columns(2);
                                 ImGui::SetColumnWidth(0, d->columnWidth);

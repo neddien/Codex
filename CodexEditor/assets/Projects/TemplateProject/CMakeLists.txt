@@ -4,6 +4,12 @@ project("TemplateProject")
 
 include(FetchContent)
 
+# For running Python scripts from CMake.
+find_package(
+  Python3
+  COMPONENTS Interpreter
+  REQUIRED)
+
 FetchContent_Declare(
   logex
   GIT_REPOSITORY git@github.com:neddien/Logex
@@ -20,10 +26,9 @@ set(REFLECTOR "${CMAKE_SOURCE_DIR}/Scripts/reflector.py")
 # Files
 file(GLOB_RECURSE HEADER_FILES "${CMAKE_CURRENT_SOURCE_DIR}/Assets/*.h")
 file(GLOB_RECURSE SOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/Assets/*.cpp")
-file(GLOB_RECURSE CODGEN_HEADERS "${CODEGEN_DIR}/*.h")
-file(GLOB_RECURSE CODGEN_SOURCES "${CODEGEN_DIR}/*.cpp")
+file(GLOB_RECURSE CODEGEN_HEADERS "${CODEGEN_DIR}/*.h")
+file(GLOB_RECURSE CODEGEN_SOURCES "${CODEGEN_DIR}/*.cxr.cpp")
 file(GLOB_RECURSE STATIC_LIBS "${CMAKE_CURRENT_SOURCE_DIR}/lib/*.lib")
-
 
 # Reflector target
 add_custom_command(
@@ -36,9 +41,11 @@ add_custom_command(
 )
 add_custom_target(GenerateReflection ALL DEPENDS ${CODEGEN_DIR}/refl.stamp)
 
+message(":: FILES: " ${CODEGEN_SOURCES})
+
 # The target
-add_library(NBMan SHARED ${HEADER_FILES} ${SOURCE_FILES} ${CODGEN_HEADERS}
-                         ${CODGEN_SOURCES})
+add_library(NBMan SHARED ${HEADER_FILES} ${SOURCE_FILES} ${CODEGEN_HEADERS}
+                         ${CODEGEN_SOURCES})
 add_dependencies(NBMan GenerateReflection)
 
 if(DEFINED CX_PLATFORM_WINDOWS)
