@@ -65,7 +65,7 @@ namespace codex {
 
             if (HasResource(res->GetPath()))
             {
-                cx_throw(ResourceException, "Resource with the same path already exists.");
+                // cx_throw(ResourceException, "Resource with the same path already exists.");
             }
 
             const usize id = util::Crypto::DJB2Hash(res->GetPath().string());

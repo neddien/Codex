@@ -358,7 +358,7 @@ namespace codex {
         m_Tp2        = m_Tp1;
 
         // Initialize SDL and OpenGL
-        if (SDL_Init(SDL_INIT_EVERYTHING) < 0)
+        if (SDL_Init(SDL_INIT_VIDEO) < 0)
         {
             cx_throw(SDLException, "SDL Failed to initialize.\n\tSDL Error: {}", SDL_GetError());
             // SDLThrowError(__LINE__, "ERROR: FAILED TO INITIALIZE SDL!");

@@ -1,9 +1,9 @@
-#ifndef CODEX_PLATFORM_POSIX_PROCESS_H
-#define CODEX_PLATFORM_POSIX_PROCESS_H
+#pragma once
 
 #include <sdafx.h>
 
-#include "../../src/Engine/System/Process.h"
+#include <Engine/Memory/Public/Memory.h>
+#include <Engine/System/Process.h>
 
 namespace codex::sys {
     class CODEX_API POSIXProcess : public Process
@@ -12,10 +12,10 @@ namespace codex::sys {
         friend class Process;
 
     private:
-        pid_t m_PID = -1;
-        // i32               m_StdInPipe[2]{ -1, -1 };
-        i32 m_StdOutPipe[2]{ -1, -1 };
-        // i32               m_StdErrPipe[2]{ -1, -1 };
+        pid_t             m_PID = -1;
+        i32               m_StdInPipe[2]{ -1, -1 };
+        i32               m_StdOutPipe[2]{ -1, -1 };
+        i32               m_StdErrPipe[2]{ -1, -1 };
         i32               m_ExitCode = -1;
         std::thread       m_StdOutThread;
         std::thread       m_StdErrThread;
@@ -31,5 +31,3 @@ namespace codex::sys {
         void WriteLine(const std::string_view msg) override;
     };
 } // namespace codex::sys
-
-#endif // CODEX_PLATFORM_POSIX_PROCESS_H

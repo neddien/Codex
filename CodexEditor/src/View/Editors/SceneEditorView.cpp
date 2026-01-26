@@ -20,23 +20,20 @@ namespace codex::editor {
     void SceneEditorView::OnAttach()
     {
         // TODO: Fix Process stdout not working on Linux.
-        /*
         sys::ProcessInfo inf;
         inf.command        = "ls";
         inf.redirectStdOut = true;
         inf.redirectStdErr = true;
-        inf.onExit = [](i32) { ConsoleMan::AppendMessage("Exited."); };
+        inf.onExit         = [](i32) { ConsoleMan::AppendMessage("Exited."); };
 
         const auto ldb = [](const char* buffer, usize len) { ConsoleMan::AppendMessage(std::string(buffer, len)); };
 
         auto handle                     = sys::Process::New(inf);
         handle->Event_OnOutDataReceived = ldb;
-        handle->Event_OnOutDataReceived = ldb;
         handle->Event_OnErrDataReceived = ldb;
 
         ConsoleMan::AppendMessage("Started.");
         handle->Launch();
-        */
 
         m_Descriptor = mem::Shared<SceneEditorDescriptor>::From(
             new SceneEditorDescriptor{ .editorScene = mem::Shared<Scene>::New() });

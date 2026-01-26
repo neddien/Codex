@@ -1,9 +1,8 @@
 #include "POSIXProcess.h"
 
-#include "../../src/Engine/Memory/Memory.h"
-
 namespace codex::sys {
-    POSIXProcess::POSIXProcess(ProcessInfo info) noexcept : Process(std::move(info))
+    POSIXProcess::POSIXProcess(ProcessInfo info) noexcept
+        : Process(std::move(info))
     {
     }
 
@@ -23,43 +22,6 @@ namespace codex::sys {
 
     void POSIXProcess::Launch()
     {
-        /*
-        {
-            pid_t pid = fork();
-            i32   stdout_pipe[2];
-
-            pipe(stdout_pipe);
-
-            if (pid == -1)
-                perror("fork(): ");
-            else if (pid == 0)
-            {
-                close(stdout_pipe[0]);
-                if (dup2(stdout_pipe[1], STDOUT_FILENO) < 0)
-                    perror("dup2(): ");
-
-                if (execlp("ls", "ls", "-la", nullptr) < 0)
-                    perror("execlp(): ");
-
-                exit(1);
-            }
-            else
-            {
-                close(stdout_pipe[1]);
-                ssize_t bytes_read;
-                char    buffer[Process::READ_BUFFER_SIZE];
-                while ((bytes_read = read(stdout_pipe[0], buffer, sizeof(buffer))) > 0)
-                {
-                    Event_OnOutDataReceived(buffer, bytes_read);
-                    // std::printf("out: %s\n", buffer);
-                }
-                waitpid(pid, nullptr, 0);
-                close(stdout_pipe[0]);
-            }
-        }
-        return;
-        */
-
         // Create the process first.
         m_PID = fork();
 
@@ -71,6 +33,14 @@ namespace codex::sys {
         {
             // Create the redirection pipe for stdout.
             if (pipe(m_StdOutPipe) == -1)
+                perror("pipe(): ");
+
+            // Create the redirection pipe for stderr.
+            if (pipe(m_StdErrPipe) == -1)
+                perror("pipe(): ");
+
+            // Create the redirection pipe for stdin.
+            if (pipe(m_StdInPipe) == -1)
                 perror("pipe(): ");
         }
 
@@ -95,6 +65,26 @@ namespace codex::sys {
 
                 // Close the write end?
                 close(m_StdOutPipe[1]);
+            }
+            if (m_Info.redirectStdErr)
+            {
+                // Close the read end of the pipe because the child does not read.
+                close(m_StdOutPipe[0]);
+                if (dup2(m_StdOutPipe[1], STDERR_FILENO) < 0)
+                    perror("dup2: "); // TODO: Throw an exception.
+
+                // Close the write end?
+                close(m_StdOutPipe[1]);
+            }
+            if (m_Info.redirectStdIn)
+            {
+                // Close the read end of the pipe because the child does not read.
+                close(m_StdInPipe[1]);
+                if (dup2(m_StdOutPipe[0], STDIN_FILENO) < 0)
+                    perror("dup2: "); // TODO: Throw an exception.
+
+                // Close the write end?
+                close(m_StdOutPipe[0]);
             }
 
             // Execute.
@@ -125,12 +115,26 @@ namespace codex::sys {
             {
                 // Close the write end of the pipe because the parent does not write.
                 close(m_StdOutPipe[1]);
+
                 char    buffer[Process::READ_BUFFER_SIZE];
                 ssize_t bytes_read = 0;
                 while ((bytes_read = read(m_StdOutPipe[0], buffer, sizeof(buffer))) > 0)
                 {
                     std::printf("out: %s\n", buffer);
                     this->Event_OnOutDataReceived(buffer, bytes_read);
+                }
+            }
+            if (m_Info.redirectStdErr)
+            {
+                // Close the write end of the pipe because the parent does not write.
+                close(m_StdErrPipe[1]);
+
+                char    buffer[Process::READ_BUFFER_SIZE];
+                ssize_t bytes_read = 0;
+                while ((bytes_read = read(m_StdErrPipe[0], buffer, sizeof(buffer))) > 0)
+                {
+                    std::printf("out: %s\n", buffer);
+                    this->Event_OnErrDataReceived(buffer, bytes_read);
                 }
             }
 
@@ -164,5 +168,6 @@ namespace codex::sys {
 
     void POSIXProcess::WriteLine(const std::string_view msg)
     {
+        // Write to stdin?
     }
 } // namespace codex::sys

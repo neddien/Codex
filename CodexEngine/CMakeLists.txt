@@ -2,6 +2,8 @@ project("CodexEngine")
 
 # Enable fPIC on all linkable targets
 set(CMAKE_POSITION_INDEPENDENT_CODE on)
+
+# Build options for some of these libraries
 set(BOX2D_BUILD_TESTBED
     OFF
     CACHE BOOL "" FORCE)
@@ -13,6 +15,35 @@ set(BOX2D_BUILD_UNIT_TESTS
     CACHE BOOL "" FORCE)
 set(BOX2D_BUILD_DOCS
     OFF
+    CACHE BOOL "" FORCE)
+
+set(SDL_AUDIO
+    OFF
+    CACHE BOOL "" FORCE)
+set(SDL_RENDER
+    OFF
+    CACHE BOOL "" FORCE)
+set(SDL_SENSOR
+    OFF
+    CACHE BOOL "" FORCE)
+set(SDL_POWER
+    OFF
+    CACHE BOOL "" FORCE)
+set(SDL_LOCALE
+    OFF
+    CACHE BOOL "" FORCE)
+set(SDL_FILESYSTEM
+    OFF
+    CACHE BOOL "" FORCE)
+set(SDL_TEST
+    OFF
+    CACHE BOOL "" FORCE)
+# For now we want SDL as a static library to free ourselves from absurd DLL problems on Windows
+set(SDL_SHARED
+    OFF
+    CACHE BOOL "" FORCE)
+set(SDL_STATIC
+    ON
     CACHE BOOL "" FORCE)
 
 # Fetch modules
@@ -237,10 +268,14 @@ if(ANDROID)
   target_include_directories(CodexEngine-static PUBLIC ${SDL2_INCLUDE_DIR})
   target_link_libraries(CodexEngine-static PUBLIC ${SDL2_LIBRARIES})
 else()
-  set(SDL2_LIBRARIES SDL2 SDL2main)
+  if(SDL_STATIC AND NOT SDL_SHARED)
+    set(SDL2_LIBRARIES SDL2-static SDL2main)
+  else()
+    set(SDL2_LIBRARIES SDL2 SDL2main)
+  endif()
 
   target_link_libraries(CodexEngine PUBLIC ${SDL2_LIBRARIES})
-  add_dependencies(CodexEngine SDL2 SDL2main)
+  add_dependencies(CodexEngine ${SDL2_LIBRARIES})
 
   target_include_directories(CodexEngine-static PUBLIC ${SDL2_INCLUDE_DIR})
   target_link_libraries(CodexEngine-static PUBLIC ${SDL2_LIBRARIES})
@@ -380,7 +415,7 @@ if(DEFINED CX_PLATFORM_WINDOWS)
   # App Data for modifidable file data.
 elseif(DEFINED CX_PLATFORM_UNIX)
   install(
-    TARGETS SDL2
+    TARGETS SDL2-static
             SDL2main
             glm
             nlohmann_json
