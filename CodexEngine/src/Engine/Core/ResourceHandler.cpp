@@ -40,7 +40,7 @@ namespace codex {
         std::ifstream fs(filePath);
         if (fs.is_open())
         {
-            usize id = util::Crypto::DJB2Hash(filePath.string());
+                usize id = util::Crypto::DJB2Hash(filePath.generic_string());
 
             ResRef<Texture2D> texture   = mem::Shared<Texture2D>::New(filePath, props);
             m_Instance->m_Resources[id] = texture;
@@ -65,7 +65,7 @@ namespace codex {
         std::ifstream fs(filePath.string());
         if (fs.is_open())
         {
-            const usize    id           = util::Crypto::DJB2Hash(filePath.string());
+            const usize    id           = util::Crypto::DJB2Hash(filePath.generic_string());
             ResRef<Shader> shader       = mem::Shared<Shader>::New(filePath, version);
             m_Instance->m_Resources[id] = shader;
             fs.close();
@@ -90,7 +90,7 @@ namespace codex {
 
     bool Resources::HasResource(const std::filesystem::path filePath)
     {
-        const usize id = util::Crypto::DJB2Hash(filePath.string());
+        const usize id = util::Crypto::DJB2Hash(filePath.generic_string());
         return HasResource(id);
     }
 

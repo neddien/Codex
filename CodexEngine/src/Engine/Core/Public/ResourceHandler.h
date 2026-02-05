@@ -68,7 +68,7 @@ namespace codex {
                 // cx_throw(ResourceException, "Resource with the same path already exists.");
             }
 
-            const usize id = util::Crypto::DJB2Hash(res->GetPath().string());
+            const usize id = util::Crypto::DJB2Hash(res->GetPath().generic_string());
             lgx::Get("engine").Log(lgx::Info, "[ResourceHandler] >> File: '{}' Id: {}", res->GetPath().string(), id);
             m_Instance->m_Resources[id] = res;
 
@@ -89,7 +89,7 @@ namespace codex {
         template <typename T>
         static ResRef<T> GetResource(const std::filesystem::path filePath)
         {
-            return GetResource<T>(util::Crypto::DJB2Hash(filePath.string()));
+            return GetResource<T>(util::Crypto::DJB2Hash(filePath.generic_string()));
         }
         static bool                                          HasResource(const usize id);
         static bool                                          HasResource(const std::filesystem::path filePath);

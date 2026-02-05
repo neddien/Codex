@@ -267,6 +267,80 @@ Native C++ scripts that attach to entities. Currently exposed third-party librar
 
 - [ ] FMOD paths use `${CMAKE_CURRENT_DIR}` which should be `${CMAKE_CURRENT_SOURCE_DIR}` (line 364)
 
+## Missing Features for 2D Multiplayer Platformer
+
+Analysis conducted to identify gaps for building a networked multiplayer platformer game.
+
+### Feature Status Overview
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| **Networking** | MISSING | No infrastructure exists; Legacy/NetNT has abandoned ASIO code |
+| **Asset Manager + Prefabs** | MISSING | Only Texture2D/Shader loading; no entity templates |
+| **Animation System** | MISSING | SpriteSheet exists but no Animator/state machine |
+| **Audio API** | IN PROGRESS | FMOD Studio API 2.02.25 vendored; implementing integration |
+| **Runtime UI** | MISSING | Only editor ImGui; no in-game HUD system |
+| **Platformer Physics** | PARTIAL | Box2D works; missing ground detection, one-way platforms |
+| **Input Action Mapping** | MISSING | Raw keys only; no rebindable actions |
+| **Entity Cloning** | MISSING | Only full scene copy; no Entity::Clone() |
+
+### Detailed Gap Analysis
+
+#### 1. Networking (Critical)
+- Zero network code in active codebase
+- Need: Transport layer (ENet/GameNetworkingSockets), message protocol, state sync, lag compensation
+
+#### 2. Asset Manager + Prefabs (Critical)
+- `ResourceHandler.h` only supports Texture2D and Shader
+- No entity prefab/template system
+- No `Scene::InstantiatePrefab()` or `Entity::Clone()`
+- `ContentBrowserView` is a stub (empty window)
+- `PrefabFile` enum defined but unimplemented
+- **Impact**: Cannot spawn players/enemies/projectiles from templates
+
+#### 3. Animation System (Critical)
+- `SpriteSheet.h` provides static sprite extraction only
+- No `AnimationClip`, `AnimatorComponent`, or state machine
+- No frame playback, transitions, or animation events
+
+#### 4. Audio (IN PROGRESS)
+- FMOD Studio API 2.02.25 vendored in `/CodexEngine/vendor/fmod/`
+- Contains both Core API (low-level) and Studio API (bank playback)
+- NOT YET linked in CMakeLists.txt
+- No `AudioManager`, `AudioSourceComponent`, or script API yet
+- SDL audio explicitly disabled (using FMOD instead)
+
+#### 5. Platformer Physics Helpers (Important)
+- Box2D integrated with RigidBody2D, BoxCollider2D, CircleCollider2D
+- Missing: Ground detection, one-way platforms, moving platforms, collision callbacks
+
+#### 6. Runtime UI (Important)
+- Only editor ImGui available
+- No Canvas/Widget system for in-game HUD
+
+#### 7. Input Action Mapping (Nice-to-have)
+- `Input.h` has complete key enumeration (277 keys)
+- Missing: Action definitions, rebindable bindings, input buffering
+
+### What's Production-Ready
+- BatchRenderer2D with sprite Z-ordering
+- EnTT-based ECS with component serialization
+- Scene persistence (full scene save/load)
+- Input handling (keyboard/mouse)
+- Box2D physics simulation
+- NativeBehaviour scripting with reflection
+- Cross-platform build system
+
+### Recommended Implementation Order
+1. **Audio Integration** - Connect FMOD (IN PROGRESS)
+2. **Asset Manager + Prefabs** - Foundation for spawning
+3. **Entity Cloning** - Required for prefab instantiation
+4. **Animation System** - Visual gameplay
+5. **Networking** - Multiplayer core
+6. **Platformer Physics** - Ground detection, etc.
+7. **Runtime UI** - HUD/menus
+8. **Input Action Mapping** - Polish
+
 ## Files to Ignore
 
 - `Legacy/` - abandoned code

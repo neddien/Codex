@@ -43,7 +43,7 @@ namespace codex::gfx {
             auto        path  = std::string{};
             const auto& props = GetProperties();
             node.Write("id", GetId());
-            node.Write("file_path", GetFilePath().string());
+            node.Write("file_path", GetFilePath().generic_string());
             node.Write("filter_mode", static_cast<u32>(props.filterMode));
             node.Write("wrap_mode", static_cast<u32>(props.wrapMode));
             node.Write("format", static_cast<u32>(props.format));

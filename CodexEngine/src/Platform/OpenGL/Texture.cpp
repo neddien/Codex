@@ -9,7 +9,7 @@ namespace codex::opengl {
         : m_FilePath(std::move(filePath))
         , m_Props(properties)
     {
-        const auto str_path = m_FilePath.string();
+        const auto str_path = m_FilePath.generic_string();
 
         m_RendererId = 0;
         m_Buffer     = nullptr;

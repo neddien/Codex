@@ -20,6 +20,7 @@ namespace codex::editor {
     void SceneEditorView::OnAttach()
     {
         // TODO: Fix Process stdout not working on Linux.
+        /*
         sys::ProcessInfo inf;
         inf.command        = "ls";
         inf.redirectStdOut = true;
@@ -34,6 +35,7 @@ namespace codex::editor {
 
         ConsoleMan::AppendMessage("Started.");
         handle->Launch();
+        */
 
         m_Descriptor = mem::Shared<SceneEditorDescriptor>::From(
             new SceneEditorDescriptor{ .editorScene = mem::Shared<Scene>::New() });

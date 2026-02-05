@@ -62,7 +62,7 @@ namespace codex::gfx {
         void Serialize(ISerializationNode& node) const override
         {
             node.Write("id", GetId());
-            node.Write("file_path", m_RawShader->GetFilePath().string());
+            node.Write("file_path", m_RawShader->GetFilePath().generic_string());
             node.Write("version", m_RawShader->GetVersion());
         }
         void Deserialize(const ISerializationNode& node) override
