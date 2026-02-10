@@ -47,12 +47,14 @@ elseif(DEFINED CX_BUILD_TYPE_DEBUG)
   endif()
 endif()
 
-# tinyfiledialogs
-set(TFDS_INCLUDE_DIRS vendor/tinyfiledialogs)
-set(TFDS_SOURCE_FILES vendor/tinyfiledialogs/tinyfiledialogs.c)
-
-target_include_directories(CodexEditor PUBLIC ${TFDS_INCLUDE_DIRS})
-target_sources(CodexEditor PRIVATE ${TFDS_SOURCE_FILES})
+# nativefiledialog-extended (Wayland-compatible file dialogs via xdg-desktop-portal)
+set(NFD_PORTAL ON CACHE BOOL "Use xdg-desktop-portal instead of GTK")
+FetchContent_Declare(
+  nativefiledialog-extended
+  GIT_REPOSITORY https://github.com/btzy/nativefiledialog-extended
+  GIT_TAG v1.2.1)
+FetchContent_MakeAvailable(nativefiledialog-extended)
+target_link_libraries(CodexEditor nfd)
 
 # ImGuizmo
 set(IMGUIZMO_INCLUDE_DIRS ${imguizmo_SOURCE_DIR})
@@ -117,6 +119,7 @@ foreach(PROJECT_DIR ${PROJECT_DIRS})
         "vendor/entt:Engine/vendor/entt:headers"
         "vendor/glm:Engine/vendor/glm:headers"
         "vendor/glad:Engine/vendor/glad:headers"
+        "vendor/magic_enum:Engine/vendor/magic_enum"
     )
     string(REPLACE ";" "," CX_ENGINE_COPY_SPECS_PROC "${CX_ENGINE_COPY_SPECS}")
 

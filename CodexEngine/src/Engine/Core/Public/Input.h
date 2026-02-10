@@ -275,8 +275,6 @@ namespace codex {
         EndCall,
     };
 
-    const char* KeyToString(const Key key) noexcept;
-
     enum class Mouse : u8
     {
         LeftMouse,
@@ -285,8 +283,6 @@ namespace codex {
         X1Mouse,
         X2Mouse,
     };
-
-    const char* MouseToString(const Mouse button) noexcept;
 
     class CODEX_API Input
     {
@@ -305,10 +301,10 @@ namespace codex {
         bool m_MouseDragging = false;
 
     public:
-        static Input* Get();
-        static void   Dispose();
-        static bool   IsKeyDown(const Key key);
-        static bool   IsMouseDown(const Mouse button);
+        static Input*  Get();
+        static void    Dispose();
+        static bool    IsKeyDown(const Key key);
+        static bool    IsMouseDown(const Mouse button);
         static Vector2 GetScreenMousePos() noexcept;
 
     public:
@@ -328,7 +324,7 @@ namespace codex {
             return (f32)m_Instance->m_MouseLastPosY - (f32)m_Instance->m_MousePosY;
         }
         static inline Vector2 GetMousePos() noexcept { return Vector2(GetMouseX(), GetMouseY()); }
-        
+
         static inline i32  GetScrollX() noexcept { return m_Instance->m_MouseScrollX; }
         static inline i32  GetScrollY() noexcept { return m_Instance->m_MouseScrollY; }
         static inline bool IsMouseDragging() noexcept { return m_Instance->m_MouseDragging; }
@@ -357,7 +353,7 @@ namespace fmt {
     {
         auto format(const codex::Key& key, format_context& ctx) const
         {
-            return formatter<string_view>::format(codex::KeyToString(key), ctx);
+            return formatter<string_view>::format(codex::EnumName(key), ctx);
         }
     };
 } // namespace fmt

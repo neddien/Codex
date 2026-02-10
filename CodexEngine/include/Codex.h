@@ -1,6 +1,9 @@
 #ifndef CODEX_H
 #define CODEX_H
 
+// Audio
+#include <Engine/Audio/AudioManager.h>
+
 // Core
 #include <Engine/Core/Application.h>
 #include <Engine/Core/Public/CommonDef.h>
@@ -65,14 +68,14 @@
 #include <Engine/Utils/Public/Util.h>
 
 // OpenGL
+#include <Platform/OpenGL/FrameBuffer.h>
 #include <Platform/OpenGL/Geometry.h>
+#include <Platform/OpenGL/GraphicsCapabilities.h>
+#include <Platform/OpenGL/IndexBuffer.h>
+#include <Platform/OpenGL/Shader.h>
+#include <Platform/OpenGL/Texture.h>
 #include <Platform/OpenGL/VertexArray.h>
 #include <Platform/OpenGL/VertexBuffer.h>
 #include <Platform/OpenGL/VertexBufferLayout.h>
-#include <Platform/OpenGL/IndexBuffer.h>
-#include <Platform/OpenGL/FrameBuffer.h>
-#include <Platform/OpenGL/Shader.h>
-#include <Platform/OpenGL/Texture.h>
-#include <Platform/OpenGL/GraphicsCapabilities.h>
 
 #endif // CODEX_H

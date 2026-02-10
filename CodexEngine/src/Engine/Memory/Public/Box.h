@@ -112,12 +112,12 @@ namespace codex::mem {
         template <typename... TArgs>
         static inline Box<T> New(TArgs&&... args)
         {
-            return std::move(Box<T>(new T{ std::forward<TArgs>(args)... }));
+            return Box<T>(new T{ std::forward<TArgs>(args)... });
         }
         static inline Box<T> From(Pointer&& rawPtr) noexcept
         {
             Box<T> obj = std::move(rawPtr);
-            return std::move(obj);
+            return obj;
         }
     };
 } // namespace codex::mem

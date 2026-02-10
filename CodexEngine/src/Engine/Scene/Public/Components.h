@@ -2,13 +2,14 @@
 
 #include <sdafx.h>
 
+#include <Engine/Audio/Public/Audio.h>
 #include <Engine/Core/Public/UUID.h>
 #include <Engine/Memory/Public/Memory.h>
 #include <Engine/Physics/Public/PhysicsMaterial2D.h>
 
 #include "Camera.h"
-#include "Sprite.h"
 #include "Entity.h"
+#include "Sprite.h"
 
 #define CX_COMPONENT(name)                                                                                             \
     friend class Entity;                                                                                               \
@@ -46,8 +47,8 @@ namespace codex {
         void Deserialize(const ISerializationNode& node) { DeserializeImpl(node); }
 
     protected:
-        virtual void SerializeImpl(ISerializationNode& node) const   = 0;
-        virtual void DeserializeImpl(const ISerializationNode& node) = 0;
+        virtual void SerializeImpl(ISerializationNode& node) const {};
+        virtual void DeserializeImpl(const ISerializationNode& node) {};
 
     protected:
         Component* m_Next = nullptr;
@@ -152,8 +153,9 @@ namespace codex {
         using BehaviourList = std::vector<NativeBehaviour*>;
 
     private:
-        mutable BehaviourMap  m_Behaviours;
-        mutable BehaviourList m_BehaviourList; // This is for iterations.
+        mutable BehaviourMap     m_Behaviours;
+        mutable BehaviourList    m_BehaviourList; // This is for iterations.
+        std::vector<std::string> m_PendingScripts;
 
     public:
         NativeBehaviourComponent() noexcept = default;
@@ -170,32 +172,6 @@ namespace codex {
         {
             return const_cast<NativeBehaviourComponent*>(this)->GetBehaviours();
         }
-        /*
-        template <typename T>
-        [[nodiscard]] inline T* GetBehaviour() noexcept
-        {
-            for (const auto e : m_BehaviourList)
-            {
-                if (typeid(T) == typeid(*e))
-                {
-                    return reinterpret_cast<T*>(e);
-                }
-            }
-
-            return nullptr;
-        }
-        template <typename T>
-        [[nodiscard]] inline const T& GetBehaviour() const noexcept
-        {
-            for (const auto e : m_BehaviourList)
-            {
-                if (typeid(T) == typeid(*e))
-                {
-                    return *e;
-                }
-            }
-        }
-        */
 
     public:
         void                      OnInit() override;
@@ -207,6 +183,8 @@ namespace codex {
         void                      DisposeBehaviours();
         void                      SetParent(const Entity entity) const noexcept;
         void                      Dispose(const std::string& className);
+        void                      AttachPendingScripts();
+        void                      SaveAttachedToPending();
 
     public:
         template <typename T, typename... TArgs>
@@ -364,5 +342,42 @@ namespace codex {
     public:
         void SerializeImpl(ISerializationNode& node) const override;
         void DeserializeImpl(const ISerializationNode& node) override;
+    };
+
+    struct CODEX_API AudioSourceComponent : public Component
+    {
+        CX_COMPONENT(AudioSourceComponent)
+
+    public:
+        std::string           eventPath; // "event:/SFX/Explosion" or empty for sound
+        std::filesystem::path soundPath; // "assets/audio/boom.wav" or empty for event
+
+        f32  volume      = 1.0f;
+        f32  pitch       = 1.0f;
+        bool loop        = false;
+        bool playOnStart = false;
+        bool is3D        = true;
+        f32  minDistance = 1.0f;
+        f32  maxDistance = 100.0f;
+
+        // User-defined parameter overrides (name -> value)
+        std::unordered_map<std::string, f32> parameters;
+
+        // Runtime state (not serialized)
+        // std::variant<SoundHandle, EventHandle> m_Handle;
+        mem::Shared<ax::EventHandle> handle;
+
+    public:
+        void SerializeImpl(ISerializationNode& node) const override;
+        void DeserializeImpl(const ISerializationNode& node) override;
+    };
+
+    struct AudioListenerComponent : public Component
+    {
+        CX_COMPONENT(AudioListenerComponent)
+
+        // Dummy component for now.
+        // Position/orientation taken from TransformComponent
+        // Only one active listener at a time
     };
 } // namespace codex

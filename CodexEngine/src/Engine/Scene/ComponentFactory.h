@@ -64,6 +64,8 @@ namespace codex {
         CX_REGISTER_COMPONENT(GridRendererComponent);
         CX_REGISTER_COMPONENT(TilemapComponent);
         CX_REGISTER_COMPONENT(TilesetAnimationComponent);
+        CX_REGISTER_COMPONENT(AudioSourceComponent);
+        CX_REGISTER_COMPONENT(AudioListenerComponent);
     }
 
     template <typename... Components>
@@ -76,7 +78,8 @@ namespace codex {
     using AllComponents =
         ComponentGroup<IDComponent, TransformComponent, TagComponent, SpriteRendererComponent, NativeBehaviourComponent,
                        CameraComponent, RigidBody2DComponent, BoxCollider2DComponent, CircleCollider2DComponent,
-                       GridRendererComponent, TilemapComponent, TilesetAnimationComponent>;
+                       GridRendererComponent, TilemapComponent, TilesetAnimationComponent, AudioSourceComponent,
+                       AudioListenerComponent>;
 
     ///////////////////////////////////////////////////////////////////////////////
 } // namespace codex

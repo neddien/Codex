@@ -5,15 +5,16 @@
 
 #include <Debug/Public/Profiler.h>
 #include <Debug/Public/TimeScope.h>
+#include <Engine/Audio/AudioManager.h>
 #include <Engine/Core/Application.h>
 #include <Engine/Graphics/Renderer.h>
 #include <Engine/NativeBehaviour/Public/NativeBehaviour.h>
 #include <Engine/Reflection/Reflector.h>
 #include <Engine/Scene/ComponentFactory.h>
-#include <Engine/Utils/Box2DUtils.h>
-#include <Engine/Utils/Public/Math.h>
 #include <Engine/Scene/EditorCamera.h>
 #include <Engine/System/DynamicLibrary.h>
+#include <Engine/Utils/Box2DUtils.h>
+#include <Engine/Utils/Public/Math.h>
 
 namespace codex {
     using EntityMap = std::unordered_map<UUID, entt::entity>;
@@ -45,8 +46,8 @@ namespace codex {
 
     Scene::Scene(Scene&& other) noexcept
     {
-        m_Registry     = std::move(other.m_Registry);
-        m_Name         = std::move(other.m_Name);
+        m_Registry = std::move(other.m_Registry);
+        m_Name     = std::move(other.m_Name);
     }
 
     Scene& Scene::operator=(Scene&& other) noexcept
@@ -120,10 +121,10 @@ namespace codex {
     {
         Entity cx_entity;
         {
-            auto registry = m_Registry.Lock();
-            auto entity   = registry->create();
-            cx_entity     = Entity{ entity, this };
-            auto& id_comp = registry->emplace<IDComponent>(entity, uuid);
+            auto registry    = m_Registry.Lock();
+            auto entity      = registry->create();
+            cx_entity        = Entity{ entity, this };
+            auto& id_comp    = registry->emplace<IDComponent>(entity, uuid);
             id_comp.m_Parent = cx_entity;
         }
 
@@ -221,6 +222,46 @@ namespace codex {
                     transform      = glm::translate(transform, tile.pos);
                     transform      = glm::scale(transform, Vector3f{ sprite.GetSize().x, sprite.GetSize().y, 1.0f });
                     gfx::BatchRenderer2D::RenderSprite(sprite, transform, static_cast<i32>(e));
+                }
+            }
+        }
+    }
+
+    void Scene::RenderAudio()
+    {
+        {
+            CX_DEBUG_PROFILE_SCOPE("AudioListenerUpdate")
+            const auto primary_camera = GetPrimaryCameraEntity();
+            if (primary_camera.HasComponent<AudioListenerComponent>())
+            {
+                const auto& tc = primary_camera.GetComponent<TransformComponent>();
+
+                ax::SpatialAttributes attr;
+                attr.position = tc.position;
+                // attr.velocity = ?
+                ax::AudioSystem::SetListenerAttributes(attr);
+            }
+        }
+
+        {
+            CX_DEBUG_PROFILE_SCOPE("AudioSourceUpdate");
+            auto registry = m_Registry.Lock();
+            auto view     = registry->view<AudioSourceComponent, TransformComponent>();
+            for (auto& e : view)
+            {
+                auto& asc = view.get<AudioSourceComponent>(e);
+                if (!asc.handle || !asc.handle->IsPlaying())
+                    continue;
+
+                // Sync parameters every frame.
+                for (const auto& [name, value] : asc.parameters)
+                    asc.handle->SetParameter(name, value);
+
+                if (asc.is3D)
+                {
+                    ax::SpatialAttributes attr;
+                    attr.position = view.get<TransformComponent>(e).position;
+                    asc.handle->SetSpatialAttributes(attr);
                 }
             }
         }
@@ -375,6 +416,44 @@ namespace codex {
         }
 
         m_FixedUpdateThread = std::thread(Scene::OnFixedUpdate, std::ref(*this));
+
+        // Begin audio events or playback from AudioSourceComponents
+        {
+            auto asc_view = m_Registry->view<AudioSourceComponent, TransformComponent>();
+            for (auto& e : asc_view)
+            {
+                auto& asc = asc_view.get<AudioSourceComponent>(e);
+                if (asc.playOnStart)
+                {
+                    try
+                    {
+                        auto event = mem::Shared<ax::EventHandle>::New(ax::AudioManager::LoadEvent(asc.eventPath));
+                        asc.handle = event;
+
+                        event->SetVolume(asc.volume);
+                        event->SetPitch(asc.pitch);
+
+                        for (const auto& [name, value] : asc.parameters)
+                            event->SetParameter(name, value);
+
+                        if (asc.is3D)
+                        {
+                            event->SetMinMaxDistance(asc.minDistance, asc.maxDistance);
+
+                            ax::SpatialAttributes attr;
+                            attr.position = asc_view.get<TransformComponent>(e).position;
+                            event->SetSpatialAttributes(attr);
+                        }
+
+                        event->Play();
+                    }
+                    catch (const CodexException& ex)
+                    {
+                        lgx::Get("engine").Error("{}", ex.what());
+                    }
+                }
+            }
+        }
     }
 
     void Scene::OnSimulationStart()
@@ -437,6 +516,8 @@ namespace codex {
             m_FixedUpdateThread.join();
 
         m_PhysicsWorld.Reset();
+
+        ax::AudioManager::StopAll();
     }
 
     void Scene::OnEditorUpdate([[maybe_unused]] const f32 deltaTime, scene::EditorCamera& camera)
@@ -521,6 +602,8 @@ namespace codex {
                 }
             }
         }
+
+        RenderAudio();
     }
 
     void Scene::OnFixedUpdate(Scene& self) noexcept

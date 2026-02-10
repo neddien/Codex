@@ -84,7 +84,6 @@ cmake --install builds/linux-any-debug
 ### Macros
 - `CODEX_API` - export/visibility control
 - `CX_ASSERT(expr)` - debug assertion
-- `CX_PROPERTY(type, name)` - auto getter/setter
 - `CX_CUSTOM_EXCEPTION(name)` - define exception type
 
 ## Engine Architecture
@@ -136,7 +135,7 @@ Components are POD structs registered with EnTT:
 - `RigidBody2DComponent` - Box2D body wrapper
 - `BoxCollider2DComponent` - Box2D collider
 - `CameraComponent` - scene camera
-- `NativeBehaviourComponent` - script attachment
+- `NativeBehaviourComponent` - script attachment (uses `m_PendingScripts` for deferred attachment after async compilation)
 
 ## Abbreviations
 
@@ -230,6 +229,12 @@ Native C++ scripts that attach to entities. Currently exposed third-party librar
 - `entt` - ECS (direct registry access)
 - `lgx` (Logex) - logging
 
+### NBMan API
+- `NBMan::Load(path, scene)` - loads a compiled script module (.dll/.so) and associates it with a scene
+- `NBMan::Unload()` - saves all attached scripts to pending, then unloads the module
+- Compilation is async; `pendingNBLoad` flag defers `Load()` to the main thread
+- Script attachment lifecycle: deserialize → pending → compile → load → attach
+
 ## Common Tasks
 
 ### Adding a new component
@@ -254,8 +259,6 @@ Native C++ scripts that attach to entities. Currently exposed third-party librar
 ## Known Issues / TODOs
 
 - [ ] **Abstract Logex behind Engine Logger** - Create `codex::Logger` wrapper to hide `lgx` from NativeBehaviour scripts. Goal: NB scripts should only depend on engine types, not third-party libraries directly. Currently exposed: `glm`, `entt`, `lgx`.
-
-- [ ] **POSIXProcess.h stream redirection** - Currently unable to pipe stdout, stderr, and stdin to streams for redirection (e.g., to ConsoleMan). Needs implementation for capturing/redirecting process I/O.
 
 - [ ] SDL audio disabled due to Fedora package issues (using FMOD instead)
 
@@ -340,6 +343,10 @@ Analysis conducted to identify gaps for building a networked multiplayer platfor
 6. **Platformer Physics** - Ground detection, etc.
 7. **Runtime UI** - HUD/menus
 8. **Input Action Mapping** - Polish
+
+## Interation Guides
+1. **FMOD Audio Integratin** - [Fmod Guide](./Doc/FMODEngine.md)
+1. **Asset Manager Integratin** - [Asset Manager Guide](./Doc/AssetManager.md)
 
 ## Files to Ignore
 

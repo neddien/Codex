@@ -4,7 +4,19 @@ void PlayerController::OnInit()
 {
     m_Rb2d   = &GetComponent<RigidBody2DComponent>();
     m_Camera = GetPrimaryCameraEntity();
-    fmt::println("init from PlayerController");
+
+    if (!HasComponent<AudioSourceComponent>())
+        fmt::println("no audio source component");
+    // auto& asc = GetComponent<AudioSourceComponent>();
+    //  asc.handle->Play();
+
+    /*
+    fmt::println("{}", m_AXEvent);
+    m_AXEvent         = "event:/Phonograph-music-2";
+    ax::EventHandle h = GetAudioEvent(m_AXEvent);
+    h.Play();
+    fmt::println("yo..");
+    */
 }
 
 void PlayerController::OnUpdate(const f32 deltaTime)

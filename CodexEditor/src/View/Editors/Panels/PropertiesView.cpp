@@ -3,7 +3,7 @@
 #include "../SceneEditorView.h"
 #include "TilePalleteView.h"
 
-#include <tinyfiledialogs.h>
+#include <nfd.h>
 
 namespace codex::editor {
     using namespace codex::events;
@@ -73,6 +73,16 @@ namespace codex::editor {
                     entity.AddComponent<TilesetAnimationComponent>();
                     ImGui::CloseCurrentPopup();
                 }
+                else if (!entity.HasComponent<AudioSourceComponent>() && ImGui::MenuItem("Audio Source Component"))
+                {
+                    entity.AddComponent<AudioSourceComponent>();
+                    ImGui::CloseCurrentPopup();
+                }
+                else if (!entity.HasComponent<AudioListenerComponent>() && ImGui::MenuItem("Audio Listener Component"))
+                {
+                    entity.AddComponent<AudioListenerComponent>();
+                    ImGui::CloseCurrentPopup();
+                }
                 ImGui::EndPopup();
             }
 
@@ -91,17 +101,29 @@ namespace codex::editor {
             if (d->selectedEntity.entity.HasComponent<NativeBehaviourComponent>())
             {
                 ImGui::Dummy(ImVec2(0.0f, 10.0f));
-                if (ImGui::CollapsingHeader("C++ Script Component", ImGuiTreeNodeFlags_DefaultOpen))
+                bool remove = false;
+                bool open = ImGui::CollapsingHeader("C++ Script Component", ImGuiTreeNodeFlags_DefaultOpen);
+                if (ImGui::BeginPopupContextItem())
+                {
+                    if (ImGui::MenuItem("Remove Component"))
+                        remove = true;
+                    ImGui::EndPopup();
+                }
+                if (open)
                 {
                     ImGui::Dummy(ImVec2(0.0f, 10.0f));
                     auto& c = d->selectedEntity.entity.GetComponent<NativeBehaviourComponent>();
 
                     // Attached scripts.
+                    const bool compiling = (d->compilationState.load() == CompilationState::Compiling);
+
                     ImGui::Columns(2);
                     ImGui::SetColumnWidth(0, d->columnWidth);
                     ImGui::Text("Attached behaviours: ");
                     ImGui::NextColumn();
 
+                    if (compiling)
+                        ImGui::BeginDisabled();
                     if (ImGui::BeginCombo("###script_combo", "Select a script"))
                     {
                         auto vec = NBMan::GetRegisteredTypes();
@@ -131,6 +153,8 @@ namespace codex::editor {
                         }
                         ImGui::EndCombo();
                     }
+                    if (compiling)
+                        ImGui::EndDisabled();
 
                     ImGui::Columns(1);
 
@@ -212,11 +236,21 @@ namespace codex::editor {
                     for (const auto& e : possible_scripts_to_detach)
                         c.Detach(e);
                 }
+                if (remove)
+                    d->selectedEntity.entity.RemoveComponent<NativeBehaviourComponent>();
             }
             if (d->selectedEntity.entity.HasComponent<SpriteRendererComponent>())
             {
                 ImGui::Dummy(ImVec2(0.0f, 10.0f));
-                if (ImGui::CollapsingHeader("Sprite Renderer Component", ImGuiTreeNodeFlags_DefaultOpen))
+                bool remove = false;
+                bool open = ImGui::CollapsingHeader("Sprite Renderer Component", ImGuiTreeNodeFlags_DefaultOpen);
+                if (ImGui::BeginPopupContextItem())
+                {
+                    if (ImGui::MenuItem("Remove Component"))
+                        remove = true;
+                    ImGui::EndPopup();
+                }
+                if (open)
                 {
                     ImGui::Dummy(ImVec2(0.0f, 10.0f));
                     auto& c       = d->selectedEntity.entity.GetComponent<SpriteRendererComponent>();
@@ -239,13 +273,13 @@ namespace codex::editor {
 
                         if (ImGui::Button("Load texture", { 100, 0 }))
                         {
-                            const char* filters[] = { "*.png", "*.jpg" };
-                            const char* file =
-                                tinyfd_openFileDialog("Load texture file.", nullptr, 2, filters, nullptr, 0);
-                            if (file)
+                            nfdu8char_t*      outPath   = nullptr;
+                            nfdu8filteritem_t filters[] = { { "Images", "png,jpg" } };
+                            if (NFD_OpenDialogU8(&outPath, filters, 1, nullptr) == NFD_OKAY)
                             {
                                 std::filesystem::path relative_path =
-                                    std::filesystem::relative(file, std::filesystem::current_path());
+                                    std::filesystem::relative(outPath, std::filesystem::current_path());
+                                NFD_FreePathU8(outPath);
                                 auto res = Resources::Load<gfx::Texture2D>(relative_path);
                                 sprite.SetTexture(res);
                             }
@@ -340,11 +374,21 @@ namespace codex::editor {
                     ImGui::Columns(1);
                     sprite.SetZIndex(z_index);
                 }
+                if (remove)
+                    d->selectedEntity.entity.RemoveComponent<SpriteRendererComponent>();
             }
             if (d->selectedEntity.entity.HasComponent<CameraComponent>())
             {
                 ImGui::Dummy(ImVec2(0.0f, 10.0f));
-                if (ImGui::CollapsingHeader("Camera Component", ImGuiTreeNodeFlags_DefaultOpen))
+                bool remove = false;
+                bool open = ImGui::CollapsingHeader("Camera Component", ImGuiTreeNodeFlags_DefaultOpen);
+                if (ImGui::BeginPopupContextItem())
+                {
+                    if (ImGui::MenuItem("Remove Component"))
+                        remove = true;
+                    ImGui::EndPopup();
+                }
+                if (open)
                 {
                     ImGui::Dummy(ImVec2(0.0f, 10.0f));
                     auto& c = d->selectedEntity.entity.GetComponent<CameraComponent>();
@@ -437,11 +481,21 @@ namespace codex::editor {
                     if (far_clip != c.camera.GetFarClip())
                         c.camera.SetFarClip(far_clip);
                 }
+                if (remove)
+                    d->selectedEntity.entity.RemoveComponent<CameraComponent>();
             }
             if (d->selectedEntity.entity.HasComponent<RigidBody2DComponent>())
             {
                 ImGui::Dummy(ImVec2(0.0f, 10.0f));
-                if (ImGui::CollapsingHeader("Rigid Body 2D Component", ImGuiTreeNodeFlags_DefaultOpen))
+                bool remove = false;
+                bool open = ImGui::CollapsingHeader("Rigid Body 2D Component", ImGuiTreeNodeFlags_DefaultOpen);
+                if (ImGui::BeginPopupContextItem())
+                {
+                    if (ImGui::MenuItem("Remove Component"))
+                        remove = true;
+                    ImGui::EndPopup();
+                }
+                if (open)
                 {
                     ImGui::Dummy(ImVec2(0.0f, 10.0f));
                     auto& c = d->selectedEntity.entity.GetComponent<RigidBody2DComponent>();
@@ -534,12 +588,22 @@ namespace codex::editor {
                         ImGui::Columns(1);
                     }
                 }
+                if (remove)
+                    d->selectedEntity.entity.RemoveComponent<RigidBody2DComponent>();
             }
             if (d->selectedEntity.entity.HasComponent<BoxCollider2DComponent>())
             {
                 auto& c = d->selectedEntity.entity.GetComponent<BoxCollider2DComponent>();
                 ImGui::Dummy(ImVec2(0.0f, 10.0f));
-                if (ImGui::CollapsingHeader("Box Collider 2D Component", ImGuiTreeNodeFlags_DefaultOpen))
+                bool remove = false;
+                bool open = ImGui::CollapsingHeader("Box Collider 2D Component", ImGuiTreeNodeFlags_DefaultOpen);
+                if (ImGui::BeginPopupContextItem())
+                {
+                    if (ImGui::MenuItem("Remove Component"))
+                        remove = true;
+                    ImGui::EndPopup();
+                }
+                if (open)
                 {
                     ImGui::Dummy(ImVec2(0.0f, 10.0f));
                     // Offset
@@ -559,12 +623,22 @@ namespace codex::editor {
 
                     ImGui::Dummy(ImVec2(0.0f, 10.0f));
                 }
+                if (remove)
+                    d->selectedEntity.entity.RemoveComponent<BoxCollider2DComponent>();
             }
             if (d->selectedEntity.entity.HasComponent<CircleCollider2DComponent>())
             {
                 auto& c = d->selectedEntity.entity.GetComponent<CircleCollider2DComponent>();
                 ImGui::Dummy(ImVec2(0.0f, 10.0f));
-                if (ImGui::CollapsingHeader("Circle Collider 2D Component", ImGuiTreeNodeFlags_DefaultOpen))
+                bool remove = false;
+                bool open = ImGui::CollapsingHeader("Circle Collider 2D Component", ImGuiTreeNodeFlags_DefaultOpen);
+                if (ImGui::BeginPopupContextItem())
+                {
+                    if (ImGui::MenuItem("Remove Component"))
+                        remove = true;
+                    ImGui::EndPopup();
+                }
+                if (open)
                 {
                     ImGui::Dummy(ImVec2(0.0f, 10.0f));
                     // Offset.
@@ -587,12 +661,22 @@ namespace codex::editor {
                         DrawPhysicsMaterial2DControl(c.physicsMaterial, d->columnWidth);
                     }
                 }
+                if (remove)
+                    d->selectedEntity.entity.RemoveComponent<CircleCollider2DComponent>();
             }
             if (d->selectedEntity.entity.HasComponent<GridRendererComponent>())
             {
                 auto& c = d->selectedEntity.entity.GetComponent<GridRendererComponent>();
                 ImGui::Dummy(ImVec2(0.0f, 10.0f));
-                if (ImGui::CollapsingHeader("Grid Renderer Component", ImGuiTreeNodeFlags_DefaultOpen))
+                bool remove = false;
+                bool open = ImGui::CollapsingHeader("Grid Renderer Component", ImGuiTreeNodeFlags_DefaultOpen);
+                if (ImGui::BeginPopupContextItem())
+                {
+                    if (ImGui::MenuItem("Remove Component"))
+                        remove = true;
+                    ImGui::EndPopup();
+                }
+                if (open)
                 {
                     ImGui::Dummy(ImVec2(0.0f, 10.0f));
                     // Grid cell size
@@ -619,11 +703,21 @@ namespace codex::editor {
                         ImGui::Columns(1);
                     }
                 }
+                if (remove)
+                    d->selectedEntity.entity.RemoveComponent<GridRendererComponent>();
             }
             if (d->selectedEntity.entity.HasComponent<TilemapComponent>())
             {
                 ImGui::Dummy(ImVec2(0.0f, 10.0f));
-                if (ImGui::CollapsingHeader("Tilemap Component", ImGuiTreeNodeFlags_DefaultOpen))
+                bool remove = false;
+                bool open = ImGui::CollapsingHeader("Tilemap Component", ImGuiTreeNodeFlags_DefaultOpen);
+                if (ImGui::BeginPopupContextItem())
+                {
+                    if (ImGui::MenuItem("Remove Component"))
+                        remove = true;
+                    ImGui::EndPopup();
+                }
+                if (open)
                 {
                     ImGui::Dummy(ImVec2(0.0f, 10.0f));
                     auto& c = d->selectedEntity.entity.GetComponent<TilemapComponent>();
@@ -646,13 +740,13 @@ namespace codex::editor {
 
                             if (ImGui::Button("Load texture", { 100, 0 }))
                             {
-                                const char* filters[] = { "*.png", "*.jpg" };
-                                const char* file =
-                                    tinyfd_openFileDialog("Load texture file.", nullptr, 2, filters, nullptr, 0);
-                                if (file)
+                                nfdu8char_t*      outPath   = nullptr;
+                                nfdu8filteritem_t filters[] = { { "Images", "png,jpg" } };
+                                if (NFD_OpenDialogU8(&outPath, filters, 1, nullptr) == NFD_OKAY)
                                 {
                                     std::filesystem::path relative_path =
-                                        std::filesystem::relative(file, std::filesystem::current_path());
+                                        std::filesystem::relative(outPath, std::filesystem::current_path());
+                                    NFD_FreePathU8(outPath);
                                     c.sprite.SetTexture(Resources::Load<gfx::Texture2D>(relative_path));
                                 }
                             }
@@ -742,11 +836,21 @@ namespace codex::editor {
                         panel.Focus();
                     }
                 }
+                if (remove)
+                    d->selectedEntity.entity.RemoveComponent<TilemapComponent>();
             }
             if (d->selectedEntity.entity.HasComponent<TilesetAnimationComponent>())
             {
                 auto& c = d->selectedEntity.entity.GetComponent<TilesetAnimationComponent>();
-                if (ImGui::CollapsingHeader("Tileset Animation Componnet", ImGuiTreeNodeFlags_DefaultOpen))
+                bool remove = false;
+                bool open = ImGui::CollapsingHeader("Tileset Animation Componnet", ImGuiTreeNodeFlags_DefaultOpen);
+                if (ImGui::BeginPopupContextItem())
+                {
+                    if (ImGui::MenuItem("Remove Component"))
+                        remove = true;
+                    ImGui::EndPopup();
+                }
+                if (open)
                 {
                     // Sprite preview
                     {
@@ -766,13 +870,13 @@ namespace codex::editor {
 
                             if (ImGui::Button("Load texture", { 100, 0 }))
                             {
-                                const char* filters[] = { "*.png", "*.jpg" };
-                                const char* file =
-                                    tinyfd_openFileDialog("Load texture file.", nullptr, 2, filters, nullptr, 0);
-                                if (file)
+                                nfdu8char_t*      outPath   = nullptr;
+                                nfdu8filteritem_t filters[] = { { "Images", "png,jpg" } };
+                                if (NFD_OpenDialogU8(&outPath, filters, 1, nullptr) == NFD_OKAY)
                                 {
                                     std::filesystem::path relative_path =
-                                        std::filesystem::relative(file, std::filesystem::current_path());
+                                        std::filesystem::relative(outPath, std::filesystem::current_path());
+                                    NFD_FreePathU8(outPath);
                                     c.sprite.SetTexture(Resources::Load<gfx::Texture2D>(relative_path));
                                 }
                             }
@@ -887,6 +991,241 @@ namespace codex::editor {
                         }
                     }
                 }
+                if (remove)
+                    d->selectedEntity.entity.RemoveComponent<TilesetAnimationComponent>();
+            }
+            if (d->selectedEntity.entity.HasComponent<AudioSourceComponent>())
+            {
+                ImGui::Dummy(ImVec2(0.0f, 10.0f));
+                bool remove = false;
+                bool open = ImGui::CollapsingHeader("Audio Source Component", ImGuiTreeNodeFlags_DefaultOpen);
+                if (ImGui::BeginPopupContextItem())
+                {
+                    if (ImGui::MenuItem("Remove Component"))
+                        remove = true;
+                    ImGui::EndPopup();
+                }
+                if (open)
+                {
+                    ImGui::Dummy(ImVec2(0.0f, 10.0f));
+                    auto& c = d->selectedEntity.entity.GetComponent<AudioSourceComponent>();
+
+                    // Event path (searchable dropdown)
+                    {
+                        ImGui::Columns(2);
+                        ImGui::SetColumnWidth(0, d->columnWidth);
+                        ImGui::Text("Event path");
+                        ImGui::NextColumn();
+
+                        static std::string              search_filter;
+                        static std::vector<std::string> cached_events;
+                        static bool                     needs_refresh = true;
+
+                        const char* preview = c.eventPath.empty() ? "Select an event..." : c.eventPath.c_str();
+                        if (ImGui::BeginCombo("###audio_event_path", preview))
+                        {
+                            if (needs_refresh)
+                            {
+                                cached_events = ax::AudioManager::GetAllEventPaths();
+                                needs_refresh = false;
+                            }
+
+                            ImGui::InputTextWithHint("###event_search", "Search...", &search_filter);
+                            ImGui::Separator();
+
+                            for (const auto& ev : cached_events)
+                            {
+                                if (!search_filter.empty() && ev.find(search_filter) == std::string::npos)
+                                    continue;
+
+                                const bool is_selected = (ev == c.eventPath);
+                                if (ImGui::Selectable(ev.c_str(), is_selected))
+                                {
+                                    c.eventPath = ev;
+                                    search_filter.clear();
+                                }
+                                if (is_selected)
+                                    ImGui::SetItemDefaultFocus();
+                            }
+
+                            ImGui::EndCombo();
+                        }
+                        else
+                        {
+                            needs_refresh = true;
+                            search_filter.clear();
+                        }
+
+                        ImGui::Columns(1);
+                    }
+
+                    ImGui::Dummy(ImVec2(0.0f, 10.0f));
+
+                    // Sound path
+                    {
+                        ImGui::Columns(2);
+                        ImGui::SetColumnWidth(0, d->columnWidth);
+                        ImGui::Text("Sound file");
+                        ImGui::NextColumn();
+
+                        static std::string sound_path_str;
+                        sound_path_str = c.soundPath.string();
+                        ImGui::InputText("###audio_sound_path", &sound_path_str);
+                        c.soundPath = sound_path_str;
+
+                        if (ImGui::Button("Browse##audio_browse", { 100, 0 }))
+                        {
+                            nfdu8char_t*      outPath   = nullptr;
+                            nfdu8filteritem_t filters[] = { { "Audio Files", "wav,ogg,mp3,flac" } };
+                            if (NFD_OpenDialogU8(&outPath, filters, 1, nullptr) == NFD_OKAY)
+                            {
+                                c.soundPath = std::filesystem::relative(outPath, std::filesystem::current_path());
+                                NFD_FreePathU8(outPath);
+                            }
+                        }
+                        ImGui::Columns(1);
+                    }
+
+                    ImGui::Dummy(ImVec2(0.0f, 10.0f));
+
+                    // Volume
+                    {
+                        ImGui::Columns(2);
+                        ImGui::SetColumnWidth(0, d->columnWidth);
+                        ImGui::Text("Volume");
+                        ImGui::NextColumn();
+                        ImGui::SliderFloat("###audio_volume", &c.volume, 0.0f, 2.0f);
+                        ImGui::Columns(1);
+                    }
+
+                    // Pitch
+                    {
+                        ImGui::Columns(2);
+                        ImGui::SetColumnWidth(0, d->columnWidth);
+                        ImGui::Text("Pitch");
+                        ImGui::NextColumn();
+                        ImGui::SliderFloat("###audio_pitch", &c.pitch, 0.1f, 4.0f);
+                        ImGui::Columns(1);
+                    }
+
+                    ImGui::Dummy(ImVec2(0.0f, 10.0f));
+
+                    // Loop
+                    {
+                        ImGui::Columns(2);
+                        ImGui::SetColumnWidth(0, d->columnWidth);
+                        ImGui::Text("Loop");
+                        ImGui::NextColumn();
+                        ImGui::Checkbox("###audio_loop", &c.loop);
+                        ImGui::Columns(1);
+                    }
+
+                    // Play on start
+                    {
+                        ImGui::Columns(2);
+                        ImGui::SetColumnWidth(0, d->columnWidth);
+                        ImGui::Text("Play on start");
+                        ImGui::NextColumn();
+                        ImGui::Checkbox("###audio_play_on_start", &c.playOnStart);
+                        ImGui::Columns(1);
+                    }
+
+                    ImGui::Dummy(ImVec2(0.0f, 10.0f));
+
+                    // 3D Audio
+                    {
+                        ImGui::Columns(2);
+                        ImGui::SetColumnWidth(0, d->columnWidth);
+                        ImGui::Text("3D Audio");
+                        ImGui::NextColumn();
+                        ImGui::Checkbox("###audio_is_3d", &c.is3D);
+                        ImGui::Columns(1);
+                    }
+
+                    if (c.is3D)
+                    {
+                        // Min distance
+                        {
+                            ImGui::Columns(2);
+                            ImGui::SetColumnWidth(0, d->columnWidth);
+                            ImGui::Text("Min distance");
+                            ImGui::NextColumn();
+                            ImGui::DragFloat("###audio_min_dist", &c.minDistance, 0.1f, 0.0f, c.maxDistance);
+                            ImGui::Columns(1);
+                        }
+
+                        // Max distance
+                        {
+                            ImGui::Columns(2);
+                            ImGui::SetColumnWidth(0, d->columnWidth);
+                            ImGui::Text("Max distance");
+                            ImGui::NextColumn();
+                            ImGui::DragFloat("###audio_max_dist", &c.maxDistance, 1.0f, c.minDistance, 10000.0f);
+                            ImGui::Columns(1);
+                        }
+                    }
+
+                    // Event parameters
+                    if (!c.eventPath.empty())
+                    {
+                        ImGui::Dummy(ImVec2(0.0f, 10.0f));
+
+                        static std::vector<ax::EventParameterInfo> cached_params;
+                        static std::string                         cached_params_event;
+
+                        // Refresh when the event path changes.
+                        if (cached_params_event != c.eventPath)
+                        {
+                            cached_params       = ax::AudioManager::GetEventParameters(c.eventPath);
+                            cached_params_event = c.eventPath;
+
+                            // Populate defaults for parameters not yet in the map.
+                            for (const auto& p : cached_params)
+                            {
+                                if (!c.parameters.contains(p.name))
+                                    c.parameters[p.name] = p.defaultValue;
+                            }
+                        }
+
+                        if (!cached_params.empty() &&
+                            ImGui::TreeNodeEx("Parameters", ImGuiTreeNodeFlags_DefaultOpen))
+                        {
+                            for (const auto& p : cached_params)
+                            {
+                                auto& val = c.parameters[p.name];
+                                ImGui::Columns(2);
+                                ImGui::SetColumnWidth(0, d->columnWidth);
+                                ImGui::Text("%s", p.name.c_str());
+                                ImGui::NextColumn();
+                                ImGui::SliderFloat(
+                                    ("###param_" + p.name).c_str(), &val, p.minimum, p.maximum);
+                                ImGui::Columns(1);
+                            }
+                            ImGui::TreePop();
+                        }
+                    }
+                }
+                if (remove)
+                    d->selectedEntity.entity.RemoveComponent<AudioSourceComponent>();
+            }
+            if (d->selectedEntity.entity.HasComponent<AudioListenerComponent>())
+            {
+                ImGui::Dummy(ImVec2(0.0f, 10.0f));
+                bool remove = false;
+                bool open = ImGui::CollapsingHeader("Audio Listener Component", ImGuiTreeNodeFlags_DefaultOpen);
+                if (ImGui::BeginPopupContextItem())
+                {
+                    if (ImGui::MenuItem("Remove Component"))
+                        remove = true;
+                    ImGui::EndPopup();
+                }
+                if (open)
+                {
+                    ImGui::Dummy(ImVec2(0.0f, 10.0f));
+                    ImGui::Text("Position and orientation are taken from the Transform Component.");
+                }
+                if (remove)
+                    d->selectedEntity.entity.RemoveComponent<AudioListenerComponent>();
             }
         }
 

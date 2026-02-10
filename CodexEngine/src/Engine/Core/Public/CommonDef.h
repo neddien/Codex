@@ -2,8 +2,9 @@
 #define CODEX_CORE_COMMON_DEFINITIONS_H
 
 #include <cstdint>
-#include <functional>
 #include <mutex>
+
+#include <magic_enum.hpp>
 
 #if defined(CX_PLATFORM_WINDOWS)
 #define NOINLINE     __declspec(noinline)
@@ -63,9 +64,14 @@ namespace codex {
     concept DerivedFrom = std::is_base_of<Base, Derived>::value;
 
     template <typename T>
-    constexpr T BitFlag(const T count)
+    [[nodiscard]] constexpr T BitFlag(const T count) noexcept
     {
         return 1 << count;
+    }
+
+    [[nodiscard]] constexpr std::string_view EnumName(const auto val) noexcept
+    {
+        return magic_enum::enum_name(val);
     }
 
     template <typename Fn>

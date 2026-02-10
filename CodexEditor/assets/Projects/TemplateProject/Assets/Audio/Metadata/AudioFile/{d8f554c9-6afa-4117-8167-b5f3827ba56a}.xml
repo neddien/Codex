@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<objects serializationModel="Studio.02.03.00">
+	<object class="AudioFile" id="{d8f554c9-6afa-4117-8167-b5f3827ba56a}">
+		<property name="assetPath">
+			<value>Deadlock_-_Alternate_Curiosity_Shop_Music_Soundtrack_128k.mp3</value>
+		</property>
+		<property name="isStreaming">
+			<value>true</value>
+		</property>
+		<property name="frequencyInKHz">
+			<value>48</value>
+		</property>
+		<property name="channelCount">
+			<value>2</value>
+		</property>
+		<property name="length">
+			<value>145.31999999999999</value>
+		</property>
+		<relationship name="masterAssetFolder">
+			<destination>{06fcc572-1a5e-4191-af6f-9b007ff683a1}</destination>
+		</relationship>
+	</object>
+</objects>

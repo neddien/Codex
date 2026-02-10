@@ -3,6 +3,7 @@
 #include <Engine/Core/Application.h>
 #include <Engine/Core/Window.h>
 #include <Engine/Graphics/DebugDraw.h>
+#include <Engine/NativeBehaviour/Public/NativeBehaviourManager.h>
 #include <Engine/Utils/Box2DUtils.h>
 
 #include "Public/Entity.inl"
@@ -67,6 +68,7 @@ namespace codex {
     }
 
     NativeBehaviourComponent::NativeBehaviourComponent(const NativeBehaviourComponent& other)
+        : m_PendingScripts(other.m_PendingScripts)
     {
         m_BehaviourList.reserve(other.m_BehaviourList.capacity());
         for (const auto& e : other.m_Behaviours)
@@ -98,7 +100,14 @@ namespace codex {
 
     void NativeBehaviourComponent::DeserializeImpl(const ISerializationNode& node)
     {
-        // Whatafak
+        auto& scripts = node.GetArray("attached_scripts");
+        scripts.ForEachArrayElement(
+            [this](const ISerializationNode& element)
+            {
+                std::string name;
+                if (element.Read("name", name))
+                    m_PendingScripts.push_back(std::move(name));
+            });
     }
 
     NativeBehaviourComponent& NativeBehaviourComponent::operator=(const NativeBehaviourComponent& other)
@@ -213,6 +222,40 @@ namespace codex {
                      "on first place.",
                      className);
         }
+    }
+
+    void NativeBehaviourComponent::AttachPendingScripts()
+    {
+        auto it = m_PendingScripts.begin();
+        while (it != m_PendingScripts.end())
+        {
+            if (m_Behaviours.contains(*it))
+            {
+                it = m_PendingScripts.erase(it);
+                continue;
+            }
+
+            auto instance = NBMan::CreateInstance(*it);
+            if (instance)
+            {
+                Attach(std::move(instance));
+                it = m_PendingScripts.erase(it);
+            }
+            else
+            {
+                lgx::Get("engine").Log(lgx::Level::Warn, "Failed to attach pending script: {}", *it);
+                ++it;
+            }
+        }
+    }
+
+    void NativeBehaviourComponent::SaveAttachedToPending()
+    {
+        m_PendingScripts.clear();
+        for (const auto& [name, _] : m_Behaviours)
+            m_PendingScripts.push_back(name);
+        DisposeBehaviours();
+        m_BehaviourList.clear();
     }
 
     void CameraComponent::SerializeImpl(ISerializationNode& node) const
@@ -434,5 +477,59 @@ namespace codex {
 
                 animations[std::string{ key }] = std::move(anim);
             });
+    }
+
+    void AudioSourceComponent::SerializeImpl(ISerializationNode& node) const
+    {
+        node.Write("event_path", eventPath);
+        node.Write("sound_path", soundPath.string());
+        node.Write("volume", volume);
+        node.Write("pitch", pitch);
+        node.Write("loop", loop);
+        node.Write("play_on_start", playOnStart);
+        node.Write("is_3d", is3D);
+        node.Write("min_distance", minDistance);
+        node.Write("max_distance", maxDistance);
+
+        if (!parameters.empty())
+        {
+            auto& params_node = node.BeginMap("parameters");
+            for (const auto& [name, value] : parameters)
+            {
+                auto& entry = params_node.AddMapEntry(name);
+                entry.Write("value", value);
+            }
+        }
+    }
+
+    void AudioSourceComponent::DeserializeImpl(const ISerializationNode& node)
+    {
+        node.Read("event_path", eventPath);
+        std::string sound_path_str;
+        if (node.Read("sound_path", sound_path_str))
+            soundPath = sound_path_str;
+        node.Read("volume", volume);
+        node.Read("pitch", pitch);
+        node.Read("loop", loop);
+        node.Read("play_on_start", playOnStart);
+        node.Read("is_3d", is3D);
+        node.Read("min_distance", minDistance);
+        node.Read("max_distance", maxDistance);
+
+        try
+        {
+            auto& params_node = node.GetMap("parameters");
+            params_node.ForEachMapEntry(
+                [this](const std::string_view key, const auto& entry)
+                {
+                    f32 value = 0.0f;
+                    entry.Read("value", value);
+                    parameters[std::string{ key }] = value;
+                });
+        }
+        catch (...)
+        {
+            // No parameters section — that's fine.
+        }
     }
 } // namespace codex

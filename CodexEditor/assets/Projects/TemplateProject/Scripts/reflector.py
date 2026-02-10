@@ -241,17 +241,98 @@ class LibclangReflectionParser:
         except:
             pass
     
+    @staticmethod
+    def _find_clang_resource_dir() -> Optional[str]:
+        """Find clang's built-in header directory (for stddef.h, etc.)"""
+        import subprocess
+        # Try clang first, then versioned variants
+        for cmd in ['clang', 'clang++']:
+            try:
+                result = subprocess.run(
+                    [cmd, '-print-resource-dir'],
+                    capture_output=True, text=True, timeout=5)
+                if result.returncode == 0:
+                    resource_dir = result.stdout.strip()
+                    include_dir = os.path.join(resource_dir, 'include')
+                    if os.path.isdir(include_dir):
+                        return include_dir
+            except (FileNotFoundError, subprocess.TimeoutExpired):
+                continue
+        # Fallback: search common paths
+        import glob as g
+        for pattern in ['/usr/lib/clang/*/include', '/usr/lib64/clang/*/include',
+                        '/usr/local/lib/clang/*/include']:
+            matches = sorted(g.glob(pattern), reverse=True)
+            if matches:
+                return matches[0]
+        return None
+
+    def _scan_for_macros(self, filepath: str):
+        """Pre-scan raw file text for reflection macro line numbers.
+
+        This is immune to preprocessor expansion — we read the source text
+        directly, so even if -DRF_CLASS(...)= expands the macro away during
+        libclang parsing, we still know which lines had the macros.
+        """
+        self._rf_class_lines = {}      # line_no -> raw line text
+        self._rf_property_lines = set()
+        self._rf_serializable_lines = set()
+
+        with open(filepath, 'r') as f:
+            for line_no, line in enumerate(f, 1):
+                stripped = line.strip()
+                if stripped.startswith('RF_CLASS'):
+                    self._rf_class_lines[line_no] = stripped
+                if stripped.startswith('RF_PROPERTY'):
+                    self._rf_property_lines.add(line_no)
+                if stripped.startswith('RF_SERIALIZABLE') or stripped == 'RF_SERIALIZABLE':
+                    self._rf_serializable_lines.add(line_no)
+
+    def _parse_attributes_from_raw(self, raw_line: str, macro_name: str) -> Dict[str, str]:
+        """Parse attributes from a raw macro invocation line, e.g.
+        RF_CLASS(Category = "Gameplay", DisplayName = "Foo") -> {Category: Gameplay, DisplayName: Foo}
+        """
+        import re
+        attributes = {}
+        # Extract everything between the outermost parentheses
+        m = re.search(rf'{macro_name}\s*\((.+)\)\s*$', raw_line)
+        if not m:
+            return attributes
+        inner = m.group(1)
+        # Parse key = "value" or key = value pairs
+        for pair in re.finditer(r'(\w+)\s*=\s*"([^"]*)"', inner):
+            attributes[pair.group(1)] = pair.group(2)
+        return attributes
+
     def parse_file(self, filepath: str, compiler_args: List[str] = None) -> List[ClassInfo]:
         """
         Parse a C++ header file using libclang
-        
+
         Args:
             filepath: Path to header file
             compiler_args: Additional compiler arguments (e.g., -I, -D)
                           If None and compilation database is loaded, args from DB are used
         """
+        # Pre-scan raw text for macro locations before libclang touches it.
+        self._scan_for_macros(filepath)
+
         # Start with default args
         args = ['-x', 'c++', '-std=c++20']
+
+        # Pre-define reflection macros so libclang can parse through them.
+        # Detection is handled by the raw-text pre-scan, not by tokens.
+        args.extend([
+            '-DRF_CLASS(...)=',
+            '-DRF_SERIALIZABLE=',
+            '-DRF_PROPERTY(...)=',
+            '-DCODEX_EXPORT=',
+            '-DCODEX_API=',
+        ])
+
+        # Add clang's built-in headers so stddef.h etc. are resolvable.
+        clang_include = self._find_clang_resource_dir()
+        if clang_include:
+            args.append(f'-isystem{clang_include}')
         
         # If compilation database is available and no explicit args provided
         if self.compile_commands and compiler_args is None:
@@ -299,15 +380,16 @@ class LibclangReflectionParser:
         if has_errors:
             print(f"Warning: Parse errors encountered. Generated code may be incomplete.")
         
-        # Walk the AST
-        self._walk_ast(translation_unit.cursor, filepath)
-        
+        # Walk the AST (use resolved absolute path for reliable comparison)
+        resolved_filepath = os.path.realpath(filepath)
+        self._walk_ast(translation_unit.cursor, resolved_filepath)
+
         return self.classes
-    
+
     def _walk_ast(self, cursor, target_file: str):
         """Recursively walk the AST looking for RF_CLASS declarations"""
         # Only process declarations in our target file
-        if cursor.location.file and cursor.location.file.name != target_file:
+        if cursor.location.file and os.path.realpath(cursor.location.file.name) != target_file:
             return
         
         # Look for class/struct declarations
@@ -341,8 +423,12 @@ class LibclangReflectionParser:
         if namespace_parts:
             class_info.namespace = "::".join(namespace_parts)
         
-        # Parse class attributes from comments/annotations
-        class_info.attributes = self._parse_attributes_from_tokens(cursor)
+        # Parse class attributes from the raw RF_CLASS(...) line
+        class_line = cursor.location.line
+        for macro_line, raw_text in self._rf_class_lines.items():
+            if 0 < class_line - macro_line <= 3:
+                class_info.attributes = self._parse_attributes_from_raw(raw_text, 'RF_CLASS')
+                break
         
         # Get base classes
         for child in cursor.get_children():
@@ -370,70 +456,36 @@ class LibclangReflectionParser:
                     if prop:
                         class_info.properties.append(prop)
         
-        if class_info.is_serializable and class_info.properties:
+        if class_info.is_serializable:
             self.classes.append(class_info)
     
     def _has_rf_class_annotation(self, cursor) -> bool:
-        """Check if cursor has RF_CLASS annotation by looking at tokens before it"""
-        # Look at tokens before the class declaration
-        # This is a heuristic - we look for RF_CLASS in preceding tokens
-        tokens = list(cursor.get_tokens())
-        
-        # Check in the token stream before this cursor
-        file_tokens = list(cursor.translation_unit.cursor.get_tokens())
-        
-        # Find our cursor position
-        cursor_start = None
-        for i, token in enumerate(file_tokens):
-            if (token.location.file and 
-                token.location.file.name == cursor.location.file.name and
-                token.location.line == cursor.location.line and
-                token.kind.name == 'KEYWORD' and 
-                token.spelling in ['class', 'struct']):
-                cursor_start = i
-                break
-        
-        if cursor_start is not None:
-            # Look backwards for RF_CLASS
-            for i in range(max(0, cursor_start - 20), cursor_start):
-                if file_tokens[i].spelling == 'RF_CLASS':
-                    return True
-        
+        """Check if cursor has RF_CLASS by comparing against pre-scanned line numbers.
+
+        RF_CLASS(...) must appear on one of the lines directly before the
+        class/struct keyword (typically 1-3 lines above).
+        """
+        class_line = cursor.location.line
+        for macro_line in self._rf_class_lines:
+            if 0 < class_line - macro_line <= 3:
+                return True
         return False
     
     def _has_rf_serializable(self, cursor) -> bool:
-        """Check if class has RF_SERIALIZABLE macro"""
-        # Look through all tokens in the class
-        for child in cursor.get_children():
-            # Check tokens
-            for token in child.get_tokens():
-                if token.spelling == 'RF_SERIALIZABLE':
-                    return True
-        
-        # Also check directly in class tokens
-        for token in cursor.get_tokens():
-            if token.spelling == 'RF_SERIALIZABLE':
+        """Check if class has RF_SERIALIZABLE using pre-scanned line numbers."""
+        class_start = cursor.location.line
+        class_end = cursor.extent.end.line
+        for macro_line in self._rf_serializable_lines:
+            if class_start < macro_line < class_end:
                 return True
-        
         return False
     
     def _has_rf_property_annotation(self, cursor) -> bool:
-        """Check if field has RF_PROPERTY annotation"""
-        # Get tokens before the field
-        file_tokens = list(cursor.translation_unit.cursor.get_tokens())
-        
-        # Find our field position
+        """Check if field has RF_PROPERTY using pre-scanned line numbers."""
         field_line = cursor.location.line
-        
-        # Look backwards on same or previous lines for RF_PROPERTY
-        for token in file_tokens:
-            if (token.location.file and
-                token.location.file.name == cursor.location.file.name and
-                token.location.line <= field_line and
-                token.location.line >= field_line - 2 and
-                token.spelling == 'RF_PROPERTY'):
+        for macro_line in self._rf_property_lines:
+            if 0 < field_line - macro_line <= 2:
                 return True
-        
         return False
     
     def _parse_attributes_from_tokens(self, cursor) -> Dict[str, str]:

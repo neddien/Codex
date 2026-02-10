@@ -1,5 +1,7 @@
 #include "Public/NativeBehaviourManager.h"
 
+#include <Engine/Scene/Public/Components.h>
+#include <Engine/Scene/Public/Scene.h>
 #include <Engine/System/DynamicLibrary.h>
 
 namespace codex {
@@ -10,7 +12,7 @@ namespace codex {
         return instance;
     }
 
-    void NBMan::Load(const std::filesystem::path path)
+    void NBMan::Load(const std::filesystem::path path, Scene& scene)
     {
         auto& instance = Get();
         if (instance.m_NBInstance)
@@ -18,6 +20,7 @@ namespace codex {
             cx_throw(ScriptException, "An NBMan instance has already been loaded.");
         }
 
+        instance.m_Scene      = &scene;
         instance.m_NBInstance = mem::Box<sys::DLib>::New(std::move(path));
 
         lgx::Get("engine").Log(lgx::Info, "Script module loaded: {}", instance.m_NBInstance->GetPath().string());
@@ -28,9 +31,17 @@ namespace codex {
         auto& instance = Get();
         if (instance.m_NBInstance)
         {
+            if (instance.m_Scene)
+            {
+                auto nbc_view = instance.m_Scene->GetAllEntitiesWithComponent<NativeBehaviourComponent>();
+                for (auto& e : nbc_view)
+                    e.GetComponent<NativeBehaviourComponent>().SaveAttachedToPending();
+            }
+
             const auto path = instance.m_NBInstance->GetPath().string();
             instance.m_Types.clear();
             instance.m_NBInstance.Reset();
+            instance.m_Scene = nullptr;
             lgx::Get("engine").Log(lgx::Info, "Script module unloaded: {}", path);
         }
         else

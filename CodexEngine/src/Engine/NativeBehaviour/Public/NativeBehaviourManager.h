@@ -6,6 +6,8 @@
 #include <Engine/NativeBehaviour/Public/NativeBehaviour.h>
 
 namespace codex {
+    class Scene;
+
     namespace sys {
         class DLib;
     }
@@ -52,12 +54,13 @@ namespace codex {
             }
             return types;
         }
-        static void Load(const std::filesystem::path path);
+        static void Load(const std::filesystem::path path, Scene& scene);
         static void Unload();
         [[nodiscard]] static bool InstanceLoaded() noexcept;
 
     private:
         std::unordered_map<std::string, FactoryFn> m_Types;
         mem::Box<sys::DLib>                        m_NBInstance;
+        Scene*                                     m_Scene = nullptr;
     };
 }; // namespace codex

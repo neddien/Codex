@@ -362,31 +362,49 @@ set(ENTT_INCLUDE_DIR vendor/entt)
 target_include_directories(CodexEngine PUBLIC ${ENTT_INCLUDE_DIR})
 target_include_directories(CodexEngine-static PUBLIC ${ENTT_INCLUDE_DIR})
 
-# FMOD 13.25
-set(FMOD_VER_MAJ "13")
-set(FMOD_VER_MIN "25")
-set(FMOD_DIR "${CMAKE_CURRENT_DIR}/vendor/fmod")
-set(FMOD_CORE_INCLUDE_DIR "${FMOD_DIR}/api/core/inc")
-set(FMOD_STUDIO_INCLUDE_DIR "${FMOD_DIR}/api/studio/inc")
+# magic_enum
+set(MAGIC_ENUM_INCLUDE_DIR vendor/magic_enum)
+target_include_directories(CodexEngine PUBLIC ${MAGIC_ENUM_INCLUDE_DIR})
+target_include_directories(CodexEngine-static PUBLIC ${MAGIC_ENUM_INCLUDE_DIR})
+
+# FMOD Studio API 2.03.12
 if(DEFINED CX_PLATFORM_LINUX)
   set(FMOD_DIR
-      "${CMAKE_CURRENT_SOURCE_DIR}/vendor/fmod/fmodstudioapi20225linux")
-  set(FMOD_CORE_LIB
-      "${FMOD_DIR}/api/core/lib/${CX_CPU_ARCH}/libfmod.so.${FMOD_VER_MAJ}.${FMOD_VER_MIN}"
-  )
-  set(FMOD_STUDIO_LIB
-      "${FMOD_DIR}/api/studio/lib/${CX_CPU_ARCH}/libfmodstudio.so.${FMOD_VER_MAJ}.${FMOD_VER_MIN}"
-  )
-  set(FMOD_CORE_LIB_LN "${CMAKE_CURRENT_SOURCE_DIR}/vendor/fmod/")
-endif()
+      "${CMAKE_CURRENT_SOURCE_DIR}/vendor/fmod/fmodstudioapi20312linux")
+  set(FMOD_CORE_LIB_DIR "${FMOD_DIR}/api/core/lib/${CX_CPU_ARCH}")
+  set(FMOD_STUDIO_LIB_DIR "${FMOD_DIR}/api/studio/lib/${CX_CPU_ARCH}")
 
-target_include_directories(CodexEngine PUBLIC ${FMOD_CORE_INCLUDE_DIR}
-                                              ${FMOD_STUDIO_INCLUDE_DIR})
-target_include_directories(CodexEngine-static PUBLIC ${FMOD_CORE_INCLUDE_DIR}
-                                                     ${FMOD_STUDIO_INCLUDE_DIR})
-target_link_libraries(CodexEngine PRIVATE ${FMOD_CORE_LIB} ${FMOD_STUDIO_LIB})
-target_link_libraries(CodexEngine-static PRIVATE ${FMOD_CORE_LIB}
-                                                 ${FMOD_STUDIO_LIB})
+  # Debug builds use logging variants (L suffix).
+  if(DEFINED CX_BUILD_TYPE_DEBUG)
+    set(FMOD_CORE_LIB_FILE "libfmodL.so.14.12")
+    set(FMOD_CORE_SONAME "libfmodL.so.14")
+    set(FMOD_STUDIO_LIB_FILE "libfmodstudioL.so.14.12")
+    set(FMOD_STUDIO_SONAME "libfmodstudioL.so.14")
+  else()
+    set(FMOD_CORE_LIB_FILE "libfmod.so.14.12")
+    set(FMOD_CORE_SONAME "libfmod.so.14")
+    set(FMOD_STUDIO_LIB_FILE "libfmodstudio.so.14.12")
+    set(FMOD_STUDIO_SONAME "libfmodstudio.so.14")
+  endif()
+
+  # Create IMPORTED targets for the pre-built FMOD libraries.
+  add_library(fmod SHARED IMPORTED)
+  set_target_properties(fmod PROPERTIES
+    IMPORTED_LOCATION "${FMOD_CORE_LIB_DIR}/${FMOD_CORE_LIB_FILE}"
+    IMPORTED_SONAME "${FMOD_CORE_SONAME}")
+
+  add_library(fmodstudio SHARED IMPORTED)
+  set_target_properties(fmodstudio PROPERTIES
+    IMPORTED_LOCATION "${FMOD_STUDIO_LIB_DIR}/${FMOD_STUDIO_LIB_FILE}"
+    IMPORTED_SONAME "${FMOD_STUDIO_SONAME}")
+
+  target_include_directories(CodexEngine PUBLIC "${FMOD_DIR}/api/core/inc"
+                                                "${FMOD_DIR}/api/studio/inc")
+  target_include_directories(CodexEngine-static PUBLIC "${FMOD_DIR}/api/core/inc"
+                                                       "${FMOD_DIR}/api/studio/inc")
+  target_link_libraries(CodexEngine PRIVATE fmod fmodstudio)
+  target_link_libraries(CodexEngine-static PRIVATE fmod fmodstudio)
+endif()
 
 # Threads (for pthreads on Nix systems)
 find_package(Threads REQUIRED)
@@ -409,7 +427,7 @@ target_compile_definitions(
 # ======================= # INSTALLATION # ======================= #
 if(DEFINED CX_PLATFORM_WINDOWS)
   install(TARGETS SDL2 SDL2main glm nlohmann_json CodexEngine DESTINATION bin)
-  install(FILES ${FMOD_LIB} ${FMOD_STUDIO_LIB} DESTINATION bin)
+  install(FILES ${FMOD_CORE_LIB} ${FMOD_STUDIO_LIB} DESTINATION bin)
 
   # Program Files (or same location as the binary) for unmodifiable file data.
   # App Data for modifidable file data.
@@ -423,17 +441,17 @@ elseif(DEFINED CX_PLATFORM_UNIX)
             CodexEngine-static
     DESTINATION lib)
 
-  # Install fmod core separately because the version thing.
-  install(
-    FILES ${FMOD_CORE_LIB}
-    DESTINATION lib
-    RENAME "libfmod.so.${FMOD_VER_MAJ}")
-
-  # Same for fmod studio API.
-  install(
-    FILES ${FMOD_STUDIO_LIB}
-    DESTINATION lib
-    RENAME "libfmodstudio.so.${FMOD_VER_MAJ}")
+  # Install FMOD libraries and create SONAME symlinks.
+  install(FILES "${FMOD_CORE_LIB_DIR}/${FMOD_CORE_LIB_FILE}" DESTINATION lib)
+  install(FILES "${FMOD_STUDIO_LIB_DIR}/${FMOD_STUDIO_LIB_FILE}" DESTINATION lib)
+  install(CODE "
+    execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
+      \"${FMOD_CORE_LIB_FILE}\"
+      \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/lib/${FMOD_CORE_SONAME}\")
+    execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
+      \"${FMOD_STUDIO_LIB_FILE}\"
+      \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/lib/${FMOD_STUDIO_SONAME}\")
+  ")
 
   # /etc/appname for global configuration files. /usr/local/share/appname for
   # unmodifiable data. /usr/local/(lib, bin)/appname for unmodifiable and

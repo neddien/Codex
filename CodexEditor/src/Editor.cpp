@@ -2,7 +2,7 @@
 
 #include <EditorApplication.h>
 #include <ImGuizmo.h>
-#include <tinyfiledialogs.h>
+#include <nfd.h>
 
 namespace codex::editor {
     namespace stdfs = std::filesystem;
@@ -45,6 +45,8 @@ namespace codex::editor {
         gfx::BatchRenderer2D::Init(EditorApplication::GetAppDataPath() / "GL Shaders/BatchRenderer2D_Quad.glsl");
         gfx::DebugDraw::Init(EditorApplication::GetAppDataPath() / "GL Shaders/DebugDraw_Line2D.glsl");
 
+        NFD_Init();
+
         s_Camera = scene::EditorCamera(1920, 1080);
 
         m_SceneEditorView = mem::Box<SceneEditorView>::New();
@@ -60,6 +62,8 @@ namespace codex::editor {
         gfx::BatchRenderer2D::Dispose();
         gfx::Renderer::Dispose();
         gfx::DebugDraw::Dispose();
+
+        NFD_Quit();
     }
 
     void Editor::OnUpdate(const f32 deltaTime)

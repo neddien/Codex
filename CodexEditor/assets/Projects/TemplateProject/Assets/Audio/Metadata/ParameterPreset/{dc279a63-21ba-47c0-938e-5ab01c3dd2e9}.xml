@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<objects serializationModel="Studio.02.03.00">
+	<object class="ParameterPreset" id="{dc279a63-21ba-47c0-938e-5ab01c3dd2e9}">
+		<property name="name">
+			<value>reverb-drywet</value>
+		</property>
+		<relationship name="folder">
+			<destination>{1aab72a1-b45e-4be3-aadf-9c24f3578589}</destination>
+		</relationship>
+		<relationship name="parameter">
+			<destination>{11b06af8-4922-483a-87af-36185df136e8}</destination>
+		</relationship>
+	</object>
+	<object class="GameParameter" id="{11b06af8-4922-483a-87af-36185df136e8}">
+		<property name="initialValue">
+			<value>0</value>
+		</property>
+	</object>
+</objects>

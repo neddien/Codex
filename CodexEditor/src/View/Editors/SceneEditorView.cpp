@@ -3,9 +3,8 @@
 #include <ConsoleMan.h>
 #include <Editor.h>
 #include <EditorApplication.h>
-#include <tinyfiledialogs.h>
+#include <nfd.h>
 
-#include "Engine/Core/Public/Exception.h"
 #include "Panels/ProjectSettingsView.h"
 #include "Panels/PropertiesView.h"
 #include "Panels/SceneHierarchyView.h"
@@ -19,24 +18,6 @@ namespace codex::editor {
 
     void SceneEditorView::OnAttach()
     {
-        // TODO: Fix Process stdout not working on Linux.
-        /*
-        sys::ProcessInfo inf;
-        inf.command        = "ls";
-        inf.redirectStdOut = true;
-        inf.redirectStdErr = true;
-        inf.onExit         = [](i32) { ConsoleMan::AppendMessage("Exited."); };
-
-        const auto ldb = [](const char* buffer, usize len) { ConsoleMan::AppendMessage(std::string(buffer, len)); };
-
-        auto handle                     = sys::Process::New(inf);
-        handle->Event_OnOutDataReceived = ldb;
-        handle->Event_OnErrDataReceived = ldb;
-
-        ConsoleMan::AppendMessage("Started.");
-        handle->Launch();
-        */
-
         m_Descriptor = mem::Shared<SceneEditorDescriptor>::From(
             new SceneEditorDescriptor{ .editorScene = mem::Shared<Scene>::New() });
         m_Descriptor->activeScene = m_Descriptor->editorScene;
@@ -73,6 +54,33 @@ namespace codex::editor {
     {
         auto& d     = m_Descriptor;
         auto  scene = d->activeScene.Lock();
+
+        // Load NBMan on main thread once async compilation succeeds,
+        // then attach any pending scripts (from deserialization or recompilation).
+        if (d->pendingNBLoad.exchange(false))
+        {
+            NBMan::Load(d->scriptModulePath, *scene);
+            ConsoleMan::AppendMessage("-- Script module load finished.");
+
+            auto nbc_view = scene->GetAllEntitiesWithComponent<NativeBehaviourComponent>();
+            for (auto& e : nbc_view)
+                e.GetComponent<NativeBehaviourComponent>().AttachPendingScripts();
+        }
+
+        // Auto-hide compilation notification after 3 seconds.
+        {
+            const auto state = d->compilationState.load();
+            if (state == CompilationState::Succeeded || state == CompilationState::Failed)
+            {
+                if (d->compilationFinishTime == 0.0)
+                    d->compilationFinishTime = ImGui::GetTime();
+                else if (ImGui::GetTime() - d->compilationFinishTime > 3.0)
+                {
+                    d->compilationState.store(CompilationState::Idle);
+                    d->compilationFinishTime = 0.0;
+                }
+            }
+        }
 
         m_Framebuffer->Bind();
 
@@ -238,11 +246,12 @@ namespace codex::editor {
                     if (ImGui::MenuItem("Create new project", "Ctrl+N")) {}
                     if (ImGui::MenuItem("Open", "Ctrl+O"))
                     {
-                        const char* filters[]{ "*.cxproj" };
-                        const char* file = tinyfd_openFileDialog("Load a Project.", nullptr, 1, filters, nullptr, 0);
-                        if (file)
+                        nfdu8char_t*      outPath   = nullptr;
+                        nfdu8filteritem_t filters[] = { { "Codex Project", "cxproj" } };
+                        if (NFD_OpenDialogU8(&outPath, filters, 1, nullptr) == NFD_OKAY)
                         {
-                            LoadProject(stdfs::path(file));
+                            LoadProject(stdfs::path(outPath));
+                            NFD_FreePathU8(outPath);
                         }
                     }
                     if (ImGui::MenuItem("Compile project"))
@@ -298,23 +307,24 @@ namespace codex::editor {
                     if (ImGui::MenuItem("Save", "Ctrl+S"))
                     {
                         // Handle the "Save" action
-                        static const char* save_dir = nullptr;
-                        if (!save_dir)
+                        static std::string save_path;
+                        if (save_path.empty())
                         {
-                            const char* filter_patterns[] = { "*.cxproj" };
-                            save_dir =
-                                tinyfd_saveFileDialog("Save Project", "default.cxproj", 1, filter_patterns, NULL);
-                            if (save_dir)
+                            nfdu8char_t*      outPath   = nullptr;
+                            nfdu8filteritem_t filters[] = { { "Codex Project", "cxproj" } };
+                            if (NFD_SaveDialogU8(&outPath, filters, 1, nullptr, "default.cxproj") == NFD_OKAY)
                             {
+                                save_path = outPath;
+                                NFD_FreePathU8(outPath);
                                 // TODO: project->Save(path);
                                 d->selectedEntity.Deselect();
-                                SerializationManager::SaveToFile(*d->activeScene.Lock(), save_dir);
+                                SerializationManager::SaveToFile(*d->activeScene.Lock(), save_path.c_str());
                             }
                         }
                         else
                         {
                             d->selectedEntity.Deselect();
-                            SerializationManager::SaveToFile(*d->activeScene.Lock(), save_dir);
+                            SerializationManager::SaveToFile(*d->activeScene.Lock(), save_path.c_str());
                         }
                     }
                     if (ImGui::MenuItem("Exit", "Alt+F4"))
@@ -428,6 +438,69 @@ namespace codex::editor {
         }
 
         Application::Get().GetImGuiLayer()->BlockEvents(block_events);
+
+        // Compilation status overlay (bottom-right)
+        {
+            const auto state = d->compilationState.load();
+            if (state != CompilationState::Idle)
+            {
+                auto*        viewport    = ImGui::GetMainViewport();
+                const ImVec2 overlay_pos = { viewport->Pos.x + viewport->Size.x - 20.0f,
+                                             viewport->Pos.y + viewport->Size.y - 20.0f };
+                ImGui::SetNextWindowPos(overlay_pos, ImGuiCond_Always, { 1.0f, 1.0f });
+                ImGui::SetNextWindowBgAlpha(0.75f);
+
+                const auto overlay_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs |
+                                           ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing |
+                                           ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove;
+
+                if (ImGui::Begin("##compilation_overlay", nullptr, overlay_flags))
+                {
+                    const float icon_radius    = 8.0f;
+                    const float icon_thickness = 2.5f;
+
+                    // Reserve space for the icon
+                    ImGui::Dummy({ icon_radius * 2.0f, icon_radius * 2.0f });
+                    const ImVec2 icon_min    = ImGui::GetItemRectMin();
+                    const ImVec2 icon_center = { icon_min.x + icon_radius, icon_min.y + icon_radius };
+                    auto*        draw_list   = ImGui::GetWindowDrawList();
+
+                    ImGui::SameLine();
+
+                    if (state == CompilationState::Compiling)
+                    {
+                        // Rotating arc spinner
+                        const float t     = (float)ImGui::GetTime();
+                        const float a_min = t * 3.0f;
+                        const float a_max = a_min + IM_PI * 1.5f;
+                        draw_list->PathArcTo(icon_center, icon_radius, a_min, a_max, 24);
+                        draw_list->PathStroke(IM_COL32(100, 180, 255, 255), 0, icon_thickness);
+                        ImGui::Text("Compiling...");
+                    }
+                    else if (state == CompilationState::Succeeded)
+                    {
+                        // Green checkmark
+                        const ImU32 green = IM_COL32(80, 220, 80, 255);
+                        draw_list->AddLine({ icon_center.x - 6.0f, icon_center.y },
+                                           { icon_center.x - 1.0f, icon_center.y + 5.0f }, green, icon_thickness);
+                        draw_list->AddLine({ icon_center.x - 1.0f, icon_center.y + 5.0f },
+                                           { icon_center.x + 7.0f, icon_center.y - 5.0f }, green, icon_thickness);
+                        ImGui::Text("Build succeeded");
+                    }
+                    else if (state == CompilationState::Failed)
+                    {
+                        // Red X
+                        const ImU32 red = IM_COL32(230, 70, 70, 255);
+                        draw_list->AddLine({ icon_center.x - 5.0f, icon_center.y - 5.0f },
+                                           { icon_center.x + 5.0f, icon_center.y + 5.0f }, red, icon_thickness);
+                        draw_list->AddLine({ icon_center.x + 5.0f, icon_center.y - 5.0f },
+                                           { icon_center.x - 5.0f, icon_center.y + 5.0f }, red, icon_thickness);
+                        ImGui::Text("Build failed");
+                    }
+                }
+                ImGui::End();
+            }
+        }
 
         ImGui::End();
     }
@@ -564,48 +637,45 @@ namespace codex::editor {
         return false;
     }
 
-    i32 SceneEditorView::CompileProject(const bool wait)
+    void SceneEditorView::CompileProject()
     {
         auto& d = m_Descriptor;
+
+        if (d->compilationState.load() == CompilationState::Compiling)
+            return;
 
         if (NBMan::InstanceLoaded())
             NBMan::Unload();
 
+        d->compilationState.store(CompilationState::Compiling);
+
         sys::ProcessInfo p_info;
 
 #ifdef CX_PLATFORM_WINDOWS
-        // p_info.command = "cmake ./ -G \"Visual Studio 17\" -B builds/vs2022 && cmake --build builds/vs2022";
         p_info.command = "python3 Scripts/build.py --preset=windows-llvm-any-debug --build";
 #elif defined(CX_PLATFORM_LINUX)
         p_info.command = "python3 Scripts/build.py --preset=linux-any-debug --build";
 #elif defined(CX_PLATFORM_OSX)
         p_info.command = "python3 Scripts/build.py --preset=osx-any-debug --build";
 #endif
-        try
+        p_info.onExit = [this](i32 exitCode)
         {
-            p_info.onExit = [this](i32 exitCode)
+            auto& d = m_Descriptor;
+            if (exitCode == 0)
             {
-                if (exitCode == 0)
-                {
-                    auto& d = m_Descriptor;
-                    NBMan::Load(d->scriptModulePath);
-                    ConsoleMan::AppendMessage("-- Script build finished.");
-                }
-                else
-                {
-                    throw new InvalidOperationException("Project failed to compile!");
-                }
-            };
-        }
-        catch (const CodexException& ex)
-        {
-            lgx::Get("editor").Log(lgx::Level::Error, "{}", ex.what());
-        }
+                d->pendingNBLoad.store(true);
+                d->compilationState.store(CompilationState::Succeeded);
+                ConsoleMan::AppendMessage("-- Script build finished.");
+            }
+            else
+            {
+                d->compilationState.store(CompilationState::Failed);
+                lgx::Get("editor").Log(lgx::Level::Error, "Failed to compile project.");
+            }
+        };
 
-#ifndef CX_PLATFORM_UNIX
         p_info.redirectStdOut = true;
         p_info.redirectStdErr = true;
-#endif
 
         const auto redirector = [](const char* buffer, usize len)
         { ConsoleMan::AppendMessage(std::string(buffer, len)); };
@@ -615,10 +685,6 @@ namespace codex::editor {
         proc->Event_OnOutDataReceived = redirector;
         proc->Event_OnErrDataReceived = redirector;
         proc->Launch();
-
-        if (wait)
-            return proc->WaitForExit();
-        return 0;
     }
 
     void SceneEditorView::OnScenePlay() noexcept
@@ -710,28 +776,27 @@ namespace codex::editor {
         d->scriptModulePath = d->currentProjectPath / stdfs::path("lib/libNBMan.dll");
         d->activeScene      = d->editorScene;
 
-        try
+        // Load FMOD banks
         {
-            if (true || CompileProject(true) == 0)
+            const auto audio_dir = d->currentProjectPath / "Assets/Audio/Build";
+            if (stdfs::exists(audio_dir))
             {
-                NBMan::Load(d->scriptModulePath);
-                ConsoleMan::AppendMessage("-- Script module load finished.");
+                for (const auto& entry : stdfs::recursive_directory_iterator(audio_dir))
+                {
+                    if (entry.is_regular_file() && entry.path().extension() == ".bank")
+                    {
+                        ax::AudioManager::LoadBank(entry.path());
+                        lgx::Get("editor").Info("Loaded FMOD bank: {}", entry.path().string());
+                    }
+                }
             }
-            else
-            {
-                cx_throw(InvalidOperationException, "Project failed to compile");
-            }
-        }
-        catch (const CodexException& ex)
-        {
-            lgx::Get("editor").Log(lgx::Error, "Failed to load compile and load NBMan: {}", ex.to_string());
         }
 
         SerializationManager::LoadFromFile(*d->editorScene, cxproj);
 
-        // FIXME: Cannot unload the script module while we have attached scripts, invalidates the
-        // vptr of our class effetively invalidating the whole thing really.
-        CompileProject(); // NOTE
+        // Kick off async compilation; NBMan will be loaded on the main thread
+        // once the build succeeds (via pendingNBLoad flag checked in OnUpdate).
+        CompileProject();
     }
 
     void SceneEditorView::UnloadProject()

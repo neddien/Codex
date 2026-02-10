@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<objects serializationModel="Studio.02.03.00">
+	<object class="ParameterPreset" id="{92559eb6-07d4-4a9c-9e1e-f2e13c5f590e}">
+		<property name="name">
+			<value>bandpass-filter-drywet</value>
+		</property>
+		<relationship name="folder">
+			<destination>{1aab72a1-b45e-4be3-aadf-9c24f3578589}</destination>
+		</relationship>
+		<relationship name="parameter">
+			<destination>{1c4681a0-149b-475b-87f3-5baef2586e4b}</destination>
+		</relationship>
+	</object>
+	<object class="GameParameter" id="{1c4681a0-149b-475b-87f3-5baef2586e4b}">
+		<property name="initialValue">
+			<value>0</value>
+		</property>
+	</object>
+</objects>

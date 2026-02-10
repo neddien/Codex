@@ -39,8 +39,7 @@ namespace codex::events {
     public:
         [[nodiscard]] std::string ToString() const noexcept override
         {
-            return fmt::format("MouseMoveEvent: Button: {}, Pos: ({}, {})", MouseToString(m_Button), m_MouseX,
-                               m_MouseY);
+            return fmt::format("MouseMoveEvent: Button: {}, Pos: ({}, {})", EnumName(m_Button), m_MouseX, m_MouseY);
         }
 
         EVENT_CLASS_TYPE(MouseMove)
@@ -86,7 +85,7 @@ namespace codex::events {
     public:
         [[nodiscard]] std::string ToString() const noexcept override
         {
-            return fmt::format("MouseDownEvent: Button({})", MouseToString(m_Button));
+            return fmt::format("MouseDownEvent: Button({})", EnumName(m_Button));
         }
 
         EVENT_CLASS_TYPE(MouseDown)
@@ -101,7 +100,7 @@ namespace codex::events {
     public:
         [[nodiscard]] std::string ToString() const noexcept override
         {
-            return fmt::format("MouseUpEvent: Button({})", MouseToString(m_Button));
+            return fmt::format("MouseUpEvent: Button({})", EnumName(m_Button));
         }
 
         EVENT_CLASS_TYPE(MouseUp)

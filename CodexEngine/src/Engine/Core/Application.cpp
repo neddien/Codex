@@ -2,11 +2,12 @@
 
 #include <sdafx.h>
 
+#include <Engine/Audio/AudioSystem.h>
 #include <Engine/Debug/Public/Profiler.h>
 #include <Engine/Debug/Public/TimeScope.h>
-#include <Engine/Scene/Public/Scene.h>
 #include <Engine/Scene/ComponentFactory.h>
 #include <Engine/Scene/Public/Components.inl>
+#include <Engine/Scene/Public/Scene.h>
 
 #include "Public/Exception.h"
 #include "Public/Input.h"
@@ -16,6 +17,7 @@ namespace codex {
     using namespace codex::events;
     using namespace codex::imgui;
     using namespace codex::gfx;
+    using namespace codex::ax;
 
     Application* Application::s_Instance = nullptr;
 
@@ -29,6 +31,7 @@ namespace codex {
     {
         Resources::Destroy();
         Input::Dispose();
+        AudioSystem::Dispose();
         s_Instance = nullptr;
     }
 
@@ -64,6 +67,8 @@ namespace codex {
 
             Resources::Init();
             RegisterAllComponents();
+
+            AudioSystem::Init();
 
             m_ImGuiLayer = new ImGuiLayer();
             PushOverlay(m_ImGuiLayer);
@@ -125,6 +130,8 @@ namespace codex {
                 // FIXME: Fix the mouse dragging thing for now...
                 // What?????
                 Input::EndFrame();
+
+                ax::AudioSystem::Update();
             }
             catch (const CodexException& ex)
             {

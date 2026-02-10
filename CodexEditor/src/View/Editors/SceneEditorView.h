@@ -1,5 +1,7 @@
 #pragma once
 
+#include <atomic>
+
 #include <Codex.h>
 #include <ImGuizmo.h>
 
@@ -31,18 +33,21 @@ namespace codex::editor {
         Scale       = ImGuizmo::OPERATION::SCALE
     };
 
+    enum class CompilationState { Idle, Compiling, Succeeded, Failed };
+
     struct SceneEditorDescriptor
     {
-        mem::Ref<Scene>           activeScene;
-        mem::Shared<Scene>        editorScene;
-        mem::Shared<Scene>        runtimeScene;
-        std::filesystem::path     scriptModulePath;
-        SelectedEntityDescriptor  selectedEntity;
-        f32                       columnWidth  = 140.0f;
-        Vector4f                  selectColour = { 0.5f, 1.0f, 0.5f, 1.0f };
-        std::filesystem::path     currentProjectPath;
-        // TODO: Scripts?
-        //std::vector<rf::RFScript> scripts;
+        mem::Ref<Scene>                  activeScene;
+        mem::Shared<Scene>               editorScene;
+        mem::Shared<Scene>               runtimeScene;
+        std::filesystem::path            scriptModulePath;
+        SelectedEntityDescriptor         selectedEntity;
+        f32                              columnWidth  = 140.0f;
+        Vector4f                         selectColour = { 0.5f, 1.0f, 0.5f, 1.0f };
+        std::filesystem::path            currentProjectPath;
+        std::atomic<CompilationState>    compilationState{ CompilationState::Idle };
+        std::atomic<bool>                pendingNBLoad{ false };
+        f64                              compilationFinishTime = 0.0;
     };
 
     // SceneEditorView is technically a layer but it is not part of Codex's layer
@@ -86,7 +91,7 @@ namespace codex::editor {
         bool OnMouseScroll_Event(events::MouseScrollEvent& e);
 
     public:
-        i32 CompileProject(const bool wait = false);
+        void CompileProject();
         void OnScenePlay() noexcept;
         void OnSceneSimulate() noexcept;
         void OnSceneStop() noexcept;

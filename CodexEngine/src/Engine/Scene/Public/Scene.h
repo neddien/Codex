@@ -98,6 +98,7 @@ namespace codex {
 
     private:
         void RenderSprites();
+        void RenderAudio();
         void ConstructPhysicsBodies();
 
     public:

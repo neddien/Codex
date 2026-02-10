@@ -29,6 +29,7 @@ file(GLOB_RECURSE SOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/Assets/*.cpp")
 file(GLOB_RECURSE CODEGEN_HEADERS "${CODEGEN_DIR}/*.h")
 file(GLOB_RECURSE CODEGEN_SOURCES "${CODEGEN_DIR}/*.cxr.cpp")
 file(GLOB_RECURSE STATIC_LIBS "${CMAKE_CURRENT_SOURCE_DIR}/lib/*.lib")
+file(GLOB VENDOR_SUBDIRS "${CMAKE_CURRENT_SOURCE_DIR}/Engine/vendor/*")
 
 # Reflector target
 add_custom_command(
@@ -142,19 +143,21 @@ add_custom_command(
 )
 
 # Expose Codex's dependencies.
-# TODO: Automate this please cause we have to add an entry here everytime we add a new library.
-target_include_directories(NBMan PUBLIC Engine/vendor/entt)
-target_include_directories(NBMan PUBLIC Engine/vendor/glm)
-target_include_directories(NBMan PUBLIC Engine/vendor/glad)
-target_include_directories(NBMan PUBLIC Engine/src/PCH)
+foreach(dir ${VENDOR_SUBDIRS})
+  if(IS_DIRECTORY ${dir})
+    target_include_directories(NBMan PUBLIC ${dir})
+  endif()
+endforeach()
+
+target_include_directories(NBMan PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/Engine/src/PCH")
+
+# TODO: Remove logex as a dependency
 target_include_directories(NBMan PUBLIC "${logex_SOURCE_DIR}/Logger/src")
 target_include_directories(NBMan PUBLIC "${logex_SOURCE_DIR}/Logger/vendor/fmt/include")
 
 # For ease of use.
 target_include_directories(NBMan PUBLIC Engine/src)
 target_include_directories(NBMan PUBLIC ${CMAKE_SOURCE_DIR})
-# Reflector
-target_include_directories(NBMan PRIVATE int/)
 
 target_precompile_headers(NBMan PRIVATE Engine/src/PCH/sdafx.h)
 

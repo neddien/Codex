@@ -83,6 +83,9 @@ namespace codex {
         [[nodiscard]] virtual const rf::TypeInfo&       GetTypeInfo() const = 0;
 
     public:
+        ax::EventHandle GetAudioEvent(const std::string_view eventPath);
+
+    public:
         void Serialize(ISerializationNode& node) const override;
         void Deserialize(const ISerializationNode& node) override;
     };

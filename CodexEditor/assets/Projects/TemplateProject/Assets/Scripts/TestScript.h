@@ -4,7 +4,7 @@
 
 using namespace codex;
 
-RF_CLASS()
+RF_CLASS(Category = "Gameplay", DisplayName = "asd")
 class CODEX_EXPORT MienScripten : public NativeBehaviour
 {
     RF_SERIALIZABLE
@@ -21,5 +21,5 @@ private:
 public:
     void OnInit() override;
     void OnUpdate(const f32 deltaTime) override;
-	void OnFixedUpdate(const f32 deltaTime) override;
+    void OnFixedUpdate(const f32 deltaTime) override;
 };
