@@ -16,7 +16,7 @@ namespace codex::ax {
         f32         defaultValue{};
     };
 
-    class AudioManager
+    class CODEX_API AudioManager
     {
     public:
         // One-shot playback

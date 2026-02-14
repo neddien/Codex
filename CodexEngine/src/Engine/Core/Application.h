@@ -71,7 +71,10 @@ namespace codex {
 
     public:
         Application(ApplicationProperties props);
-        Application(const Application& other) = delete;
+        Application(const Application&)            = delete;
+        Application& operator=(const Application&) = delete;
+        Application(Application&&)                 = delete;
+        Application& operator=(Application&&)      = delete;
         virtual ~Application();
 
     public:

@@ -18,7 +18,11 @@ namespace codex {
         using FactoryFn = std::function<mem::Box<NativeBehaviour>()>;
 
     public:
-        NBMan() = default;
+        NBMan()                          = default;
+        NBMan(const NBMan&)              = delete;
+        NBMan& operator=(const NBMan&)   = delete;
+        NBMan(NBMan&&) noexcept          = default;
+        NBMan& operator=(NBMan&&) noexcept = default;
 
     public:
         [[nodiscard]] static NBMan& Get();

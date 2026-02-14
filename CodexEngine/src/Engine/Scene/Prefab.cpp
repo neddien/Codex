@@ -35,4 +35,13 @@ namespace codex::scene {
 
         return pf;
     }
+
+    void Prefab::Serialize(ISerializationNode& node) const
+    {
+    }
+
+    void Prefab::Deserialize(const ISerializationNode& node)
+    {
+
+    }
 } // namespace codex::scene

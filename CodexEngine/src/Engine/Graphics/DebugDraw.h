@@ -22,6 +22,12 @@ namespace codex::gfx {
 
     class CODEX_API DebugDraw
     {
+    public:
+        DebugDraw(const DebugDraw&)            = delete;
+        DebugDraw& operator=(const DebugDraw&) = delete;
+        DebugDraw(DebugDraw&&) noexcept            = default;
+        DebugDraw& operator=(DebugDraw&&) noexcept = default;
+
     private:
         mem::Box<opengl::VertexArray>                             m_Vao;
         mem::Box<opengl::VertexBuffer>                            m_Vbo;

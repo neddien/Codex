@@ -1,5 +1,6 @@
 ## My stuff..
 .ignore_*
+.claude/
 .idea/
 .vscode/
 .cache/

@@ -156,15 +156,15 @@ class LibclangReflectionParser:
     def _parse_compile_command(self, entry: dict) -> List[str]:
         """
         Parse compile command entry to extract relevant flags
-        
+
         Args:
             entry: Compilation database entry
-            
+
         Returns:
             List of compiler arguments suitable for libclang
         """
         args = []
-        
+
         # Get command
         if 'arguments' in entry:
             command_parts = entry['arguments']
@@ -173,93 +173,133 @@ class LibclangReflectionParser:
             command_parts = shlex.split(entry['command'])
         else:
             return args
-        
+
+        def should_skip_include_path(path: str) -> bool:
+            """Skip Clang resource dirs on Windows to avoid builtin mismatches"""
+            if sys.platform != 'win32':
+                return False
+            # Skip paths like: C:\...\llvm\...\lib\clang\21\include
+            path_lower = path.lower()
+            return 'lib\\clang\\' in path_lower or 'lib/clang/' in path_lower
+
         # Extract relevant flags
         skip_next = False
         for i, arg in enumerate(command_parts):
             if skip_next:
                 skip_next = False
                 continue
-            
+
             # Include directories
             if arg.startswith('-I'):
                 if len(arg) > 2:
-                    args.append(arg)
+                    path = arg[2:]
+                    if not should_skip_include_path(path):
+                        args.append(arg)
                 else:
                     # -I /path/to/include
                     if i + 1 < len(command_parts):
-                        args.append(f'-I{command_parts[i + 1]}')
+                        path = command_parts[i + 1]
+                        if not should_skip_include_path(path):
+                            args.append(f'-I{path}')
                         skip_next = True
-            
+
             # System includes
             elif arg.startswith('-isystem'):
                 if len(arg) > 8:
-                    args.append(arg)
+                    path = arg[8:]
+                    if not should_skip_include_path(path):
+                        args.append(arg)
                 else:
                     if i + 1 < len(command_parts):
-                        args.append(f'-isystem{command_parts[i + 1]}')
+                        path = command_parts[i + 1]
+                        if not should_skip_include_path(path):
+                            args.append(f'-isystem{path}')
                         skip_next = True
-            
+
             # Defines
             elif arg.startswith('-D'):
                 args.append(arg)
-            
+
             # C++ standard
             elif arg.startswith('-std='):
                 args.append(arg)
-            
+
             # Framework paths (macOS)
             elif arg.startswith('-F'):
                 args.append(arg)
-        
+
         return args
     
     def _configure_libclang(self):
-        """Try to find and configure libclang library"""
-        possible_paths = [
-            "/usr/lib/llvm-14/lib/libclang.so.1",
-            "/usr/lib/llvm-13/lib/libclang.so.1",
-            "/usr/lib/llvm-12/lib/libclang.so.1",
-            "/usr/lib/x86_64-linux-gnu/libclang-14.so.1",
-            "/usr/local/opt/llvm/lib/libclang.dylib",  # macOS homebrew
-            "C:\\Program Files\\LLVM\\bin\\libclang.dll",  # Windows
-        ]
-        
+        """Try to find and configure libclang library from the clang installation in PATH"""
+        import subprocess
+        import shutil
+
         # Check if already configured
         if clang.cindex.conf.lib:
             return
-        
-        # Try to find it
-        for path in possible_paths:
+
+        # First, try to find clang in PATH and derive libclang location from it
+        clang_exe = shutil.which('clang') or shutil.which('clang++')
+        if clang_exe:
+            # Get the bin directory where clang lives
+            bin_dir = os.path.dirname(os.path.realpath(clang_exe))
+
+            if sys.platform == 'win32':
+                libclang_path = os.path.join(bin_dir, 'libclang.dll')
+            elif sys.platform == 'darwin':
+                libclang_path = os.path.join(bin_dir, '..', 'lib', 'libclang.dylib')
+            else:
+                libclang_path = os.path.join(bin_dir, '..', 'lib', 'libclang.so')
+
+            libclang_path = os.path.normpath(libclang_path)
+            if os.path.exists(libclang_path):
+                print(f"Using libclang from: {libclang_path}")
+                self._libclang_path = libclang_path
+                clang.cindex.Config.set_library_file(libclang_path)
+                return
+
+        # Fallback to common system paths
+        fallback_paths = [
+            "/usr/lib/llvm-18/lib/libclang.so.1",
+            "/usr/lib/llvm-17/lib/libclang.so.1",
+            "/usr/lib/x86_64-linux-gnu/libclang-14.so.1",
+            "/usr/local/opt/llvm/lib/libclang.dylib",
+        ]
+
+        for path in fallback_paths:
             if os.path.exists(path):
+                print(f"Using libclang from: {path}")
+                self._libclang_path = path
                 clang.cindex.Config.set_library_file(path)
                 return
-        
-        # Let it try to find automatically
-        try:
-            clang.cindex.Config.set_library_path('/usr/lib/llvm-14/lib')
-        except:
-            pass
     
     @staticmethod
     def _find_clang_resource_dir() -> Optional[str]:
-        """Find clang's built-in header directory (for stddef.h, etc.)"""
+        """Find clang's built-in header directory (for stddef.h, etc.)
+
+        Uses `clang -print-resource-dir` to find the matching resource directory.
+        """
         import subprocess
-        # Try clang first, then versioned variants
-        for cmd in ['clang', 'clang++']:
+        import shutil
+        import glob as g
+
+        # Use clang from PATH to get the resource directory
+        clang_exe = shutil.which('clang') or shutil.which('clang++')
+        if clang_exe:
             try:
                 result = subprocess.run(
-                    [cmd, '-print-resource-dir'],
+                    [clang_exe, '-print-resource-dir'],
                     capture_output=True, text=True, timeout=5)
                 if result.returncode == 0:
                     resource_dir = result.stdout.strip()
                     include_dir = os.path.join(resource_dir, 'include')
                     if os.path.isdir(include_dir):
                         return include_dir
-            except (FileNotFoundError, subprocess.TimeoutExpired):
-                continue
+            except (subprocess.TimeoutExpired, OSError):
+                pass
+
         # Fallback: search common paths
-        import glob as g
         for pattern in ['/usr/lib/clang/*/include', '/usr/lib64/clang/*/include',
                         '/usr/local/lib/clang/*/include']:
             matches = sorted(g.glob(pattern), reverse=True)
@@ -319,6 +359,20 @@ class LibclangReflectionParser:
         # Start with default args
         args = ['-x', 'c++', '-std=c++20']
 
+        # On Windows, avoid MSVC STL version checks and intrinsics issues
+        if sys.platform == 'win32':
+            args.extend([
+                '-D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH',
+                '-D_SILENCE_CLANG_CONCEPTS_MESSAGE',
+                # Prevent inclusion of intrinsics headers that use builtins
+                # not supported by older libclang versions
+                '-D_MM_MALLOC_H_INCLUDED',   # Skip mm_malloc.h
+                '-D__IMMINTRIN_H',            # Skip immintrin.h
+                '-D__X86INTRIN_H',            # Skip x86intrin.h
+                '-D__WMMINTRIN_H',            # Skip wmmintrin.h
+                '-D__EMMINTRIN_H',            # Skip emmintrin.h
+            ])
+
         # Pre-define reflection macros so libclang can parse through them.
         # Detection is handled by the raw-text pre-scan, not by tokens.
         args.extend([
@@ -329,10 +383,13 @@ class LibclangReflectionParser:
             '-DCODEX_API=',
         ])
 
-        # Add clang's built-in headers so stddef.h etc. are resolvable.
-        clang_include = self._find_clang_resource_dir()
-        if clang_include:
-            args.append(f'-isystem{clang_include}')
+        # On non-Windows, add clang's built-in headers for stddef.h etc.
+        # On Windows, skip this - MSVC headers provide what we need, and mixing
+        # Clang 21 headers with older libclang causes builtin mismatches.
+        if sys.platform != 'win32':
+            clang_include = self._find_clang_resource_dir()
+            if clang_include:
+                args.append(f'-isystem{clang_include}')
         
         # If compilation database is available and no explicit args provided
         if self.compile_commands and compiler_args is None:

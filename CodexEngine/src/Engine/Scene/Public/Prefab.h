@@ -17,6 +17,12 @@ namespace codex::scene {
         Prefab() noexcept = default;
 
     public:
+        Prefab(const Prefab&)            = delete;
+        Prefab& operator=(const Prefab&) = delete;
+        Prefab(Prefab&&) noexcept        = default;
+        Prefab& operator=(Prefab&&) noexcept = default;
+
+    public:
         Entity Instantiate(Scene& scene, UUID uuid = UUID{}) const noexcept;
 
     public:

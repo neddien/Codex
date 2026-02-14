@@ -16,6 +16,12 @@ namespace codex::gfx {
     {
         friend class ResourceHandler;
 
+    public:
+        Shader(const Shader&)            = delete;
+        Shader& operator=(const Shader&) = delete;
+        Shader(Shader&&) noexcept            = default;
+        Shader& operator=(Shader&&) noexcept = default;
+
     private:
         mem::Box<opengl::Shader> m_RawShader;
 

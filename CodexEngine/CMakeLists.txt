@@ -404,6 +404,67 @@ if(DEFINED CX_PLATFORM_LINUX)
                                                        "${FMOD_DIR}/api/studio/inc")
   target_link_libraries(CodexEngine PRIVATE fmod fmodstudio)
   target_link_libraries(CodexEngine-static PRIVATE fmod fmodstudio)
+elseif(DEFINED CX_PLATFORM_WINDOWS)
+  set(FMOD_DIR
+      "${CMAKE_CURRENT_SOURCE_DIR}/vendor/fmod/fmodstudioapi20312win")
+
+  # Determine library architecture subdirectory.
+  if(DEFINED CX_WORD_SIZE_64)
+    set(FMOD_ARCH "x64")
+  else()
+    set(FMOD_ARCH "x86")
+  endif()
+
+  set(FMOD_CORE_LIB_DIR "${FMOD_DIR}/api/core/lib/${FMOD_ARCH}")
+  set(FMOD_STUDIO_LIB_DIR "${FMOD_DIR}/api/studio/lib/${FMOD_ARCH}")
+
+  # Debug builds use logging variants (L suffix).
+  if(DEFINED CX_BUILD_TYPE_DEBUG)
+    set(FMOD_CORE_LIB "fmodL_vc.lib")
+    set(FMOD_CORE_DLL "fmodL.dll")
+    set(FMOD_STUDIO_LIB "fmodstudioL_vc.lib")
+    set(FMOD_STUDIO_DLL "fmodstudioL.dll")
+  else()
+    set(FMOD_CORE_LIB "fmod_vc.lib")
+    set(FMOD_CORE_DLL "fmod.dll")
+    set(FMOD_STUDIO_LIB "fmodstudio_vc.lib")
+    set(FMOD_STUDIO_DLL "fmodstudio.dll")
+  endif()
+
+  # Create IMPORTED targets for the pre-built FMOD libraries.
+  add_library(fmod SHARED IMPORTED)
+  set_target_properties(fmod PROPERTIES
+    IMPORTED_IMPLIB "${FMOD_CORE_LIB_DIR}/${FMOD_CORE_LIB}"
+    IMPORTED_LOCATION "${FMOD_CORE_LIB_DIR}/${FMOD_CORE_DLL}")
+
+  add_library(fmodstudio SHARED IMPORTED)
+  set_target_properties(fmodstudio PROPERTIES
+    IMPORTED_IMPLIB "${FMOD_STUDIO_LIB_DIR}/${FMOD_STUDIO_LIB}"
+    IMPORTED_LOCATION "${FMOD_STUDIO_LIB_DIR}/${FMOD_STUDIO_DLL}")
+
+  target_include_directories(CodexEngine PUBLIC "${FMOD_DIR}/api/core/inc"
+                                                "${FMOD_DIR}/api/studio/inc")
+  target_include_directories(CodexEngine-static PUBLIC "${FMOD_DIR}/api/core/inc"
+                                                       "${FMOD_DIR}/api/studio/inc")
+  target_link_libraries(CodexEngine PRIVATE fmod fmodstudio)
+  target_link_libraries(CodexEngine-static PRIVATE fmod fmodstudio)
+
+  # Store DLL paths for installation and post-build copy.
+  set(FMOD_CORE_DLL_PATH "${FMOD_CORE_LIB_DIR}/${FMOD_CORE_DLL}" PARENT_SCOPE)
+  set(FMOD_STUDIO_DLL_PATH "${FMOD_STUDIO_LIB_DIR}/${FMOD_STUDIO_DLL}" PARENT_SCOPE)
+  set(FMOD_CORE_DLL_PATH "${FMOD_CORE_LIB_DIR}/${FMOD_CORE_DLL}")
+  set(FMOD_STUDIO_DLL_PATH "${FMOD_STUDIO_LIB_DIR}/${FMOD_STUDIO_DLL}")
+
+  # Copy FMOD DLLs to output directory after build.
+  add_custom_command(TARGET CodexEngine POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+      "${FMOD_CORE_DLL_PATH}"
+      "$<TARGET_FILE_DIR:CodexEngine>"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+      "${FMOD_STUDIO_DLL_PATH}"
+      "$<TARGET_FILE_DIR:CodexEngine>"
+    COMMENT "Copying FMOD DLLs to output directory"
+  )
 endif()
 
 # Threads (for pthreads on Nix systems)
@@ -426,8 +487,8 @@ target_compile_definitions(
 
 # ======================= # INSTALLATION # ======================= #
 if(DEFINED CX_PLATFORM_WINDOWS)
-  install(TARGETS SDL2 SDL2main glm nlohmann_json CodexEngine DESTINATION bin)
-  install(FILES ${FMOD_CORE_LIB} ${FMOD_STUDIO_LIB} DESTINATION bin)
+  install(TARGETS SDL2-static SDL2main glm nlohmann_json CodexEngine DESTINATION bin)
+  install(FILES "${FMOD_CORE_DLL_PATH}" "${FMOD_STUDIO_DLL_PATH}" DESTINATION bin)
 
   # Program Files (or same location as the binary) for unmodifiable file data.
   # App Data for modifidable file data.
