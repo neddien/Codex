@@ -11,32 +11,43 @@
 #include "Entity.h"
 #include "Sprite.h"
 
-#define CX_COMPONENT(name)                                                                                             \
+#define CX_COMPONENT(type)                                                                                             \
     friend class Entity;                                                                                               \
     friend class Scene;                                                                                                \
+    friend class ComponentFactory;                                                                                     \
                                                                                                                        \
 public:                                                                                                                \
-    std::string_view TypeName() const override                                                                         \
+    [[nodiscard]] inline std::string_view TypeName() const override                                                    \
     {                                                                                                                  \
-        return #name;                                                                                                  \
+        return #type;                                                                                                  \
+    }                                                                                                                  \
+    [[nodiscard]] mem::Box<Component> Clone() const noexcept override                                                  \
+    {                                                                                                                  \
+        return mem::Box<type>{ new type{ *this } };                                                                    \
     }
 
 namespace codex {
     // Forward decelerations
-    class Scene;
-    class Entity;
-    class Serializer;
+    namespace scene {
+        class Prefab;
+    } // namespace scene
     class NativeBehaviour;
 
     struct CODEX_API Component : public ISerializable
     {
         friend class Entity;
         friend class Scene;
+        friend class scene::Prefab;
 
     protected:
         virtual void OnInit() {}
-        virtual ~Component()                      = default;
-        virtual std::string_view TypeName() const = 0;
+
+    public:
+        virtual ~Component() = default;
+
+    public:
+        virtual std::string_view    TypeName() const       = 0;
+        virtual mem::Box<Component> Clone() const noexcept = 0;
 
     public:
         void Serialize(ISerializationNode& node) const

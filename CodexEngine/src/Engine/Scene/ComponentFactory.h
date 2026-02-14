@@ -2,7 +2,10 @@
 
 #include <sdafx.h>
 
+#include <Engine/Core/Public/Exception.h>
+#include <Engine/Core/Public/Serializer.h>
 #include <Engine/Scene/Public/Components.h>
+#include <Engine/Scene/Public/Entity.h>
 
 #define CX_REGISTER_COMPONENT(type) ComponentFactory::Get().Register<type>(#type);
 
@@ -10,7 +13,8 @@ namespace codex {
     class ComponentFactory
     {
     public:
-        using DeserializerFn = std::function<void(const ISerializationNode&, const Entity)>;
+        using DeserializerFn = std::function<void(const ISerializationNode&, Entity)>;
+        using InstantiateFn  = std::function<void(const Component&, Entity)>;
 
     public:
         static ComponentFactory& Get()
@@ -23,29 +27,49 @@ namespace codex {
         template <typename T>
         void Register(const std::string_view typeName) noexcept
         {
-            m_Factories[std::string{ typeName }] = [](const ISerializationNode& node, Entity entity)
+            m_DeserFactories[std::string{ typeName }] = [](const ISerializationNode& node, Entity entity)
             {
                 T component;
                 component.Deserialize(node);
-                entity.AddOrReplaceComponent<T>(component);
+                entity.AddOrReplaceComponent<T>(std::move(component));
             };
+
+            // m_InstFactories[std::string{ typeName }] = [](const Component& component, Entity entity)
+            //{ entity.AddOrReplaceComponent<T>(component); };
         }
 
         void DeserializeComponent(const std::string& typeName, const ISerializationNode& node, const Entity entity)
         {
-            auto it = m_Factories.find(typeName);
-            if (it != m_Factories.end())
+            auto it = m_DeserFactories.find(typeName);
+            if (it != m_DeserFactories.end())
             {
                 it->second(node, entity);
             }
             else
             {
-                // TODO: Log warn or something here
+                cx_throw(DeserializationException,
+                         "Component {} has not been registered therefore could not be deserialized.", typeName);
+            }
+        }
+
+        void InstantiateComponent(const Component& component, Entity entity)
+        {
+            auto it = m_InstFactories.find(std::string{ component.TypeName() });
+            if (it != m_InstFactories.end())
+            {
+                it->second(component, entity);
+            }
+            else
+            {
+                cx_throw(DeserializationException,
+                         "Component {} has not been registered therefore could not be deserialized.",
+                         component.TypeName());
             }
         }
 
     private:
-        std::unordered_map<std::string, DeserializerFn> m_Factories;
+        std::unordered_map<std::string, DeserializerFn> m_DeserFactories;
+        std::unordered_map<std::string, InstantiateFn>  m_InstFactories;
     };
 
     /////////////// NOTE: Updates these when adding new components! //////////////

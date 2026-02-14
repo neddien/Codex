@@ -306,11 +306,9 @@ Analysis conducted to identify gaps for building a networked multiplayer platfor
 - No `AnimationClip`, `AnimatorComponent`, or state machine
 - No frame playback, transitions, or animation events
 
-#### 4. Audio (IN PROGRESS)
-- FMOD Studio API 2.02.25 vendored in `/CodexEngine/vendor/fmod/`
-- Contains both Core API (low-level) and Studio API (bank playback)
-- NOT YET linked in CMakeLists.txt
-- No `AudioManager`, `AudioSourceComponent`, or script API yet
+#### 4. Audio (Done)
+- FMOD API 2.02.25 vendored in `/CodexEngine/vendor/fmod/`
+- Studio API (bank playback)
 - SDL audio explicitly disabled (using FMOD instead)
 
 #### 5. Platformer Physics Helpers (Important)

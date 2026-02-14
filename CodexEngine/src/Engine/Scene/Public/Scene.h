@@ -4,6 +4,7 @@
 #include <Engine/Core/Public/Serializer.h>
 #include <Engine/Memory/Public/Memory.h>
 #include <Engine/Scene/Public/Entity.h>
+#include <Engine/Scene/Public/Prefab.h>
 
 #include <entt.hpp>
 
@@ -24,6 +25,7 @@ namespace codex {
         friend class Window;
         friend class Entity;
         friend class Serializer;
+        friend class scene::Prefab;
 
     public:
         struct PhysicsProperties
@@ -92,6 +94,7 @@ namespace codex {
         Entity CreateEntity(const std::string_view tag = "default tag", UUID uuid = UUID{}) noexcept;
         void   RemoveEntity(const Entity entity);
         void   RemoveEntity(const u32 entity);
+        Entity InstantiatePrefab(const scene::Prefab& prefab) noexcept;
         [[nodiscard]] std::vector<Entity> GetAllEntitesWithTag(const std::string_view tag);
         [[nodiscard]] std::vector<Entity> GetAllEntities();
         [[nodiscard]] Entity              GetPrimaryCameraEntity() noexcept;

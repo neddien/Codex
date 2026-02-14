@@ -15,17 +15,9 @@ namespace codex {
                 cx_throwd(DuplicateBehaviourException);
         }
 
-        mem::Box<NativeBehaviour> bh(new T(std::forward<TArgs>(args)...));
+        auto bh = mem::Box<NativeBehaviour>::New(std::forward<TArgs>(args)...);
         bh->OnInit();
-        // FIXME: Serialize properly w new serializaiton system
-        // bh->Serialize();
-        /*
-        const std::string& name = bh->m_SerializedData.begin().key();
-        if (!m_Behaviours.contains(name))
-            m_Behaviours[name] = std::move(bh);
-        */
 
-        return *((T*)bh.Get());
-        // return *reinterpret_cast<T*>(m_Behaviours[name].Get());
+        return *(static_cast<T*>(bh.Get()));
     }
 } // namespace codex

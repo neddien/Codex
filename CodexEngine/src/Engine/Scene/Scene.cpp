@@ -144,6 +144,11 @@ namespace codex {
         m_Registry->destroy(static_cast<entt::entity>(entity));
     }
 
+    Entity Scene::InstantiatePrefab(const scene::Prefab& prefab) noexcept
+    {
+        return prefab.Instantiate(*this);
+    }
+
     [[nodiscard]] std::vector<Entity> Scene::GetAllEntitesWithTag(const std::string_view tag)
     {
         auto                view = m_Registry->view<TagComponent>();

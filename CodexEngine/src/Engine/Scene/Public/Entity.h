@@ -2,13 +2,16 @@
 
 #include <sdafx.h>
 
-#include <Engine/Core/Public/UUID.h>
 #include <Engine/Concurrency/Public/Mutex.h>
+#include <Engine/Core/Public/UUID.h>
 
 #include <entt.hpp>
 
 namespace codex {
     // Forward declerations.
+    namespace scene {
+        class Prefab;
+    } // namespace scene
     class Scene;
     struct Component;
     struct TransformComponent;
@@ -19,6 +22,7 @@ namespace codex {
         friend class Scene;
         friend struct SpriteRendererComponent;
         friend class NativeBehaviour;
+        friend class scene::Prefab;
 
     public:
         using HandleType       = u32;
@@ -51,13 +55,17 @@ namespace codex {
         }
 
     public:
-        [[nodiscard]] inline operator bool() const noexcept;
+        [[nodiscard]] inline      operator bool() const noexcept;
         [[nodiscard]] inline bool operator==(const Entity& other) const noexcept { return other.m_Handle == m_Handle; }
 
     public:
         [[nodiscard]] UUID                      GetUUID() const noexcept;
         [[nodiscard]] TransformComponent&       GetTransform() noexcept;
         [[nodiscard]] const TransformComponent& GetTransform() const noexcept;
+
+    private:
+        [[nodiscard]] Component&       GetFirstComponent() noexcept;
+        [[nodiscard]] const Component& GetFirstComponent() const noexcept;
 
     public:
         template <typename T, typename... TArgs>

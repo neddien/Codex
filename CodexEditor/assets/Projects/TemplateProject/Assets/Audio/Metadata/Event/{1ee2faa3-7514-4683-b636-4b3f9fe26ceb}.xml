@@ -188,6 +188,7 @@
 	<object class="MixerBusEffectChain" id="{aa0607c1-7d97-4637-a84e-215190571f06}">
 		<relationship name="effects">
 			<destination>{1acfa6bc-c121-4cbd-a154-ab37dd1f0e9d}</destination>
+			<destination>{6dc78ceb-840d-46bf-8235-4c3b03f1d887}</destination>
 			<destination>{350b0940-fdda-4dd0-a6f0-2dc07b62b846}</destination>
 		</relationship>
 	</object>
@@ -204,6 +205,14 @@
 	</object>
 	<object class="MixerBusPanner" id="{dba8fab8-f223-479e-b91b-5af37da8c8ee}" />
 	<object class="MixerBusFader" id="{1acfa6bc-c121-4cbd-a154-ab37dd1f0e9d}" />
+	<object class="ThreeEQEffect" id="{6dc78ceb-840d-46bf-8235-4c3b03f1d887}">
+		<property name="lowGain">
+			<value>-80</value>
+		</property>
+		<property name="highGain">
+			<value>-80</value>
+		</property>
+	</object>
 	<object class="ObjectSpatialiserEffect" id="{350b0940-fdda-4dd0-a6f0-2dc07b62b846}">
 		<property name="distanceRolloffType">
 			<value>1</value>
@@ -221,7 +230,7 @@
 			<value>1</value>
 		</property>
 		<property name="soundSize">
-			<value>400</value>
+			<value>1000</value>
 		</property>
 		<property name="minimumExtent">
 			<value>104</value>

@@ -2,9 +2,13 @@
 
 #include <sdafx.h>
 
+#include <Engine/Core/Public/Exception.h>
 #include <Engine/Reflection/Public/Reflection.h>
 
 namespace codex {
+    CX_CUSTOM_EXCEPTION(SerializationException, "Failed to serialize.");
+    CX_CUSTOM_EXCEPTION(DeserializationException, "Failed to deserialize.");
+
     class ISerializationNode
     {
     public:

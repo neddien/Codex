@@ -1,8 +1,8 @@
 #pragma once
 
+#include "Components.h"
 #include "Entity.h"
 #include "Scene.h"
-#include "Components.h"
 
 // Template implementation for Entity.h
 // If you want full Entity class then include Entity.inl
@@ -18,15 +18,15 @@ namespace codex {
     T& Entity::AddComponent(TArgs&&... args)
     {
         CX_ASSERT(!m_Scene->m_Registry->all_of<T>(m_Handle), "Entity already has that component.");
-        
-        // IDComponent is always the first Component 
-        Component* comp = &m_Scene->m_Registry->get<IDComponent>(m_Handle);
-        while (comp->m_Next != nullptr)
+
+        // IDComponent is always the first Component
+        Component* comp = &GetFirstComponent();
+        while (comp->m_Next)
         {
             comp = comp->m_Next;
         }
-        
-        auto& c = m_Scene->m_Registry->emplace<T>(m_Handle, std::forward<TArgs>(args)...);
+
+        auto& c      = m_Scene->m_Registry->emplace<T>(m_Handle, std::forward<TArgs>(args)...);
         comp->m_Next = &c;
         c.OnInit(); // TODO: This being called here is questionable
         c.m_Parent = *this;
@@ -37,21 +37,22 @@ namespace codex {
         requires(std::is_base_of_v<Component, T>)
     T& Entity::AddOrReplaceComponent(TArgs&&... args)
     {
-        // IDComponent is always the first Component 
-        Component* comp = &m_Scene->m_Registry->get<IDComponent>(m_Handle);
-        while (comp->m_Next != nullptr)
+        // IDComponent is always the first Component
+        Component* comp = &GetFirstComponent();
+        while (comp->m_Next)
         {
             comp = comp->m_Next;
         }
 
-        if (HasComponent<T>()) {
-            auto& c = m_Scene->m_Registry->emplace_or_replace<T>(m_Handle, std::forward<TArgs>(args)...);
+        if (HasComponent<T>())
+        {
+            auto& c      = m_Scene->m_Registry->emplace_or_replace<T>(m_Handle, std::forward<TArgs>(args)...);
             comp->m_Next = &c;
             c.OnInit();
             return c;
         }
 
-        auto& c = m_Scene->m_Registry->emplace<T>(m_Handle, std::forward<TArgs>(args)...);
+        auto& c      = m_Scene->m_Registry->emplace<T>(m_Handle, std::forward<TArgs>(args)...);
         comp->m_Next = &c;
         c.OnInit();
         c.m_Parent = *this;
