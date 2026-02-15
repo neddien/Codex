@@ -19,6 +19,8 @@ namespace codex::scene {
         {
             ComponentFactory::Get().InstantiateComponent(*c, cx_entity);
         }
+
+        return cx_entity;
     }
 
     Prefab Prefab::FromEntity(const Entity entity) noexcept
@@ -42,6 +44,5 @@ namespace codex::scene {
 
     void Prefab::Deserialize(const ISerializationNode& node)
     {
-
     }
 } // namespace codex::scene
