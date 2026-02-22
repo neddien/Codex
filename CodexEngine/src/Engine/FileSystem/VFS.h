@@ -1,28 +1,30 @@
 #pragma once
 
+#include <sdafx.h>
+
 #include "IVFSMount.h"
 
 #include <Engine/Core/Public/UUID.h>
 #include <Engine/FileSystem/IVFSMount.h>
-#include <Engine/Memory/Public/Box.h>
+#include <Engine/Memory/Public/Memory.h>
 
 namespace codex::fs {
     class VFS
     {
     public:
-        struct Entry
+        struct Node
         {
-            std::filesystem::path virtual_path;
-            IVFSMount*            mount;
-            std::filesystem::path mount_path;
-            i32                   priority;
+            bool                                       isDirectory;
+            std::string                                path;
+            IVFSMount*                                 owner;
+            std::flat_map<std::string, mem::Box<Node>> children;
         };
 
     public:
-        VFS();
+        VFS() noexcept;
 
         // Mount management
-        void Mount(mem::Box<IVFSMount> mount);
+        void Mount(mem::Shared<IVFSMount> mount, const std::string_view path);
         // void SetPriority(const std::filesystem::path& mountPoint, const i32 priority);
 
         // File operations (tries mounts in priority order)
@@ -39,8 +41,8 @@ namespace codex::fs {
         IVFSMount*               FindMountForPath(const std::filesystem::path& path);
 
     private:
-        std::unordered_map<UUID, std::vector<Entry>>                 m_Files;
-        std::unordered_map<UUID, std::vector<std::filesystem::path>> m_Dirs;
-        std::vector<IVFSMount>                                       m_Mounts;
+        mem::Box<Node>                      m_Root;
+        std::vector<mem::Shared<IVFSMount>> m_Mounts;
+        IVFSMount*                          m_DefaultWriteMount;
     };
 } // namespace codex::fs

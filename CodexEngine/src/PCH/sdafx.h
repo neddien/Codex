@@ -39,6 +39,7 @@
 // Collections
 #include <array>
 #include <bitset>
+#include <flat_map>
 #include <initializer_list>
 #include <map>
 #include <string>
