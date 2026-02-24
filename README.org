@@ -1,104 +1,288 @@
-#+title: Codex
+#+title: Codex Engine
 #+author: Neddiendrohu
 
-* Compilation
-** Ubuntu
-Because Ubuntu is a horrid distribution and I am forced to work with it, I will need to write this small guide to help me
-build Codex on Ubuntu machines.
+* Overview
 
-*** Prequisites
-- CMake 3.20+
-- GCC 13+ (for libstdc++13 used by clang)
-- Clang 17+
-- Ninja
-- Python 3.7+
+Codex is a modern 2D game engine written in C++20 with an integrated editor. It features:
 
-You're going to add extra repositories for APT so download the following.
+- *ECS* scene management via EnTT
+- *OpenGL* rendering with a batched 2D sprite renderer
+- *Box2D* physics (rigid bodies, colliders)
+- *FMOD Studio* audio integration
+- *NativeBehaviour* C++ scripting with runtime reflection
+- *ImGui-based* editor with scene hierarchy, property inspector, and content browser
+- Cross-platform support: Linux, Windows, macOS
+
+** Project Structure
+
+#+begin_src
+Codex.nb/
+├── CodexEngine/       # Core engine (shared + static library)
+│   ├── src/Engine/    # Engine modules (ECS, graphics, physics, etc.)
+│   ├── src/Platform/  # Platform abstraction (POSIX, Linux, Windows, OpenGL)
+│   └── vendor/        # Vendored header-only libs (glm, entt, stb, glad, fmod)
+├── CodexEditor/       # ImGui-based editor application
+│   └── assets/Projects/
+│       └── TemplateProject/   # Base project template for Native Behaviour scripts
+├── Scripts/           # Build helper scripts
+├── builds/            # CMake build outputs (generated)
+└── installs/          # Install outputs (generated)
+#+end_src
+
+* Prerequisites (All Platforms)
+
+The following are required regardless of platform:
+
+| Tool    | Minimum Version | Notes                                                      |
+|---------+-----------------+----------------------------------                          |
+| CMake   | 3.16            | Uses CMake Presets                                         |
+| Clang   | 17+             | Primary compiler on Linux/macOS                            |
+| Python  | 3.8+            | Required for the reflection tool (~python-clang~ / ~libclang~) |
+| Git     | any             | Dependencies fetched via CMake                             |
+
+Most third-party dependencies (SDL2, Box2D, ImGui, nlohmann/json, Logex) are
+fetched automatically by CMake at configure time. No manual installation needed
+for those. FMOD is vendored directly in ~CodexEngine/vendor/fmod/~.
+
+* Building
+
+** Quick Start (Linux)
+
 #+begin_src bash
+# Configure
+cmake --preset linux-any-debug
+
+# Build
+cmake --build builds/linux-any-debug
+
+# (Optional) Install
+cmake --install builds/linux-any-debug
+#+end_src
+
+** Available Presets
+
+| Preset                    | Platform | Compiler | Architecture | Build Type |
+|---------------------------+----------+----------+--------------+------------|
+| ~linux-any-debug~           | Linux    | Clang    | Any          | Debug      |
+| ~linux-any-release~         | Linux    | Clang    | Any          | Release    |
+| ~linux-any-shipping~        | Linux    | Clang    | Any          | Shipping   |
+| ~windows-msvc-any-debug~    | Windows  | MSVC     | Any          | Debug      |
+| ~windows-msvc-any-release~  | Windows  | MSVC     | Any          | Release    |
+| ~windows-llvm-any-debug~    | Windows  | Clang    | Any          | Debug      |
+| ~vs2022~                    | Windows  | MSVC     | Any          | VS 2022    |
+| ~osx-any-debug~             | macOS    | Clang    | Any          | Debug      |
+| ~osx-any-release~           | macOS    | Clang    | Any          | Release    |
+
+* Platform Setup Guides
+
+** Fedora
+
+Fedora ships a recent enough toolchain in its default repositories, so setup is
+straightforward.
+
+*** Install dependencies
+
+#+begin_src bash
+sudo dnf install -y \
+  cmake \
+  clang \
+  python3 \
+  git \
+  libGL-devel \
+  libX11-devel \
+  libXext-devel \
+  libXrandr-devel \
+  libXi-devel \
+  libXcursor-devel \
+  libXinerama-devel \
+  libXfixes-devel \
+  pipewire-devel \
+  pipewire-jack-audio-connection-kit-devel \
+  alsa-lib-devel
+#+end_src
+
+*** Configure and build
+
+#+begin_src bash
+cmake --preset linux-any-debug
+cmake --build builds/linux-any-debug
+#+end_src
+
+** Arch Linux
+
+Arch's rolling release means packages are always up to date.
+
+*** Install dependencies
+
+#+begin_src bash
+sudo pacman -S --needed \
+  cmake \
+  clang \
+  python \
+  git \
+  libgl \
+  libx11 \
+  libxext \
+  libxrandr \
+  libxi \
+  libxcursor \
+  libxinerama \
+  libxfixes \
+  alsa-lib
+#+end_src
+
+Optionally install PipeWire dev libraries for audio support:
+
+#+begin_src bash
+sudo pacman -S --needed pipewire pipewire-jack
+#+end_src
+
+*** Configure and build
+
+#+begin_src bash
+cmake --preset linux-any-debug
+cmake --build builds/linux-any-debug
+#+end_src
+
+** Ubuntu
+
+Ubuntu's default APT repos lag behind on CMake and Clang, so extra steps are
+needed to get a modern toolchain.
+
+*** System update and helpers
+
+#+begin_src bash
+sudo apt update -y && sudo apt upgrade -y
 sudo apt install -y wget software-properties-common apt-transport-https gnupg lsb-release
 #+end_src
 
-And also update your system just in case.
+*** CMake (via Kitware APT repo)
+
 #+begin_src bash
-sudo apt update -y && sudo apt upgrade -y
+wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc \
+  | sudo gpg --dearmor -o /usr/share/keyrings/kitware-archive-keyring.gpg
+
+echo "deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] \
+  https://apt.kitware.com/ubuntu/ $(lsb_release -cs) main" \
+  | sudo tee /etc/apt/sources.list.d/kitware.list
+
+sudo apt update -y && sudo apt install -y cmake
 #+end_src
 
-*** CMake
-Add Kitware's APT repo for the latest CMake package.
-#+begin_src bash
-wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc | sudo apt-key add -
-#+end_src
-#+begin_src bash
-sudo apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
-#+end_src
+*** GCC 13 (required as a dependency for Clang's ~libstdc++~)
 
-Now refreh your repos and install CMake.
-#+begin_src bash
-sudo apt update -y && sudo apt install cmake
-#+end_src
-
-*** GCC
-Add Ubuntu toolchain test builds repository.
 #+begin_src bash
 sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+sudo apt install -y gcc-13 g++-13
 #+end_src
 
-Install GCC-13.
-#+begin_src bash
-sudo apt install gcc-13 g++13
-#+end_src
+*** Clang 17+
 
-*** Clang
-Download and run the following script.
 #+begin_src bash
 wget https://apt.llvm.org/llvm.sh
-#+end_src
-
-Add execution permission for the shell script.
-#+begin_src bash
 chmod +x llvm.sh
-#+end_src
-
-Run the script with the desired clang version.
-#+begin_src bash
 sudo ./llvm.sh 17
+sudo apt install -y clang-17
 #+end_src
 
-Now install clang with your desired version from apt.
-#+begin_src bash
-sudo apt install clang-17
-#+end_src
+Optionally set Clang 17 as the default:
 
-(Optional) Set clang-17 as default.
 #+begin_src bash
-sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-17 100
+sudo update-alternatives --install /usr/bin/clang   clang   /usr/bin/clang-17   100
 sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-17 100
 #+end_src
 
-(Optional) Switch the versions.
+*** Python and system libraries
+
 #+begin_src bash
-sudo update-alternatives --config clang
-sudo update-alternatives --config clang++
+sudo apt install -y \
+  python3 \
+  git \
+  libgl1-mesa-dev \
+  libx11-dev \
+  libxext-dev \
+  libxrandr-dev \
+  libxi-dev \
+  libxcursor-dev \
+  libxinerama-dev \
+  libxfixes-dev \
+  libpipewire-0.3-dev \
+  libasound2-dev
 #+end_src
 
-*** Ninja
-Any version of ninja should work.
+*** Configure and build
+
 #+begin_src bash
-sudo apt install ninja
+cmake --preset linux-any-debug
+cmake --build builds/linux-any-debug
 #+end_src
 
-*** Python
-Install python3.8 (or newer) from apt.
-#+begin_src bash
-sudo apt install python3.8
+** Windows
+
+Windows supports two compiler toolchains: MSVC and Clang (LLVM). Both require
+Ninja as the build tool (except the ~vs2022~ preset which generates a Visual
+Studio solution).
+
+*** Prerequisites
+
+- [[https://visualstudio.microsoft.com/][Visual Studio 2022]] with the *Desktop development with C++* workload
+  (provides MSVC, Windows SDK)
+- [[https://www.python.org/downloads/][Python 3.8+]] (add to ~PATH~)
+- [[https://git-scm.com/][Git]] (with SSH keys configured for GitHub)
+
+Clang, Ninja, and libclang are best installed via [[https://scoop.sh/][Scoop]]. If you don't have
+Scoop yet, install it from PowerShell:
+
+#+begin_src powershell
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+irm get.scoop.sh | iex
 #+end_src
 
-Make sure to run the script *WITH* the new python.
-#+begin_src bash
-cd Codex/
-python3.8 Scripts/build.py --config=debug --build --install
+Then install the required tools:
+
+#+begin_src powershell
+scoop install llvm ninja
 #+end_src
+
+~llvm~ includes both ~clang~/~clang++~ and ~libclang~, which is required by the
+Python reflection tool (~reflector.py~ uses ~python-clang~ bindings backed by
+~libclang.dll~). After installing, install the Python bindings:
+
+#+begin_src powershell
+pip install clang
+#+end_src
+
+*** MSVC (recommended)
+
+Open a *Developer Command Prompt for VS 2022*, then:
+
+#+begin_src bat
+cmake --preset windows-msvc-any-debug
+cmake --build builds/windows-msvc-any-debug
+#+end_src
+
+*** Clang/LLVM on Windows
+
+From a *Developer Command Prompt for VS 2022* (needed for the Windows SDK and
+linker), with Clang on ~PATH~ via Scoop:
+
+#+begin_src bat
+cmake --preset windows-llvm-any-debug
+cmake --build builds/windows-llvm-any-debug
+#+end_src
+
+*** Visual Studio 2022 solution
+
+To generate a ~.sln~ and work inside the IDE:
+
+#+begin_src bat
+cmake --preset vs2022
+#+end_src
+
+Then open ~builds/vs2022/Codex.sln~ in Visual Studio.
 
 * Trademarks
-Codex uses FMOD as its audio engine. See the [[https://www.fmod.com/][fmod website]] for more information.
+
+Codex uses FMOD as its audio engine. See the [[https://www.fmod.com/][FMOD website]] for more information.
+
 [[file:./Logos/fmod.svg]]
