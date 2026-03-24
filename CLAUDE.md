@@ -8,16 +8,16 @@ Codex is a modern 2D game engine written in C++20 with an integrated editor. It 
 
 ```
 <project-root>/
-├── CodexEngine/          # Core engine (shared + static library)
-│   ├── src/Engine/       # Engine modules
-│   ├── src/Platform/     # Platform abstraction layer
+├── codex_engine/         # Core engine (shared + static library)
+│   ├── src/engine/       # Engine modules
+│   ├── src/platform/     # Platform abstraction layer
 │   └── vendor/           # Header-only deps (glm, entt, stb, glad)
-├── CodexEditor/          # ImGui-based editor application
+├── codex_editor/         # ImGui-based editor application
 │   └── assets/Projects/  # Project templates
 │       ├── TemplateProject/  # Base project template
 │       └── MarioClone/       # Example project (copy of TemplateProject)
-├── Legacy/               # Abandoned code (ignore)
-├── Scripts/              # Build scripts
+├── legacy/               # Abandoned code (ignore)
+├── scripts/              # Build scripts
 ├── builds/               # Build outputs (generated)
 └── installs/             # Install outputs (generated)
 ```
@@ -47,7 +47,7 @@ Uses **CMake Presets** (CMakePresets.json). Do not use raw cmake commands.
 cmake --preset linux-any-debug
 
 # Build
-cmake --build --preset linux-any-debug
+cmake --build builds/linux-any-debug
 
 # Install
 cmake --install builds/linux-any-debug
@@ -63,10 +63,11 @@ cmake --install builds/linux-any-debug
 
 ### Naming
 - **Classes**: PascalCase (`Application`, `Entity`, `Scene`)
-- **Methods**: PascalCase (`OnUpdate`, `GetComponent`)
-- **Member variables**: `m_` prefix (`m_Width`, `m_Running`)
-- **Static members**: `s_` prefix (`s_Instance`)
-- **Enums**: PascalCase (`EventType::WindowClose`)
+- **Methods**: snake_case (`on_update`, `get_component`)
+- **Member variables**: trailing `_` suffix (`width_`, `running_`)
+- **Static members**: `s_` prefix + trailing `_` (`s_instance_`)
+- **Enums**: snake_case with `enum class` (`event_type::window_close`)
+- **Getters**: STL-style (`foo()` not `get_foo()`); **Setters**: `set_foo()`
 
 ### Type Aliases (from CommonDef.h)
 - `u8`, `u16`, `u32`, `u64` - unsigned integers
@@ -88,31 +89,33 @@ cmake --install builds/linux-any-debug
 
 ## Engine Architecture
 
-### Core Modules (src/Engine/)
+### Core Modules (src/engine/)
 
 | Module | Purpose |
 |--------|---------|
-| `Core/` | Application, Window, Layer system, Events, Input |
-| `Scene/` | ECS (EnTT), Components, Camera, Physics (Box2D) |
-| `Graphics/` | Renderer, BatchRenderer2D, Shaders, Textures |
-| `Memory/` | Box, Shared, Ref smart pointers |
-| `Reflection/` | Runtime type info for serialization/editor |
-| `Serialization/` | Scene/component persistence |
-| `System/` | DynamicLibrary, Process management |
-| `NativeBehaviour/` | Entity scripting base class |
+| `core/` | Engine (main loop/singleton), Window, Layer system, Events, Input |
+| `scene/` | ECS (EnTT), Components, Camera, Physics (Box2D) |
+| `graphics/` | Renderer, BatchRenderer2D, Shaders, Textures |
+| `memory/` | Box, Shared, Ref smart pointers |
+| `concurrency/` | ThreadPool, Task\<T\> (coroutine), ThreadedExecutor, CooperativeExecutor |
+| `reflection/` | Runtime type info for serialization/editor |
+| `system/` | DynamicLibrary, Process management |
+| `native_behaviour/` | Entity scripting base class |
+| `file_system/` | VFS (trie-based), DiskMount, MemoryMount, PakMount, FileHandle |
+| `audio/` | FMOD audio integration |
 
-### Platform Layer (src/Platform/)
+### Platform Layer (src/platform/)
 
 | Directory | Purpose |
 |-----------|---------|
-| `POSIX/` | Unix process management |
-| `Linux/` | Linux-specific code |
-| `Windows/` | Windows-specific code |
-| `OpenGL/` | OpenGL renderer implementation |
+| `posix/` | Unix process management |
+| `linux/` | Linux-specific file handles (`LinuxFileHandle`) |
+| `windows/` | Windows-specific code (`NtFileHandle`) |
+| `open_gl/` | OpenGL renderer implementation |
 
 ### Key Classes
 
-- **Application**: Main loop, layer management, window ownership
+- **Engine** (was `Application`): Main loop, layer management, window ownership. Factory: `create_engine(EngineArgs)`. Config: `EngineProperties`. Singleton access: `Engine::get()`.
 - **Scene**: ECS container with EnTT registry, Box2D world
 - **Entity**: Wrapper around EnTT entity with component helpers
 - **Renderer**: Static facade for rendering operations
@@ -121,8 +124,8 @@ cmake --install builds/linux-any-debug
 ### Event System
 ```cpp
 // Event dispatch pattern
-EventDispatcher dispatcher(event);
-dispatcher.Dispatch<WindowCloseEvent>([](WindowCloseEvent& e) {
+EventDispatcher dispatcher{ event };
+dispatcher.dispatch<WindowCloseEvent>([](WindowCloseEvent& e) {
     // handle
     return true;
 });
@@ -135,7 +138,7 @@ Components are POD structs registered with EnTT:
 - `RigidBody2DComponent` - Box2D body wrapper
 - `BoxCollider2DComponent` - Box2D collider
 - `CameraComponent` - scene camera
-- `NativeBehaviourComponent` - script attachment (uses `m_PendingScripts` for deferred attachment after async compilation)
+- `NativeBehaviourComponent` - script attachment (uses `pending_scripts_` for deferred attachment after async compilation)
 
 ## Abbreviations
 
@@ -152,7 +155,7 @@ Components are POD structs registered with EnTT:
 
 The engine uses a custom reflection system for NativeBehaviour (NB) scripts. The reflection generator is located at:
 ```
-CodexEditor/assets/Projects/TemplateProject/Scripts/reflector.py
+codex_editor/assets/Projects/TemplateProject/scripts/reflector.py
 ```
 
 ### How It Works
@@ -174,7 +177,7 @@ CodexEditor/assets/Projects/TemplateProject/Scripts/reflector.py
 
 For manual invocation (if needed):
 ```bash
-python Scripts/reflector.py MyScript.h -o ./generated --compile-commands=build
+python scripts/reflector.py my_script.h -o ./generated --compile-commands=build
 ```
 
 ### Reflection Macros
@@ -207,13 +210,13 @@ class MyScript : public NativeBehaviour {
 - FMOD 13.25 - audio
 - Logex - logging (custom, but treat as third-party)
 
-### Vendored (in CodexEngine/vendor/)
+### Vendored (in codex_engine/vendor/)
 - GLM - math library
 - EnTT - ECS framework
 - glad - OpenGL loader
 - stb - image loading
 
-## Editor (CodexEditor)
+## Editor (codex_editor)
 
 ImGui-based editor with panels:
 - **SceneEditorView** - main viewport with gizmos (ImGuizmo)
@@ -227,29 +230,30 @@ ImGui-based editor with panels:
 Native C++ scripts that attach to entities. Currently exposed third-party libraries:
 - `glm` - math
 - `entt` - ECS (direct registry access)
-- `lgx` (Logex) - logging
+
+Logging is available via `NativeBehaviour`'s protected methods (`info`, `warn`, `error`, `fatal`, `trace`) — routes to the nbman logger. Scripts no longer need to use `lgx` directly.
 
 ### NBMan API
-- `NBMan::Load(path, scene)` - loads a compiled script module (.dll/.so) and associates it with a scene
-- `NBMan::Unload()` - saves all attached scripts to pending, then unloads the module
-- Compilation is async; `pendingNBLoad` flag defers `Load()` to the main thread
+- `NBMan::load(path, scene)` - loads a compiled script module (.dll/.so) and associates it with a scene
+- `NBMan::unload()` - saves all attached scripts to pending, then unloads the module
+- Compilation is async; `pending_nb_load` atomic flag defers `load()` to the main thread
 - Script attachment lifecycle: deserialize → pending → compile → load → attach
 
 ## Common Tasks
 
 ### Adding a new component
-1. Define struct in `src/Engine/Scene/Components.h`
+1. Define struct in `src/engine/scene/Components.h`
 2. Add reflection metadata with `RF_CLASS`, `RF_PROPERTY`
 3. Register serialization in `Serializer`
 4. Add to editor PropertiesView if needed
 
 ### Adding platform-specific code
-1. Create files in appropriate `src/Platform/` subdirectory
+1. Create files in appropriate `src/platform/` subdirectory
 2. Add to CMakeLists.txt platform-specific source lists
 3. Use `#ifdef CX_PLATFORM_*` guards if needed
 
 ### Creating a new NativeBehaviour
-1. Create header in project's `src/Scripts/`
+1. Create header in project's `src/scripts/`
 2. Inherit from `NativeBehaviour`
 3. Add `RF_CLASS()`, `RF_SERIALIZABLE()` macros
 4. Mark exposed properties with `RF_PROPERTY()`
@@ -258,15 +262,15 @@ Native C++ scripts that attach to entities. Currently exposed third-party librar
 
 ## Known Issues / TODOs
 
-- [ ] **Abstract Logex behind Engine Logger** - Create `codex::Logger` wrapper to hide `lgx` from NativeBehaviour scripts. Goal: NB scripts should only depend on engine types, not third-party libraries directly. Currently exposed: `glm`, `entt`, `lgx`.
+- [x] **Abstract Logex behind Engine Logger** - Three `lgx::Logger` instances (`engine`, `editor`, `nbman`) managed by `Engine`. Free functions `codex::info/warn/error/fatal/trace` in `log.h`. `NativeBehaviour` has protected logging methods. Scripts no longer expose `lgx` directly.
 
 - [ ] SDL audio disabled due to Fedora package issues (using FMOD instead)
 
 - [ ] Some warnings disabled in debug builds
 
-- [ ] CMake install targets reference hardcoded `SDL2` instead of conditional `SDL2-static` on Windows (line 411 in CodexEngine/CMakeLists.txt)
+- [ ] CMake install targets reference hardcoded `SDL2` instead of conditional `SDL2-static` on Windows (line 411 in codex_engine/CMakeLists.txt)
 
-- [ ] `BOX2D_BUILD_TESTBED` is set twice in CodexEngine/CMakeLists.txt (lines 7-8 and 10-11)
+- [ ] `BOX2D_BUILD_TESTBED` is set twice in codex_engine/CMakeLists.txt (lines 7-8 and 10-11)
 
 - [ ] FMOD paths use `${CMAKE_CURRENT_DIR}` which should be `${CMAKE_CURRENT_SOURCE_DIR}` (line 364)
 
@@ -281,7 +285,8 @@ Analysis conducted to identify gaps for building a networked multiplayer platfor
 | **Networking** | MISSING | No infrastructure exists; Legacy/NetNT has abandoned ASIO code |
 | **Asset Manager + Prefabs** | MISSING | Only Texture2D/Shader loading; no entity templates |
 | **Animation System** | MISSING | SpriteSheet exists but no Animator/state machine |
-| **Audio API** | IN PROGRESS | FMOD Studio API 2.02.25 vendored; implementing integration |
+| **Audio API** | DONE | FMOD Studio API integrated; bank playback via AudioSystem |
+| **Virtual Filesystem** | DONE | VFS, DiskMount, MemoryMount, PakMount (.cxpak with LZ4) implemented |
 | **Runtime UI** | MISSING | Only editor ImGui; no in-game HUD system |
 | **Platformer Physics** | PARTIAL | Box2D works; missing ground detection, one-way platforms |
 | **Input Action Mapping** | MISSING | Raw keys only; no rebindable actions |
@@ -306,9 +311,10 @@ Analysis conducted to identify gaps for building a networked multiplayer platfor
 - No `AnimationClip`, `AnimatorComponent`, or state machine
 - No frame playback, transitions, or animation events
 
-#### 4. Audio (Done)
-- FMOD API 2.02.25 vendored in `/CodexEngine/vendor/fmod/`
-- Studio API (bank playback)
+#### 4. Audio (DONE)
+- FMOD API 2.02.25 vendored in `codex_engine/vendor/fmod/`
+- `AudioSystem` + `AudioManager` integrated; bank loading and event playback
+- `ax::EventHandle` exposed to NativeBehaviour scripts via `get_audio_event(event_path)`
 - SDL audio explicitly disabled (using FMOD instead)
 
 #### 5. Platformer Physics Helpers (Important)
@@ -331,24 +337,29 @@ Analysis conducted to identify gaps for building a networked multiplayer platfor
 - Box2D physics simulation
 - NativeBehaviour scripting with reflection
 - Cross-platform build system
+- Virtual Filesystem (VFS) with disk, memory, and PAK archive mounts (LZ4 compression, CRC integrity)
+- FMOD audio integration (bank playback via AudioSystem)
+- Engine logging system (engine/editor/nbman loggers, `codex::info/warn/error` free functions)
 
 ### Recommended Implementation Order
-1. **Audio Integration** - Connect FMOD (IN PROGRESS)
-2. **Asset Manager + Prefabs** - Foundation for spawning
-3. **Entity Cloning** - Required for prefab instantiation
-4. **Animation System** - Visual gameplay
-5. **Networking** - Multiplayer core
-6. **Platformer Physics** - Ground detection, etc.
-7. **Runtime UI** - HUD/menus
-8. **Input Action Mapping** - Polish
+1. ~~**Audio Integration**~~ - DONE
+2. ~~**Virtual Filesystem**~~ - DONE
+3. **Asset Manager + Prefabs** - Foundation for spawning
+4. **Entity Cloning** - Required for prefab instantiation
+5. **Animation System** - Visual gameplay
+6. **Networking** - Multiplayer core
+7. **Platformer Physics** - Ground detection, etc.
+8. **Runtime UI** - HUD/menus
+9. **Input Action Mapping** - Polish
 
-## Interation Guides
-1. **FMOD Audio Integratin** - [Fmod Guide](./Doc/FMODEngine.md)
-1. **Asset Manager Integratin** - [Asset Manager Guide](./Doc/AssetManager.md)
+## Integration Guides
+1. **FMOD Audio Integration** - [FMOD Guide](./doc/FMODEngine.md)
+1. **Asset Manager Integration** - [Asset Manager Guide](./doc/AssetManager.md)
+1. **Virtual Filesystem (VFS / PAK)** - [FileSystem Guide](./doc/FileSystem.md)
 
 ## Files to Ignore
 
-- `Legacy/` - abandoned code
+- `legacy/` - abandoned code
 - `builds/` - generated build files
 - `installs/` - generated install files
 - Third-party vendor code (SDL2, Box2D, ImGui, nlohmann/json, FMOD, Logex)

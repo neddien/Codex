@@ -1,0 +1,86 @@
+#pragma once
+
+#include "components.h"
+#include "entity.h"
+#include "scene.h"
+
+// Template implementation for Entity.h
+// If you want full Entity class then include Entity.inl
+
+namespace codex {
+    inline Entity::operator bool() const noexcept
+    {
+        return scene_ && handle_ != entt::entity{ entt::null } && scene_->is_valid(*this);
+    }
+
+    template <typename T, typename... TArgs>
+        requires(std::is_base_of_v<Component, T>)
+    T& Entity::add_component(TArgs&&... args)
+    {
+        CX_ASSERT(!scene_->registry_->all_of<T>(handle_), "Entity already has that component.");
+
+        // IDComponent is always the first component.
+        Component* comp = &first_component();
+        while (comp->next_)
+            comp = comp->next_;
+
+        auto& c     = scene_->registry_->emplace<T>(handle_, std::forward<TArgs>(args)...);
+        comp->next_ = &c;
+        c.on_init(); // TODO: This being called here is questionable
+        c.parent_ = *this;
+        return c;
+    }
+
+    template <typename T, typename... TArgs>
+        requires(std::is_base_of_v<Component, T>)
+    T& Entity::add_or_replace_component(TArgs&&... args)
+    {
+        // IDComponent is always the first component.
+        Component* comp = &first_component();
+        while (comp->next_)
+            comp = comp->next_;
+
+        if (has_component<T>()) {
+            auto& c     = scene_->registry_->emplace_or_replace<T>(handle_, std::forward<TArgs>(args)...);
+            comp->next_ = &c;
+            c.on_init();
+            return c;
+        }
+
+        auto& c     = scene_->registry_->emplace<T>(handle_, std::forward<TArgs>(args)...);
+        comp->next_ = &c;
+        c.on_init();
+        c.parent_ = *this;
+        return c;
+    }
+
+    template <typename T>
+        requires(std::is_base_of_v<Component, T>)
+    void Entity::remove_component()
+    {
+        CX_ASSERT(scene_->registry_->all_of<T>(handle_), "Entity does not have the component to remove.");
+        scene_->registry_->remove<T>(handle_);
+    }
+
+    template <typename T>
+        requires(std::is_base_of_v<Component, T>)
+    T& Entity::get_component()
+    {
+        CX_ASSERT(scene_->registry_->all_of<T>(handle_), "Entity does not have the component to retrieve.");
+        return scene_->registry_->get<T>(handle_);
+    }
+
+    template <typename T>
+        requires(std::is_base_of_v<Component, T>)
+    const T& Entity::get_component() const
+    {
+        return const_cast<Entity*>(this)->get_component<T>();
+    }
+
+    template <typename T>
+        requires(std::is_base_of_v<Component, T>)
+    bool Entity::has_component() const
+    {
+        return scene_->registry_->all_of<T>(handle_);
+    }
+} // namespace codex

@@ -8,8 +8,9 @@ BraceWrapping:
     AfterFunction: true
     AfterUnion: true
     AfterExternBlock: false
+    AfterControlStatement: Never
     BeforeCatch: true
-    BeforeElse: true
+    BeforeElse: false
     BeforeLambdaBody: true
     BeforeWhile: false
     AfterNamespace: false

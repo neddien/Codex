@@ -1,0 +1,75 @@
+#+title: Codex Engine code style
+#+author: Neddiendrohu
+
+* Naming
+- Classes: PascalCase.
+- ~enum class~ must always be preferred over legacy C enums.
+- Enum members: PascalCase.
+- Function names: snake_case.
+- Function-local variables: snake_case.
+- Global variables: ~g_~ prefix.
+- Static variables outside of classes: ~s_~ prefix.
+- Instance member fields (private or protected): trailing underscore suffix — ~image_buffer_~.
+- Public member fields (usually in structs): standard snake_case without suffix — ~width~.
+- Static class member fields: ~s_~ prefix + trailing underscore — ~s_instance_~.
+- Directory and file names: snake_case.
+- Template definitions must be in a separate ~.inl~ file.
+
+* Const correctness
+- Everything should be ~const~ by default.
+- All non-mutating member functions must be marked ~const~.
+- All function parameters that are not modified must be ~const~.
+- Prefer ~const~ local variables unless mutation is necessary.
+
+* Formatting / Braces
+- Function braces: Allman style.
+- ~if~, ~while~, ~for~ and other statements inside functions: K&R style.
+
+* Class organisation
+Classes should be organised in these regions, each separated by its appropriate access modifier:
+1. ~friend~ definitions
+2. Public type aliases: ~using size_type = usize;~
+3. Public constants
+4. Constructors, destructor
+5. Move and copy operators
+6. Getters/setters — getter name mirrors field name without trailing underscore: ~int size_~ → ~size()~, ~audio_path_~ → ~audio_path()~
+7. Public member functions
+8. Public operators
+9. Protected members
+10. Protected operators
+11. Private member functions
+12. Private operators
+13. Private member fields
+
+* Type aliases
+~u8~, ~u16~, ~u32~, ~u64~, ~usize~, ~uintptr~ and their signed variants must always be preferred over ~unsigned char~, ~unsigned short~, etc.
+
+* Headers and includes
+- Always use ~#pragma once~ instead of include guards.
+- If a header only holds a pointer or reference to a type, forward declare it instead of including its header. Forward declarations go at the top of the file.
+- Include order (each group separated by a blank line):
+  1. Standard library headers
+  2. Third-party headers
+  3. Engine headers
+- ~using namespace~ is forbidden in header files.
+
+* Constructors
+- Single-argument constructors must always be ~explicit~ to prevent implicit conversions.
+
+* Virtual functions
+- All overriding virtual functions must be marked ~override~.
+- ~final~ may be applied where further overriding makes no sense — it enables compiler devirtualization and is an optimisation, not a penalty.
+
+* Move semantics
+- Move constructors and move assignment operators should almost always be marked ~noexcept~.
+
+* Attributes
+- All getters must have ~[[nodiscard]]~.
+- Factory functions and any function where ignoring the return value is almost certainly a bug must have ~[[nodiscard]]~.
+- Unused variables and function parameters must have ~[[maybe_unused]]~.
+
+* Miscellaneous
+- Always use ~nullptr~, never ~NULL~ or ~0~ for pointers.
+- ~auto~ is acceptable for: iterator types, lambdas, structured bindings, and where the type is explicitly spelled out on the same line (e.g. casts, ~make_shared~). Avoid ~auto~ where it hides non-obvious return types.
+- ~friend~ is only permitted between tightly intertwined classes or functions where it genuinely makes sense.
+- Only intertwined classes/functions that make sense can be friends.

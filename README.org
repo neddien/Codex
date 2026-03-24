@@ -17,14 +17,14 @@ Codex is a modern 2D game engine written in C++20 with an integrated editor. It 
 
 #+begin_src
 Codex.nb/
-├── CodexEngine/       # Core engine (shared + static library)
-│   ├── src/Engine/    # Engine modules (ECS, graphics, physics, etc.)
-│   ├── src/Platform/  # Platform abstraction (POSIX, Linux, Windows, OpenGL)
+├── codex_engine/      # Core engine (shared + static library)
+│   ├── src/engine/    # Engine modules (ECS, graphics, physics, etc.)
+│   ├── src/platform/  # Platform abstraction (POSIX, Linux, Windows, OpenGL)
 │   └── vendor/        # Vendored header-only libs (glm, entt, stb, glad, fmod)
-├── CodexEditor/       # ImGui-based editor application
+├── codex_editor/      # ImGui-based editor application
 │   └── assets/Projects/
 │       └── TemplateProject/   # Base project template for Native Behaviour scripts
-├── Scripts/           # Build helper scripts
+├── scripts/           # Build helper scripts
 ├── builds/            # CMake build outputs (generated)
 └── installs/          # Install outputs (generated)
 #+end_src
@@ -42,7 +42,7 @@ The following are required regardless of platform:
 
 Most third-party dependencies (SDL2, Box2D, ImGui, nlohmann/json, Logex) are
 fetched automatically by CMake at configure time. No manual installation needed
-for those. FMOD is vendored directly in ~CodexEngine/vendor/fmod/~.
+for those. FMOD is vendored directly in ~codex_engine/vendor/fmod/~.
 
 * Building
 
