@@ -13,7 +13,7 @@ namespace codex {
     class CODEX_API NBMan
     {
     public:
-        using FactoryFn = std::function<mem::Box<NativeBehaviour>()>;
+        using FactoryFn = std::function<Box<NativeBehaviour>()>;
 
     public:
         NBMan() = default;
@@ -30,11 +30,11 @@ namespace codex {
         template <typename T>
         static void register_type(const std::string& type_name)
         {
-            get().types_[type_name] = []() -> mem::Box<NativeBehaviour> { return mem::Box<T>::make(); };
+            get().types_[type_name] = []() -> Box<NativeBehaviour> { return Box<T>::make(); };
         }
 
     public:
-        [[nodiscard]] static mem::Box<NativeBehaviour> create_instance(const std::string& type_name)
+        [[nodiscard]] static Box<NativeBehaviour> create_instance(const std::string& type_name)
         {
             auto& types = get().types_;
             auto  it    = types.find(type_name);
@@ -59,7 +59,7 @@ namespace codex {
 
     private:
         std::unordered_map<std::string, FactoryFn> types_;
-        mem::Box<sys::DLib>                        nb_instance_;
+        Box<sys::DLib>                        nb_instance_;
         Scene*                                     scene_ = nullptr;
     };
 } // namespace codex

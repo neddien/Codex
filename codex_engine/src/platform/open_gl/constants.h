@@ -8,7 +8,7 @@
 #endif
 
 #ifndef __gl_h__
-#include <glad.h>
+#include <glad/glad.h>
 #endif
 
 #define MGL_ASSERT(...) CX_ASSERT(__VA_ARGS__)

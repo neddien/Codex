@@ -63,7 +63,11 @@ namespace codex::cc {
         public:
             Task get_return_object() { return Task{ std::coroutine_handle<promise_type>::from_promise(*this) }; }
 
-            std::suspend_always initial_suspend() { return {}; }
+            std::suspend_never initial_suspend()
+            {
+                acquire_ref();
+                return {};
+            }
 
             FinalAwaiter final_suspend() noexcept { return {}; }
 
@@ -93,6 +97,11 @@ namespace codex::cc {
             std::coroutine_handle<> await_suspend(std::coroutine_handle<> cont)
             {
                 handle_.promise().continuation_ = cont;
+                if (handle_.promise().ref_.load(std::memory_order_acquire) > 1) {
+                    return std::noop_coroutine();
+                }
+
+                // Symtetric transfer and start the task if it wasn't started already
                 return handle_;
             }
 
@@ -125,8 +134,10 @@ namespace codex::cc {
 
         ~Task() noexcept
         {
-            if (handle_)
+            if (handle_) {
+                // info("~Task<T>::Task(): Ref: {}", handle_.promise().ref_.load(std::memory_order_acquire));
                 handle_.promise().release_ref();
+            }
         }
 
     public:
@@ -164,6 +175,8 @@ namespace codex::cc {
 
             return *this;
         }
+
+        [[nodiscard]] inline bool done() const noexcept { return handle_.done(); }
 
     public:
         Task& swap(Task& other) noexcept

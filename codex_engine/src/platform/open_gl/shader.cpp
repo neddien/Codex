@@ -2,7 +2,7 @@
 #include "renderer.h"
 
 #include <fstream>
-#include <glad.h>
+#include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
 #include <string>

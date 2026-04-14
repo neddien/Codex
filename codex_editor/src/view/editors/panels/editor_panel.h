@@ -11,8 +11,8 @@ namespace codex::editor {
 
     private:
         SceneEditorView&                   editor_view_;
-        mem::Ref<SceneEditorDescriptor>    desc_;
-        std::vector<mem::Box<EditorPanel>> view_panels_;
+        Ref<SceneEditorDescriptor>    desc_;
+        std::vector<Box<EditorPanel>> view_panels_;
         bool                               imgui_block_events_ = true;
 
     protected:
@@ -26,7 +26,7 @@ namespace codex::editor {
     public:
         [[nodiscard]] inline bool imgui_block_events() const noexcept { return imgui_block_events_; }
         inline void               set_imgui_block_events(bool val) noexcept { imgui_block_events_ = val; }
-        [[nodiscard]] inline mem::Ref<SceneEditorDescriptor> get_descriptor() const noexcept { return desc_; }
+        [[nodiscard]] inline Ref<SceneEditorDescriptor> get_descriptor() const noexcept { return desc_; }
         [[nodiscard]] inline SceneEditorView&                get_parent() noexcept { return editor_view_; }
         [[nodiscard]] inline const SceneEditorView&          get_parent() const noexcept
         {

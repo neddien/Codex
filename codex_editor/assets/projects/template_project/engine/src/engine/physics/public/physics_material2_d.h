@@ -13,17 +13,17 @@ namespace codex::phys {
     public:
         void serialize(ISerializationNode& node) const override
         {
-            node.write("Density", density_);
-            node.write("Friction", friction_);
-            node.write("Restitution", restitution_);
-            node.write("RestitutionThreshold", restitution_threshold_);
+            node.write("density", density_);
+            node.write("friction", friction_);
+            node.write("restitution", restitution_);
+            node.write("restitution_threshold", restitution_threshold_);
         }
         void deserialize(const ISerializationNode& node) override
         {
-            node.read("Density", density_);
-            node.read("Friction", friction_);
-            node.read("Restitution", restitution_);
-            node.read("RestitutionThreshold", restitution_threshold_);
+            node.read("density", density_);
+            node.read("friction", friction_);
+            node.read("restitution", restitution_);
+            node.read("restitution_threshold", restitution_threshold_);
         }
     };
 } // namespace codex::phys

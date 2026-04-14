@@ -54,6 +54,80 @@ namespace codex::opengl {
         NearestLinear  = GL_NEAREST_MIPMAP_LINEAR
     };
 
+    [[nodiscard]] constexpr std::string_view to_string(const TextureFormat v) noexcept
+    {
+        switch (v)
+        {
+            case TextureFormat::None:             return "None";
+            case TextureFormat::RGBA8:            return "RGBA8";
+            case TextureFormat::RGB32F:           return "RGB32F";
+            case TextureFormat::RGBA32F:          return "RGBA32F";
+            case TextureFormat::Depth:            return "Depth";
+            case TextureFormat::Depth16:          return "Depth16";
+            case TextureFormat::Depth24:          return "Depth24";
+            case TextureFormat::Depth32:          return "Depth32";
+            case TextureFormat::Depth32F:         return "Depth32F";
+            case TextureFormat::Depth24Stencil8:  return "Depth24Stencil8";
+            case TextureFormat::Depth32FStencil8: return "Depth32FStencil8";
+            case TextureFormat::RedInt32:         return "RedInt32";
+            case TextureFormat::RedUInt32:        return "RedUInt32";
+            case TextureFormat::RedFloat32:       return "RedFloat32";
+            default:                              return "";
+        }
+    }
+
+    [[nodiscard]] constexpr TextureFormat texture_format_from_string(const std::string_view s) noexcept
+    {
+        if (s == "RGBA8")            return TextureFormat::RGBA8;
+        if (s == "RGB32F")           return TextureFormat::RGB32F;
+        if (s == "RGBA32F")          return TextureFormat::RGBA32F;
+        if (s == "Depth")            return TextureFormat::Depth;
+        if (s == "Depth16")          return TextureFormat::Depth16;
+        if (s == "Depth24")          return TextureFormat::Depth24;
+        if (s == "Depth32")          return TextureFormat::Depth32;
+        if (s == "Depth32F")         return TextureFormat::Depth32F;
+        if (s == "Depth24Stencil8")  return TextureFormat::Depth24Stencil8;
+        if (s == "Depth32FStencil8") return TextureFormat::Depth32FStencil8;
+        if (s == "RedInt32")         return TextureFormat::RedInt32;
+        if (s == "RedUInt32")        return TextureFormat::RedUInt32;
+        if (s == "RedFloat32")       return TextureFormat::RedFloat32;
+        return TextureFormat::None;
+    }
+
+    [[nodiscard]] constexpr std::string_view to_string(const TextureWrapMode v) noexcept
+    {
+        switch (v)
+        {
+            case TextureWrapMode::Mirror:  return "Mirror";
+            case TextureWrapMode::Stretch: return "Stretch";
+            case TextureWrapMode::Border:  return "Border";
+            default:                       return "";
+        }
+    }
+
+    [[nodiscard]] constexpr TextureWrapMode texture_wrap_mode_from_string(const std::string_view s) noexcept
+    {
+        if (s == "Stretch") return TextureWrapMode::Stretch;
+        if (s == "Border")  return TextureWrapMode::Border;
+        return TextureWrapMode::Mirror;
+    }
+
+    [[nodiscard]] constexpr std::string_view to_string(const TextureFilterMode v) noexcept
+    {
+        switch (v)
+        {
+            case TextureFilterMode::Linear:  return "Linear";
+            case TextureFilterMode::Nearest: return "Nearest";
+            default:                         return "";
+        }
+    }
+
+    [[nodiscard]] constexpr TextureFilterMode texture_filter_mode_from_string(const std::string_view s) noexcept
+    {
+        if (s == "Nearest") return TextureFilterMode::Nearest;
+        return TextureFilterMode::Linear;
+    }
+
     struct TextureProperties
     {
         TextureFormat     format      = TextureFormat::None;

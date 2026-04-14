@@ -2,6 +2,7 @@
 
 #include <engine/core/public/exception.h>
 #include <engine/core/public/serializer.h>
+#include <engine/native_behaviour/public/native_behaviour.h>
 #include <engine/scene/public/components.h>
 #include <engine/scene/public/entity.h>
 

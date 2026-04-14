@@ -1,85 +1,58 @@
 #pragma once
 
+#include <memory>
+
 #include <engine/core/public/exception.h>
 
-#include "sharable.h"
-
-namespace codex::mem {
-    // Forward declarations.
+namespace codex {
     template <typename T>
     class Shared;
 
-    CX_CUSTOM_EXCEPTION(ExpiredRefException, "Weak reference pointer is expired.")
+    CX_CUSTOM_EXCEPTION(ExpiredRefException, "Weak reference is expired.")
 
     template <typename T>
-    class Ref : public Sharable<T>
+    class Ref
     {
-        friend class Shared<T>;
+        template <typename U>
+        friend class Ref;
+
+        template <typename U>
+        friend class Shared;
 
     public:
         constexpr Ref() noexcept = default;
-        constexpr Ref(std::nullptr_t) noexcept
-            : Ref()
-        {
-        }
+        constexpr Ref(std::nullptr_t) noexcept {}
 
-        Ref(const Shared<T>& other) noexcept { this->weakly_construct_from(other); }
-        Ref(const Ref<T>& other) noexcept { this->weakly_construct_from(other); }
-        Ref(Ref<T>&& other) noexcept { this->move_construct_from(std::move(other)); }
+        Ref(const Shared<T>& s) noexcept;
+        Ref(const Ref&) noexcept            = default;
+        Ref(Ref&&) noexcept                 = default;
+        Ref& operator=(const Ref&) noexcept = default;
+        Ref& operator=(Ref&&) noexcept      = default;
+        Ref& operator=(const Shared<T>& s) noexcept;
+        ~Ref() = default;
+
         template <typename U>
-            requires(std::is_convertible_v<U*, T*> || std::is_base_of_v<T, U>)
-        Ref(const Shared<U>& other)
-        {
-            this->weakly_construct_from(other);
-        }
-        template <typename U>
-            requires(std::is_convertible_v<U*, T*> || std::is_base_of_v<T, U>)
+            requires(std::is_convertible_v<U*, T*>)
         Ref(const Ref<U>& other) noexcept
+            : impl_(other.impl_)
         {
-            this->weakly_construct_from(other);
         }
         template <typename U>
-            requires(std::is_convertible_v<U*, T*> || std::is_base_of_v<T, U>)
-        Ref(Ref<U>&& other) noexcept
-        {
-            this->move_construct_from(std::move(other));
-        }
-        ~Ref() noexcept { this->dec_wref(); }
+            requires(std::is_convertible_v<U*, T*>)
+        Ref(const Shared<U>& other) noexcept;
 
     public:
-        [[nodiscard]] operator bool() const noexcept { return !expired(); }
-        Ref<T>&       operator=(const Ref<T>& other)
+        [[nodiscard]] Shared<T> lock() const;
+        [[nodiscard]] bool      expired() const noexcept { return impl_.expired(); }
+        [[nodiscard]]           operator bool() const noexcept { return !expired(); }
+        void                    reset() noexcept { impl_.reset(); }
+        Ref&                    swap(Ref& other) noexcept
         {
-            Ref<T>{ other }.swap(*this);
+            std::swap(impl_, other.impl_);
             return *this;
-        }
-        Ref<T>& operator=(const Shared<T>& other)
-        {
-            Ref<T>{ other }.swap(*this);
-            return *this;
-        }
-        template <typename U>
-            requires(std::is_convertible_v<U*, T*> || std::is_base_of_v<T, U>)
-        Ref<T>& operator=(const Ref<U>& other)
-        {
-            return this->operator=((const Ref<T>&)other);
-        }
-        template <typename U>
-            requires(std::is_convertible_v<U*, T*> || std::is_base_of_v<T, U>)
-        Ref<T>& operator=(const Shared<U>& other)
-        {
-            return this->operator=((const Shared<T>&)other);
         }
 
-    public:
-        [[nodiscard]] inline Shared<T> lock() const
-        {
-            Shared<T> ptr;
-            if (!ptr.construct_from_ref(*this))
-                throw ExpiredRefException("Cannot lock from an expired weak reference pointer.");
-            return ptr;
-        }
-        inline void               reset() noexcept { Ref<T>{}.swap(*this); }
-        [[nodiscard]] inline bool expired() const noexcept { return !this->ctrl_ || this->ctrl_->uses() == 0; }
+    private:
+        std::weak_ptr<T> impl_;
     };
-} // namespace codex::mem
+} // namespace codex

@@ -1,0 +1,8 @@
+#+author: Neddiendrohu
+#+title: Misc
+
+* Logging
+Each layer and system has its own logger instance:
+#+begin_src cpp
+CX_SYSTEM_REGISTER(AudioSystem) // will expand to 
+#+end_src

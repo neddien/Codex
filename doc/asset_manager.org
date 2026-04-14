@@ -1,0 +1,156 @@
+#+title: Asset Manager Specification
+#+author: Neddiendrohu
+
+* Overview
+* Minimal API
+#+begin_src cpp
+VirtualFilesystem vfs;
+vfs.mount(DiskMount("./"), "/disk", true);
+vfs.mount(PakHandle(vfs.open("/disk/base0.cxpkz")), "/assets", true);
+
+// We got asset import descriptors that get serialized by .import files
+// Import files are also saved inside Pak files, why is this? To retain import settings!
+TextureImportDesc teid = {
+.filter_mode = TextureFilterMode::Nearest,
+};
+
+WaveformAudioImportDesc waid = {
+
+};
+
+Asset<Texture2D> tex_hndl = AssetManager::load<Texture2D>(vfs.open("/assets/freedoms_cost.bmp"), teid);
+auto snd_handle = AssetManager::load<WaveformAudio>(vfs.open("/assets/freedoms_cost.snd"), waid);
+
+// We can load either using a FileHandle, UUID or Path; not so sure about this one,
+// because then VFS needs to be a System, that is the first System actually since other Systems can depend on this guy.
+// Anyways, FileHandle and UUID are fine for now.
+auto snd_handlev2 = AssetManager::load<Texture2D>(snd_handle.uuid());
+
+// For this we're going to need an AssetRegistry. What is the job of this guy you might ask? Well, store and resolve asset references.
+// Basically what we want is a path agnostic asset system where assets are referenced by UUIDs because UUIDs are unique and not prone to
+// FS changes. How are we going to map <-> Assets? AssetRegistry is the answer.
+// Now how is this guy going to store/resolve assets? Probably using a map, but we'll get more in depth regarding AssetRegistry later on.
+
+// Since UUIDs are m to the Asset's path and the path can change (but never the UUID, unless of course you re-import the same asset),
+// we'll need to represent AssetPaths with their UUID counterparts as well probably, I also think this might be an internal representation
+// of asset paths and so the end-user will never have to use these.
+struct AssetPath {
+    std::string path;
+    UUID uuid;
+};
+
+// Okay cool but what about AssetManager? What is the point of this class if we got AssetRegistry? That's because the end-user will not
+// use AssetRegistry directly, it will be abstracted by AssetManager.
+// AssetManager will provide a thin and simple API to load, unload assets among few other things.
+// AssetManager does not care about internal representation of assets, asset UUID and path mapping, virtual file system mount used underneath or any of that.
+
+// Let's assume we're trying to load a file from AssetManager and it is supposed to return an asset handle, more specifically Asset<T>.
+// What is Asset<T>? Why do we need it and what problem is it supposed to solve?
+// Honestly, not entirely sure, it feels the correct thing to do but why?
+// Maybe it can provide a generic Asset interface for the Engine components?
+// Or handle reference counting? For this it is definitely worth to implement an asset handle.
+
+template <EngineResource T>
+class AssetHandle
+{
+    AssetPath path_;
+    mem::Shared<T> asset_;
+};
+
+// What about Asset loaders? Loaders are cool because you can abstract loading logic using polymorphism which is convinient.
+
+template <typename T>
+concept AssetLoader = requires(T& obj, fs::FileHandle fh) {
+    typename T::asset_type;
+    { obj.load(fh) } -> std::is_convertible<mem::Shared<typename T::asset_type>>;
+};
+
+template <typename T>
+concept ParameterizedLoader =
+    AssetLoader<T> &&
+    requires {
+        typename T::load_params;
+        requires !std::same_as<typename T::load_params, void>;
+    } &&
+    requires(T& obj, fs::FileHandle fh, typename T::load_params& params) {
+        { obj.load(fh, params) } -> std::is_same_as<mem::Shared<typename T::asset_type>>;
+    };
+
+template <typename T, typename U = void>
+struct IAssetLoader
+{
+    using asset_type = T;
+    using load_params = U;
+};
+
+class TextureLoader : public IAssetLoader<Texture2D, Texture2D::ImportDescription>
+{
+    mem::Shared<Texture2D> load() {
+        // load
+        return {};
+    }
+};
+
+template <LoadableAsset T, typename U>
+mem::Shared<T> AssetManager::load(fs::FileHandle handle, const U& desc)
+{
+    return loaders_.get(std::type_index(typeid(T::asset_type))).load(handle, desc);
+}
+
+template <AssetLoader T>
+void AssetManager::register_loader()
+{
+     T loader;
+     loader.init();
+     loaders_.[std::type_index(typeid(T::asset_type))] = std::move(loader);
+}
+
+AssetManager::register_loader<TextureLoader>();
+
+AssetManager::load<Texture2D>(handle, desc);
+
+// Specification of AssetRegistry, the view into the asset manager by the Editor.
+
+// AssetRegistry will handle UUID to path mappings (and vice-versa).
+// It will also handle auto-scanning and metadata generation under $CX_PROJ/assets/.meta
+// or: $file : basedir($file) -> place .meta dir here
+
+template <Serializable TAsset>
+struct AssetMetadata : public ISerializable
+{
+    AssetPath               path;
+    u32                     checksum;
+    std::vector<AssetPath>  dependencies;
+    TAsset::import_settings import_settings; // Serializable
+
+public:
+    void serialize(ISerializationNode& node) const;
+    void deserialize(const ISerializationNode& node);
+};
+
+// Register it once, use it everywhere.
+AssetManager::register_type<Texture2D>("Texture2D", { "png", "jpg", "jpeg", "bitmap", "gif", });
+// assosciate file extensions to their respective in-engine Asset representations, otherwise how are we going to tell if a file is a an image by auto-scanning?
+// we assume that YOU are a responsible human being who doesn't have png files ending in dot txt :)
+
+// Import factory function, just call the ctor?
+// Isn't this the job of the Loader though?
+factories_.["Texture2D"] = [](Texture2D::import_settings import) {
+    // how do we load the asset?
+};
+
+
+// a
+
+
+class AssetRegistry {
+private:   
+    std::unordered_map<UUID, std::string> uuid_to_path_;
+    std::unordered_map<std::string, UUID> path_to_uuid_;
+};
+
+#+end_src
+
+#+RESULTS:
+
+* Minimal Implementation Guide

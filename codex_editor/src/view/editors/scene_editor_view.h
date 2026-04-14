@@ -10,6 +10,11 @@ namespace codex::editor {
     // Forward declarations.
     class EditorPanel;
 
+    struct EditorPanelDeleter
+    {
+        void operator()(EditorPanel* panel) noexcept;
+    };
+
     struct SelectedEntityDescriptor
     {
     public:
@@ -43,9 +48,9 @@ namespace codex::editor {
 
     struct SceneEditorDescriptor
     {
-        mem::Ref<Scene>               active_scene;
-        mem::Shared<Scene>            editor_scene;
-        mem::Shared<Scene>            runtime_scene;
+        Ref<Scene>                    active_scene;
+        Shared<Scene>                 editor_scene;
+        Shared<Scene>                 runtime_scene;
         std::filesystem::path         script_module_path;
         SelectedEntityDescriptor      selected_entity;
         f32                           column_width  = 140.0f;
@@ -54,11 +59,12 @@ namespace codex::editor {
         std::atomic<CompilationState> compilation_state{ CompilationState::Idle };
         std::atomic<bool>             pending_nb_load{ false };
         f64                           compilation_finish_time = 0.0;
+        Shared<fs::VirtualFilesystem> vfs                     = Shared<fs::VirtualFilesystem>::make();
 
     public:
         void reset() noexcept
         {
-            editor_scene = mem::Shared<Scene>::make();
+            editor_scene = Shared<Scene>::make();
             runtime_scene.reset();
             script_module_path      = std::filesystem::path{};
             selected_entity         = SelectedEntityDescriptor{};
@@ -84,6 +90,7 @@ namespace codex::editor {
             std::swap(select_colour, other.select_colour);
             std::swap(current_project_path, other.current_project_path);
             std::swap(compilation_finish_time, other.compilation_finish_time);
+            vfs.swap(other.vfs);
         }
     };
 
@@ -94,26 +101,26 @@ namespace codex::editor {
         friend class EditorPanel;
 
     private:
-        mem::Box<opengl::FrameBuffer>      framebuffer_ = nullptr;
-        Vector2f                           viewport_bounds_[2]{};
-        Vector2f                           viewport_size_{};
-        bool                               gizmo_active_ = false;
-        GizmoMode                          gizmo_mode_   = GizmoMode::Translation;
-        NativeBehaviour*                   script_       = nullptr;
-        mem::Shared<SceneEditorDescriptor> descriptor_   = nullptr;
-        std::vector<mem::Box<EditorPanel>> view_panels_;
-        bool                               viewport_hovered_ = false;
-        bool                               viewport_focused_ = false;
-        bool                               is_shutting_down_ = false;
-        mutable gfx::DebugDraw             debug_draw_;
+        Box<opengl::FrameBuffer>                          framebuffer_ = nullptr;
+        Vector2f                                          viewport_bounds_[2]{};
+        Vector2f                                          viewport_size_{};
+        bool                                              gizmo_active_ = false;
+        GizmoMode                                         gizmo_mode_   = GizmoMode::Translation;
+        NativeBehaviour*                                  script_       = nullptr;
+        Shared<SceneEditorDescriptor>                     descriptor_   = nullptr;
+        std::vector<Box<EditorPanel, EditorPanelDeleter>> view_panels_;
+        bool                                              viewport_hovered_ = false;
+        bool                                              viewport_focused_ = false;
+        bool                                              is_shutting_down_ = false;
+        mutable gfx::DebugDraw                            debug_draw_;
 
     public:
         SceneEditorView() = default;
         ~SceneEditorView() override { is_shutting_down_ = true; }
 
     public:
-        [[nodiscard]] mem::Ref<SceneEditorDescriptor>       get_descriptor() noexcept { return descriptor_; }
-        [[nodiscard]] const mem::Ref<SceneEditorDescriptor> get_descriptor() const noexcept { return descriptor_; }
+        [[nodiscard]] Ref<SceneEditorDescriptor>       get_descriptor() noexcept { return descriptor_; }
+        [[nodiscard]] const Ref<SceneEditorDescriptor> get_descriptor() const noexcept { return descriptor_; }
 
     public:
         void on_attach() override;

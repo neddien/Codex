@@ -84,4 +84,7 @@ namespace codex {
         virtual void serialize(ISerializationNode& node) const   = 0;
         virtual void deserialize(const ISerializationNode& node) = 0;
     };
+
+    template <typename T>
+    concept Serializable = requires { std::is_base_of_v<ISerializable, T>; };
 } // namespace codex

@@ -20,7 +20,7 @@ namespace codex {
     template <typename T>
     ResRef<T> Resources::from(T&& resource)
     {
-        auto res = mem::Shared<T>::make(std::move(resource));
+        auto res = Shared<T>::make(std::move(resource));
 
         if (has_resource(res->path())) {
             // throw ResourceException("Resource with the same path already exists.");

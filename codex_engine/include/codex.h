@@ -28,13 +28,13 @@
 #include <engine/events/mouse_event.h>
 
 // File system
-#include <engine/file_system/cxpak.h>
-#include <engine/file_system/disk_mount.h>
-#include <engine/file_system/ivfs_mount.h>
-#include <engine/file_system/memory_mount.h>
-#include <engine/file_system/pak_mount.h>
-#include <engine/file_system/public/file_system.h>
-#include <engine/file_system/vfs.h>
+#include <engine/filesystem/cxpak.h>
+#include <engine/filesystem/disk_mount.h>
+#include <engine/filesystem/ivfs_mount.h>
+#include <engine/filesystem/memory_mount.h>
+#include <engine/filesystem/pak_mount.h>
+#include <engine/filesystem/public/filesystem.h>
+#include <engine/filesystem/vfs.h>
 
 // Math
 #include <engine/math/public/math.h>

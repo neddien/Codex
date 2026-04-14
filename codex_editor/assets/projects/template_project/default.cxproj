@@ -5,7 +5,7 @@
             "components": [
                 {
                     "type": "IDComponent",
-                    "uuid": 9828869232550700325
+                    "uuid": "8867-287d-cdf36525"
                 },
                 {
                     "type": "TransformComponent",
@@ -34,9 +34,9 @@
                     "texture": {
                         "id": 0,
                         "file_path": "assets/sprites/dun_tileset.png",
-                        "filter_mode": 9728,
-                        "wrap_mode": 33648,
-                        "format": 4294967295
+                        "filter_mode": "Nearest",
+                        "wrap_mode": "Mirror",
+                        "format": "None"
                     },
                     "texture_coords": {
                         "x": 1137.0,
@@ -58,7 +58,7 @@
                 },
                 {
                     "type": "RigidBody2DComponent",
-                    "body_type": 1,
+                    "body_type": "Dynamic",
                     "fixed_rotation": false,
                     "linear_damping": 25.0,
                     "angular_damping": 0.10000000149011612,
@@ -77,10 +77,10 @@
                         "y": 16.0
                     },
                     "physics_material": {
-                        "Density": 1.0,
-                        "Friction": 0.5,
-                        "Restitution": 0.5,
-                        "RestitutionThreshold": 0.5
+                        "density": 1.0,
+                        "friction": 0.5,
+                        "restitution": 0.5,
+                        "restitution_threshold": 0.5
                     }
                 },
                 {
@@ -103,7 +103,7 @@
             "components": [
                 {
                     "type": "IDComponent",
-                    "uuid": 7954134402764532572
+                    "uuid": "6e62-c318-b47e6b5c"
                 },
                 {
                     "type": "TransformComponent",
@@ -133,9 +133,9 @@
                         "texture": {
                             "id": 0,
                             "file_path": "assets/sprites/tilesetHouse.png",
-                            "filter_mode": 9728,
-                            "wrap_mode": 33648,
-                            "format": 4294967295
+                            "filter_mode": "Nearest",
+                            "wrap_mode": "Mirror",
+                            "format": "None"
                         },
                         "texture_coords": {
                             "x": 0.0,
@@ -14748,7 +14748,7 @@
                         "x": 0.0,
                         "y": 352.0
                     },
-                    "current_state": 0,
+                    "current_state": "Brush",
                     "current_layer": -1
                 },
                 {
@@ -14770,7 +14770,7 @@
             "components": [
                 {
                     "type": "IDComponent",
-                    "uuid": 6201877041685839899
+                    "uuid": "5611-7e4f-7a55c01b"
                 },
                 {
                     "type": "TransformComponent",
@@ -14799,9 +14799,9 @@
                     "texture": {
                         "id": 0,
                         "file_path": "assets/sprites/phonograph.png",
-                        "filter_mode": 9728,
-                        "wrap_mode": 33648,
-                        "format": 4294967295
+                        "filter_mode": "Nearest",
+                        "wrap_mode": "Mirror",
+                        "format": "None"
                     },
                     "texture_coords": {
                         "x": 0.0,
@@ -14850,7 +14850,7 @@
             "components": [
                 {
                     "type": "IDComponent",
-                    "uuid": 7334576508145772417
+                    "uuid": "65c9-a679-51f42781"
                 },
                 {
                     "type": "TransformComponent",

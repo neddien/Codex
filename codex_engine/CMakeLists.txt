@@ -241,16 +241,18 @@ if(DEFINED CX_COMPILER_CLANG OR DEFINED CX_COMPILER_GCC)
 endif()
 
 # ============= # Graphics API # ============= #
-if(CX_GRAPHICS_API STREQUAL "OpenGL")
+if(CX_GRAPHICS_API STREQUAL "OpenGL") 
+  # glad
+  set(GLAD_INCLUDE_DIR "vendor/glad/include")
+  set(GLAD_SOURCE_DIR "vendor/glad/src")
+  target_include_directories(CodexEngine PUBLIC ${GLAD_INCLUDE_DIR})
+  target_sources(CodexEngine PRIVATE ${GLAD_SOURCE_DIR}/glad.cpp)
+  target_include_directories(CodexEngine-static PUBLIC ${GLAD_INCLUDE_DIR})
+  target_sources(CodexEngine-static PRIVATE ${GLAD_SOURCE_DIR}/glad.cpp)
+
+  # OpenGL
   target_sources(CodexEngine PRIVATE ${PLATFORM_OPENGL_SOURCES})
   target_sources(CodexEngine-static PRIVATE ${PLATFORM_OPENGL_SOURCES})
-    
-  # glad
-  set(GLAD_INCLUDE_DIR "vendor/glad")
-  target_include_directories(CodexEngine PUBLIC ${GLAD_INCLUDE_DIR})
-  target_sources(CodexEngine PRIVATE ${GLAD_INCLUDE_DIR}/glad.cpp)
-  target_include_directories(CodexEngine-static PUBLIC ${GLAD_INCLUDE_DIR})
-  target_sources(CodexEngine-static PRIVATE ${GLAD_INCLUDE_DIR}/glad.cpp)
 
   # stb
   target_include_directories(CodexEngine PUBLIC "vendor/stb")

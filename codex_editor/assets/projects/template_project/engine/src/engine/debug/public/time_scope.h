@@ -36,8 +36,7 @@ namespace codex::dbg {
         inline ~TimeScope() noexcept
         {
             if (initiated_) {
-                initiated_ = false;
-                duration_  = std::chrono::duration<Rep, Ratio>(ChronoClock::now() - initial_tp_);
+                stop();
                 Profiler::add_profile(std::move(*this));
             }
         }
@@ -47,15 +46,29 @@ namespace codex::dbg {
         template <typename ToRatio, typename ToRep>
         [[nodiscard]] auto elapsed_as() const noexcept
         {
+            const_cast<TimeScope*>(this)->stop();
             return std::chrono::duration_cast<std::chrono::duration<ToRep, ToRatio>>(duration_);
         }
-        [[nodiscard]] auto elapsed() const noexcept { return duration_; }
+        [[nodiscard]] auto elapsed() const noexcept
+        {
+            const_cast<TimeScope*>(this)->stop();
+            return duration_;
+        }
 
     private:
-        ProfileInfo                       info_;
-        bool                              initiated_ = false;
-        ChronoClock::time_point           initial_tp_;
-        std::chrono::duration<Rep, Ratio> duration_;
+        void stop() noexcept
+        {
+            if (initiated_) {
+                initiated_ = false;
+                duration_  = std::chrono::duration<Rep, Ratio>(ChronoClock::now() - initial_tp_);
+            }
+        }
+
+    private:
+        ProfileInfo                               info_;
+        mutable bool                              initiated_ = false;
+        ChronoClock::time_point                   initial_tp_;
+        mutable std::chrono::duration<Rep, Ratio> duration_;
     };
 
     [[nodiscard]] inline TimeScope profile_scope(

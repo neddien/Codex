@@ -2,7 +2,7 @@
 
 #include "constants.h"
 
-#include <glad.h>
+#include <glad/glad.h>
 
 namespace codex::opengl {
     struct CODEX_API VertexBufferElement

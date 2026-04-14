@@ -62,6 +62,8 @@ namespace codex {
 
     template <typename Derived, typename Base>
     concept DerivedFrom = std::is_base_of<Base, Derived>::value;
+    template <typename T>
+    concept StringLike = std::constructible_from<std::string_view, T> || std::constructible_from<std::wstring_view, T>;
 
     [[nodiscard]] constexpr auto bit(const auto nr) noexcept
     {
@@ -71,6 +73,18 @@ namespace codex {
     [[nodiscard]] constexpr std::string_view enum_name(const auto val) noexcept
     {
         return magic_enum::enum_name(val);
+    }
+
+    template <typename T>
+    [[nodiscard]] constexpr auto enum_from(const std::string_view str) noexcept
+    {
+        return magic_enum::enum_cast<T>(str);
+    }
+
+    template <typename T>
+    [[nodiscard]] constexpr auto enum_cast(const auto val) noexcept
+    {
+        return magic_enum::enum_cast<T>(val);
     }
 
     template <typename Fn>

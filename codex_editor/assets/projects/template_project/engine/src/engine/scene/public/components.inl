@@ -14,7 +14,7 @@ namespace codex {
                 throw DuplicateBehaviourException();
         }
 
-        auto bh = mem::Box<NativeBehaviour>::make(std::forward<TArgs>(args)...);
+        auto bh = Box<NativeBehaviour>::make(std::forward<TArgs>(args)...);
         bh->on_init();
 
         return *(static_cast<T*>(bh.get()));

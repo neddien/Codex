@@ -17,6 +17,6 @@ namespace codex {
         [[nodiscard]] Scene* scene_from_uuid(const UUID uuid) noexcept;
 
     private:
-        std::unordered_map<UUID, mem::Box<Scene>> scenes_;
+        std::unordered_map<UUID, Box<Scene>> scenes_;
     };
 } // namespace codex

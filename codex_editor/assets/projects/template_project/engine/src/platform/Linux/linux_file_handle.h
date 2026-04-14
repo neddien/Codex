@@ -1,6 +1,6 @@
 #pragma once
 
-#include <engine/file_system/file_handle.h>
+#include <engine/filesystem/public/file_handle.h>
 
 namespace codex::fs {
     class LinuxFileHandle : public FileHandle

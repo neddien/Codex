@@ -30,7 +30,7 @@ namespace codex {
         }
 
         instance.scene_       = &scene;
-        instance.nb_instance_ = mem::Box<sys::DLib>::make(std::move(path));
+        instance.nb_instance_ = Box<sys::DLib>::make(std::move(path));
 
         codex::info("Script module loaded: {}", instance.nb_instance_->get_path().string());
     }

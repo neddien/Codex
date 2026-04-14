@@ -1,0 +1,127 @@
+#+title: ECS Overhaul and Sub-system management interface implementation
+#+author: Neddiendrohu
+
+* Overview
+The Codex ECS is based on EnTT but it isn't true ECS. Components are actually virtual classes although not that big, for an ECS it is still big.
+Some components especially ~NativeBehaviourComponent~ are huge and contain pointers to heap memory; this hurts the ECS' cache-locality and the whole point of ECS is having extremly good cache-locality for which assumes your Components are PODs instead.
+
+* Challenges
+Complex components such as ~NativeBehaviourComponent~ need a backing sub-system --- which, for ~NativeBehaviourComponent~ at least, already exists and is ~NativeBehaviourManager~.
+For now ~NBM~ does not manage behaviours entirely, it only stores factory functions for user-defined behaviours. 
+In this model, the component will store a handle to its entry inside the sub-system and the sub-system will instead act as a behaviour registry.
+
+* Sub-systems and the ~Subsystem~ Trait
+Polymorphism must be avoided if possible. If you need to define a generic interface then implement traits instead using templates.
+Pros of doing this if you implement it well:
++ Non-polymorphic -> no vtable -> no run-time overhead
++ Compile-time evaluation
++ Strict compiler restrictions for types that don't implement these traits
+
+Cons:
++ Harder to implement
++ C++ Templates
++ Bigger binary
+
+Regarding the last con, I don't really care; my games are for PCs anyways and few megabytes won't hurt me.
+
+Subsytems can be ~Tickable~ or static, ~Tickable~ subsystems also implement the ~Tickable~ trait which allows the subsystem to be ticked every frame on the main thread.
+
+* Template code
+These traits can easily be implemented using C++20's concepts & restrains which is a blessing from God himself.
+#+begin_src cpp
+// codex_engine/src/engine/core/public/subsystem.h
+
+template<typename T>
+concept Subsystem = requires(T& s) {
+    { T::get() } -> std::same_as<T&>; // singleton accessor
+    { s.init() };
+    { s.dispose() };
+};
+
+template<typename T>
+concept Tickable = Subsystem<T> && requires(T& s, const f32 dt) {
+    { s.update(dt) };
+};
+#+end_src
+
+CRTP Singleton Base (optional helper)
+#+begin_src cpp
+template<typename Derived>
+class System {
+public:
+    [[nodiscard]] static Derived& get() noexcept {
+        static Derived instance;
+        return instance;
+    }
+        
+protected:
+    inline Subsystem() noexcept = default;
+    inline ~Subsystem() noexcept = default;
+    Subsystem(const SubsystemBase&) = delete;
+    Subsystem& operator=(const SubsystemBase&) = delete;
+};
+#+end_src
+
+Compile-Time Manager
+#+begin_src cpp
+template<Subsystem... Ss>
+class SystemManager {
+public:
+    static void init_all() {
+        (Ss::get().init(), ...);
+    }
+
+    // LIFO dispose, reverse init order
+    static void dispose_all() {
+        dispose_reverse(std::index_sequence_for<Ss...>{});
+    }
+
+    static void tick_all(const f32 dt) {
+        (tick_if_tickable<Ss>(dt), ...);
+    }
+
+private:
+    template<typename S>
+    static void tick_if_tickable(const f32 dt) {
+        if constexpr (Tickable<S>)
+            S::get().update(dt);
+    }
+
+    template<usize... Is>
+    static void dispose_reverse(std::index_sequence<Is...>) {
+        using List = std::tuple<Ss...>;
+        (std::tuple_element_t<sizeof...(Ss) - 1 - Is, List>::get().dispose(), ...);
+    }
+};
+#+end_src
+
+System declaration:
+#+begin_src cpp
+class AudioSystem : public System<AudioSystem>
+{
+public:
+    void init() { /* ... */ }
+    void dispose() noexcept { /* ... */ }
+    void update(const f32 dt) { /* ... */ }
+};
+#+end_src
+
+System usage inside the engine core layer:
+#+begin_src cpp
+using EngineSystems = SystemManager<InputSystem, AudioSystem, PhysicsSystem, NativeBehaviourManager>;
+
+void Engine::init()
+{
+    EngineSystems::init_all();
+}
+
+void Engine::update()
+{
+    EngineSystems::tick_all(dt);
+}
+
+void Engine::dispose()
+{
+    EngineSystems::dispose_all();
+}
+#+end_src

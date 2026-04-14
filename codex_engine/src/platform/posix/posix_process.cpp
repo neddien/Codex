@@ -124,12 +124,12 @@ namespace codex::sys {
         // A non-blocking thread that will wait for the process to finish,
         // get the exit code and indicate that the process has stopped.
         // Since the thread is detached, there's a chance that the owning ProcessHandle (which is just a
-        // mem::Shared<Process>) might get out of scope before our thread finishes while this thread and our process are
+        // Shared<Process>) might get out of scope before our thread finishes while this thread and our process are
         // still active. To fix this we can make the thread hold a strong reference to the process handle, we do this by
         // passing a dummy variable that creates an instance of our shared pointer using NewSharedFromThis() (because
-        // Process inherits from mem::SharedManagable).
+        // Process inherits from std::enable_shared_from_this).
         std::thread(
-            [self = new_shared_from_this()]() mutable
+            [self = shared_from_this()]() mutable
             {
                 auto* p = static_cast<POSIXProcess*>(self.get());
 

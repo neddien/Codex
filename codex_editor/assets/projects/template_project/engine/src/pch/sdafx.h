@@ -21,6 +21,7 @@
 #include <regex>
 #include <sstream>
 #include <type_traits>
+#include <typeindex>
 #include <typeinfo>
 #include <utility>
 #include <variant>
@@ -32,6 +33,7 @@
 #include <thread>
 
 // Legacy
+#include <charconv>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>

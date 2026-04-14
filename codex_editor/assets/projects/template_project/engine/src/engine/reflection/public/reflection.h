@@ -6,9 +6,9 @@
 #define RF_PROPERTY(...)
 #define RF_SERIALIZABLE                                                                                                \
 public:                                                                                                                \
-    [[nodiscard]] codex::mem::Box<codex::NativeBehaviour> clone() const override                                       \
+    [[nodiscard]] codex::Box<codex::NativeBehaviour> clone() const override                                            \
     {                                                                                                                  \
-        return codex::mem::Box<std::decay_t<std::remove_pointer_t<decltype(this)>>>::make(*this);                      \
+        return codex::Box<std::decay_t<std::remove_pointer_t<decltype(this)>>>::make(*this);                           \
     }                                                                                                                  \
                                                                                                                        \
 private:                                                                                                               \

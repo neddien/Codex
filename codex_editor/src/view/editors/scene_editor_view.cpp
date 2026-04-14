@@ -14,44 +14,42 @@
 #include <imgui_internal.h>
 
 namespace codex::editor {
-    namespace stdfs = std::filesystem;
-
-    cc::Task<void> vtask()
+    void EditorPanelDeleter::operator()(EditorPanel* panel) noexcept
     {
-        info("we're here");
-        co_await Engine::get_worker_pool();
-        info("switched to worker pool, vtask");
+        delete panel;
     }
 
-    cc::Task<int> count_for(i32 count_len)
+    namespace stdfs = std::filesystem;
+
+    cc::Task<int> ltask()
     {
-        i32 prev_count_len = count_len;
+        info("ltask we here.");
+        co_await Engine::get_worker_pool();
+        info("ltask we on a thread now!");
 
-        info("count_for: Thread id: {}", Engine::get_current_thread_id());
+        std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+        info("ltask sleep done");
+        co_return 69;
+    }
 
-        // switch to background thread
+    cc::Task<void> ftask()
+    {
+        info("ftask here");
         co_await Engine::get_worker_pool();
 
-        info("count_for: switched to worker thread: {}", Engine::get_current_thread_id());
-
-        for (i32 i = 0; i < count_len; ++i) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        }
-
-        info("task finished.");
-
-        co_return prev_count_len * 2;
+        auto task = ltask();
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        info("came back from sleep");
+        int res = co_await task;
+        info("res: {}", res);
     }
 
     void SceneEditorView::on_attach()
     {
-        auto count_task = count_for(5);
-        count_task.resume();
-        // info("count_task result: {}", count_task.await_sync());
-        vtask().resume();
+        ftask();
 
-        auto mount    = mem::Shared<fs::MemoryMount>::make(0);
-        auto disk_mnt = mem::Shared<fs::DiskMount>::make("/tmp/cxvfs", 0);
+        auto mount    = Shared<fs::MemoryMount>::make(0);
+        auto disk_mnt = Shared<fs::DiskMount>::make("/tmp/cxvfs", 0);
 
         {
             auto handle = disk_mnt->open("my_lovely_dog.txt", { fs::FileMode::Create | fs::FileMode::Write });
@@ -67,7 +65,7 @@ namespace codex::editor {
             ->write("rexxinator is my sweet dog.", 28);
         mount->mkdir("my/lovely/empty_dir");
 
-        fs::VFS vfs;
+        fs::VirtualFilesystem vfs;
         vfs.mkdir("/bruh");
         vfs.mount(mount, "/bruh");
         vfs.mount(disk_mnt, "/disk", true);
@@ -136,7 +134,7 @@ namespace codex::editor {
 
         auto pak_handle = vfs.open("/disk/my_pak.cpkz", { fs::FileMode::Read });
         if (pak_handle) {
-            auto pak_mount = mem::Shared<fs::PakMount>::make(pak_handle, 0);
+            auto pak_mount = Shared<fs::PakMount>::make(pak_handle, 0);
             vfs.mount(std::move(pak_mount), "/cxpkz", true);
         } else {
             warn("Failed to open pak handle");
@@ -157,8 +155,8 @@ namespace codex::editor {
             warn("failed to open /cxpkz/bruh/my/lovely/dog.txt");
         }
 
-        descriptor_ = mem::Shared<SceneEditorDescriptor>::from(
-            new SceneEditorDescriptor{ .editor_scene = mem::Shared<Scene>::make() });
+        descriptor_ =
+            Shared<SceneEditorDescriptor>::from(new SceneEditorDescriptor{ .editor_scene = Shared<Scene>::make() });
         descriptor_->active_scene = descriptor_->editor_scene;
 
         // Panels
@@ -173,7 +171,7 @@ namespace codex::editor {
         // TODO: This is the scene render resolution so you should not hard code this.
         props.width  = 1920;
         props.height = 1080;
-        framebuffer_ = mem::Box<opengl::FrameBuffer>::make(props);
+        framebuffer_ = Box<opengl::FrameBuffer>::make(props);
 
         // EditorLayer::GetCamera().SetProjectionType(scene::Camera::ProjectionType::Perspective);
 
@@ -286,7 +284,7 @@ namespace codex::editor {
                 pos *= scale;
                 pos          = glm::round(pos);
                 const i32 id = framebuffer_->read_pixel(1, (i32)pos.x, (i32)pos.y);
-                auto      e  = Entity((entt::entity)id, d->active_scene.get());
+                auto      e  = Entity((entt::entity)id, d->active_scene.lock().get());
                 if (e)
                     d->selected_entity.select(e);
             }
@@ -354,7 +352,7 @@ namespace codex::editor {
         // Profiler window.
         {
             ImGui::Begin("Profiler");
-            for (const auto& e : dbg::Profiler::get_profilers()) {
+            for (auto& e : dbg::Profiler::get_profilers()) {
                 const auto info = e.second.info();
                 const auto dur  = e.second.elapsed_as<std::milli, f32>().count();
                 ImGui::Text("%s: %fms", info.name.c_str(), dur);
@@ -397,11 +395,11 @@ namespace codex::editor {
                         sys::ProcessInfo p_info;
 
 #ifdef CX_PLATFORM_WINDOWS
-                        p_info.command = "cmake --preset=windows-llvm-any-debug --clear";
+                        p_info.command = "cmake --preset windows-llvm-any-debug --clear";
 #elif defined(CX_PLATFORM_LINUX)
-                        p_info.command = "./build.py --preset=linux-any-debug --clear";
+                        p_info.command = "./build.py --preset linux-any-debug --clear";
 #elif defined(CX_PLATFORM_OSX)
-                        p_info.command = "./build.py --preset=osx-any-debug --clear";
+                        p_info.command = "./build.py --preset osx-any-debug --clear";
 #endif
                         p_info.on_exit = [this](i32 exitCode)
                         {
@@ -737,11 +735,11 @@ namespace codex::editor {
         sys::ProcessInfo p_info;
 
 #ifdef CX_PLATFORM_WINDOWS
-        p_info.command = "python scripts/build.py --preset=windows-llvm-any-debug --build";
+        p_info.command = "python scripts/build.py --preset=windows-llvm-any-debug";
 #elif defined(CX_PLATFORM_LINUX)
-        p_info.command = "python scripts/build.py --preset=linux-any-debug --build";
+        p_info.command = "python scripts/build.py --preset=linux-any-debug";
 #elif defined(CX_PLATFORM_OSX)
-        p_info.command = "python scripts/build.py --preset=osx-any-debug --build";
+        p_info.command = "python scripts/build.py --preset=osx-any-debug";
 #endif
         p_info.on_exit = [this](i32 exitCode)
         {
@@ -773,7 +771,7 @@ namespace codex::editor {
     {
         auto& d = descriptor_;
         d->selected_entity.deselect();
-        d->runtime_scene = mem::Shared<Scene>::make();
+        d->runtime_scene = Shared<Scene>::make();
         d->editor_scene->copy_to(*d->runtime_scene);
         d->active_scene = d->runtime_scene;
         d->active_scene.lock()->set_state(Scene::State::Play);
@@ -784,7 +782,7 @@ namespace codex::editor {
     {
         auto& d = descriptor_;
         d->selected_entity.deselect();
-        d->runtime_scene = mem::Shared<Scene>::make();
+        d->runtime_scene = Shared<Scene>::make();
         d->editor_scene->copy_to(*d->runtime_scene);
         d->active_scene = d->runtime_scene;
         d->active_scene.lock()->set_state(Scene::State::Simulate);
@@ -879,6 +877,17 @@ namespace codex::editor {
         }
 
         SerializationManager::load_from_file(*d->editor_scene, cxproj);
+
+        auto project_mount = Shared<fs::DiskMount>::make(d->current_project_path / "assets", 0);
+        d->vfs->mount(std::move(project_mount), "/editor/project/assets", true);
+
+        // Don't await_sync!
+        AssetRegistry* reg = new AssetRegistry;
+        {
+            auto watch = dbg::profile_scope();
+            reg->scan(*d->vfs, "/editor/project");
+            info("AssetRegistry::scan() took {}", watch.elapsed_as<std::milli, f32>());
+        }
 
         // Kick off async compilation; NBMan will be loaded on the main thread
         // once the build succeeds (via pendingNBLoad flag checked in on_update).

@@ -101,7 +101,7 @@ cmake --install builds/linux-any-debug
 | `reflection/` | Runtime type info for serialization/editor |
 | `system/` | DynamicLibrary, Process management |
 | `native_behaviour/` | Entity scripting base class |
-| `file_system/` | VFS (trie-based), DiskMount, MemoryMount, PakMount, FileHandle |
+| `filesystem/` | VFS (trie-based), DiskMount, MemoryMount, PakMount, FileHandle |
 | `audio/` | FMOD audio integration |
 
 ### Platform Layer (src/platform/)

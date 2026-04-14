@@ -143,15 +143,15 @@ See `doc/FileSystem.md` for the full VFS/PAK API reference.
 
 ## Editor vs Runtime
 
-| Aspect | Editor | Runtime |
-|--------|--------|---------|
-| **Mount Source** | Physical directories | Pak archives |
-| **Asset Format** | Source files + `.cxmeta` | Cooked/optimized |
-| **Loading** | Direct filesystem | VFS abstraction |
-| **Hot-reload** | Yes (file watcher) | No |
-| **Metadata** | JSON sidecar files | Embedded in pak header |
-| **Compression** | None | Per-file compression |
-| **Platform** | Development host | Target platform specific |
+| Aspect           | Editor                   | Runtime                  |
+|------------------|--------------------------|--------------------------|
+| **Mount Source** | Physical directories     | Pak archives             |
+| **Asset Format** | Source files + `.cxmeta` | Cooked/optimized         |
+| **Loading**      | Direct filesystem        | VFS abstraction          |
+| **Hot-reload**   | Yes (file watcher)       | No                       |
+| **Metadata**     | JSON sidecar files       | Embedded in pak header   |
+| **Compression**  | None                     | Per-file compression     |
+| **Platform**     | Development host         | Target platform specific |
 
 ---
 
@@ -202,7 +202,7 @@ private:
 > Full API reference: `doc/FileSystem.md`
 
 ```cpp
-// Mount point interface — codex/file_system/ivfs_mount.h
+// Mount point interface — codex/filesystem/ivfs_mount.h
 class IVFSMount {
 public:
     virtual ~IVFSMount() = default;
@@ -222,7 +222,7 @@ public:
     [[nodiscard]] cc::Task<bool>                     exists_async(std::string path) const noexcept;
 };
 
-// VFS — codex/file_system/vfs.h
+// VFS — codex/filesystem/vfs.h
 class VFS {
 public:
     VFS(mem::Shared<IVFSMount> default_mount = nullptr) noexcept;
@@ -251,7 +251,7 @@ public:
 ### 3. Disk Mount Point — Editor (Implemented)
 
 ```cpp
-// codex/file_system/disk_mount.h
+// codex/filesystem/disk_mount.h
 class DiskMount : public IVFSMount, public mem::SharedManagable<DiskMount> {
 public:
     DiskMount(std::filesystem::path root, i32 priority);
@@ -448,7 +448,7 @@ See `doc/FileSystem.md` for the full binary layout reference. Summary:
 ### Pak Mount Implementation (Implemented)
 
 ```cpp
-// codex/file_system/pak_mount.h
+// codex/filesystem/pak_mount.h
 class PakMount : public IVFSMount, public mem::SharedManagable<PakMount> {
 public:
     // Takes an open FileHandle (use DiskMount or MemoryMount to open the .cxpak file)
@@ -538,23 +538,6 @@ struct CookSettings {
     bool generate_mipmaps = true;
     i32 max_texture_size = 4096;
 };
-
-// Pak builder
-class PakBuilder {
-private:
-    std::vector<std::pair<std::string, std::vector<u8>>> m_Entries;
-    CookSettings m_Settings;
-
-public:
-    void add_file(const std::string& virtual_path, const std::vector<u8>& data);
-    void add_directory(const std::string& virtual_path, const std::string& physical_path);
-
-    void build(const std::string& outputPath);
-
-    // Chunking support
-    void set_chunk_assignment(const std::string& path, i32 chunkId);
-    void build_chunked(const std::string& outputDir, const std::string& base_name);
-};
 ```
 
 ---
@@ -574,7 +557,7 @@ public:
 ### Compression Types (Implemented)
 
 ```cpp
-// PakFlags encode compression per-entry (codex/file_system/cxpak.h)
+// PakFlags encode compression per-entry (codex/filesystem/cxpak.h)
 enum class PakFlags : u16 {
     None               = 0,
     Compressed         = bit(0),    // entry uses LZ4 compression

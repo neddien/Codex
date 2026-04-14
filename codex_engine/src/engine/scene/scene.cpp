@@ -16,6 +16,8 @@
 #include <engine/utils/public/math.h>
 
 namespace codex {
+    void B2WorldDeleter::operator()(b2World* world) noexcept { delete world; }
+
     using EntityMap = std::unordered_map<UUID, entt::entity>;
 
     template <typename... Components>
@@ -349,7 +351,7 @@ namespace codex {
 
     void Scene::on_runtime_start()
     {
-        physics_world_ = mem::Box<b2World>::make(util::to_b2_vec2(physics_properties_.gravity));
+        physics_world_ = Box<b2World, B2WorldDeleter>::make(util::to_b2_vec2(physics_properties_.gravity));
         physics_world_->SetAllowSleeping(true);
 
         state_.store(State::Play);
@@ -408,7 +410,7 @@ namespace codex {
                 auto& asc = asc_view.get<AudioSourceComponent>(e);
                 if (asc.play_on_start) {
                     try {
-                        auto event = mem::Shared<ax::EventHandle>::make(ax::AudioManager::load_event(asc.event_path));
+                        auto event = Shared<ax::EventHandle>::make(ax::AudioManager::load_event(asc.event_path));
                         asc.handle = event;
 
                         event->set_volume(asc.volume);
@@ -437,7 +439,7 @@ namespace codex {
 
     void Scene::on_simulation_start()
     {
-        physics_world_ = mem::Box<b2World>::make(util::to_b2_vec2(physics_properties_.gravity));
+        physics_world_ = Box<b2World, B2WorldDeleter>::make(util::to_b2_vec2(physics_properties_.gravity));
         physics_world_->SetAllowSleeping(true);
 
         state_.store(State::Simulate);

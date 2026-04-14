@@ -73,6 +73,18 @@ namespace codex {
         return magic_enum::enum_name(val);
     }
 
+    template <typename T>
+    [[nodiscard]] constexpr auto enum_from(const std::string_view str) noexcept
+    {
+        return magic_enum::enum_cast<T>(str);
+    }
+
+    template <typename T>
+    [[nodiscard]] constexpr auto enum_cast(const auto val) noexcept
+    {
+        return magic_enum::enum_cast<T>(val);
+    }
+
     template <typename Fn>
     constexpr auto bind_event_delegate(auto* self, Fn delegate)
     {

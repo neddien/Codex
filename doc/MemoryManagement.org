@@ -1,0 +1,30 @@
+#+authro: neddien
+#+title: Memory Management in Codex
+
+* Overview
+
+* Memory Managers
+** Linear Allocator
+- Type: Big chunk of memory where the pointer keeps incrementing when allocations are made and you can only free the entire buffer
+- Fragmentation: Impossible to fragment since you can't release individual chunks, only the entire buffer
+- Use: scratch/frame memory: The memory here will only be used for a single frame
+- Speed: Blazingly fast
+  
+** Stack Allocator
+- Type: LIFO chunk of memory where you can deallocate the memory you just allocated
+- Fragmentation: Impossible to fragment since you can only release the memory you just allocated
+- Use: Loading levels incrementally or sub-systems
+- Speed: Blazingly fast
+** Double-ended Stack Allocator
+- Type: Two ended LIFO chunk of memory, this allows for using part A for presistent data and the other end for temporary allocations as a scratch/frame memory
+- Fragmentation: Impossible because this derives from a Stack Allocator
+- Use: Using this load a level and also to temporary load and unload rooms inside that level
+- Speed: Blazingly fast
+** Pool Allocator
+
+* Possible Implementations
+
+* Tips
++ Pool Allocator chunk size should be a multiple of the OS's I/O buffer size to maximize efficiency when loading individual chunks
++ EnTT components must be primitive types, if a component is supposed to be complex then use a shallow handle inside the component into a sub-system for that Component
+  + For example: ~NativeBehaviourComponent~ is a complex component that can be instead managed by ~NativeBehaviourManager~ via a handle inside the component.

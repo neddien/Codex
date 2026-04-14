@@ -44,8 +44,8 @@ namespace codex::editor {
 
     private:
         std::filesystem::path                           path_;
-        std::vector<mem::Shared<FileSystem::File>>      files_;
-        std::vector<mem::Shared<FileSystem::Directory>> sub_directories_;
+        std::vector<Shared<FileSystem::File>>      files_;
+        std::vector<Shared<FileSystem::Directory>> sub_directories_;
 
     public:
         Directory(std::filesystem::path path);

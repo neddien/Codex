@@ -3,7 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <cstdio>
-#include <glad.h>
+#include <glad/glad.h>
 
 #include "constants.h"
 #include "index_buffer.h"

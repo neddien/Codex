@@ -1,0 +1,19 @@
+#+title: ~cc::Task<T>~ specification
+#+author: Neddiendrohu
+
+* TODO
++ Add ~cc::Task<T>::when_all~ for waiting all sub-tasks to finish:
+  #+begin_src cpp
+  cc::Tasl<std::tuple<Ts...>> when_all(cc::Task<Ts>... tasks) {
+      // ...
+  }
+
+  cc::Task<void> do_stuff_parallel(fs::VirtualFilesystem& vfs, const std::string& path) {
+      using namespace codex::cc;
+      using namespace codex::fs;
+      
+      auto [r1, r2, ...] sub_tasks = co_await when_all(do_stuff1(), do_stuff2(), ...);
+  }
+  #+end_src
+* Notes
++ What if Thread Pool is deadlocked when all threads wait for each other to finish when doing something in parallel?

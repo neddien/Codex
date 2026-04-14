@@ -47,9 +47,9 @@ namespace codex::gfx {
         static void dispose() noexcept;
 
     private:
-        mem::Box<opengl::VertexArray>                          vao_;
-        mem::Box<opengl::VertexBuffer>                         vbo_;
-        mem::Box<opengl::VertexBufferLayout>                   layout_;
+        Box<opengl::VertexArray>                          vao_;
+        Box<opengl::VertexBuffer>                         vbo_;
+        Box<opengl::VertexBufferLayout>                   layout_;
         std::vector<Line2D>                                    lines_;
         std::array<f32, LINE2D_MAX_COUNT * LINE2D_VERTEX_SIZE> verticies_;
         const scene::Camera*                                   current_camera_;

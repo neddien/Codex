@@ -3,9 +3,9 @@
 #include <engine/memory/public/memory.h>
 
 namespace codex {
-    static mem::Box<lgx::Logger> s_engine_logger;
-    static mem::Box<lgx::Logger> s_editor_logger;
-    static mem::Box<lgx::Logger> s_nbman_logger;
+    static Box<lgx::Logger> s_engine_logger;
+    static Box<lgx::Logger> s_editor_logger;
+    static Box<lgx::Logger> s_nbman_logger;
     static lgx::Logger*          s_active_logger = nullptr;
 
     auto detail::engine_logger() noexcept -> lgx::Logger&
@@ -34,7 +34,7 @@ namespace codex {
     {
         constexpr auto k_fmt = "[{level}] ({prefix}): {msg}";
 
-        s_engine_logger = mem::Box<lgx::Logger>::make(lgx::Logger::Properties{
+        s_engine_logger = Box<lgx::Logger>::make(lgx::Logger::Properties{
             .defaultPrefix = "engine",
             .defaultStyle  = { .format            = k_fmt,
                                .defaultInfoStyle  = fmt::fg(fmt::color::light_sky_blue),
@@ -43,7 +43,7 @@ namespace codex {
                                .defaultFatalStyle = fmt::fg(fmt::color::dark_red) | fmt::emphasis::italic,
                                .defaultDebugStyle = fmt::fg(fmt::color::light_green) } });
 
-        s_editor_logger = mem::Box<lgx::Logger>::make(lgx::Logger::Properties{
+        s_editor_logger = Box<lgx::Logger>::make(lgx::Logger::Properties{
             .defaultPrefix = "editor",
             .defaultStyle  = { .format            = k_fmt,
                                .defaultInfoStyle  = fmt::fg(fmt::color::lime_green),
@@ -52,7 +52,7 @@ namespace codex {
                                .defaultFatalStyle = fmt::fg(fmt::color::dark_red) | fmt::emphasis::italic,
                                .defaultDebugStyle = fmt::fg(fmt::color::light_green) } });
 
-        s_nbman_logger = mem::Box<lgx::Logger>::make(lgx::Logger::Properties{
+        s_nbman_logger = Box<lgx::Logger>::make(lgx::Logger::Properties{
             .defaultPrefix = "behaviour",
             .defaultStyle  = { .format            = k_fmt,
                                .defaultInfoStyle  = fmt::fg(fmt::color::plum),

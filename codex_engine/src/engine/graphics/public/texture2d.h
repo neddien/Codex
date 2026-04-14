@@ -1,10 +1,14 @@
 #pragma once
 
+#include <engine/asset_manager/public/asset_manager.h>
 #include <engine/core/public/i_resource.h>
+#include <engine/filesystem/public/file_handle.h>
 #include <engine/memory/public/memory.h>
 #include <platform/open_gl/texture.h>
 
 namespace codex::gfx {
+    class Texture2DLoader;
+
     class CODEX_API Texture2D : public codex::IResource
     {
         friend class ResourceHandler;
@@ -14,7 +18,7 @@ namespace codex::gfx {
         explicit Texture2D(std::filesystem::path file_path, const opengl::TextureProperties texture_properties = {})
         {
             path_        = file_path;
-            raw_texture_ = mem::Box<opengl::Texture>::make(std::move(file_path), texture_properties);
+            raw_texture_ = Box<opengl::Texture>::make(std::move(file_path), texture_properties);
         }
 
     public:
@@ -44,9 +48,9 @@ namespace codex::gfx {
             const auto& props = properties();
             node.write("id", id());
             node.write("file_path", file_path().generic_string());
-            node.write("filter_mode", static_cast<u32>(props.filter_mode));
-            node.write("wrap_mode", static_cast<u32>(props.wrap_mode));
-            node.write("format", static_cast<u32>(props.format));
+            node.write("filter_mode", opengl::to_string(props.filter_mode));
+            node.write("wrap_mode", opengl::to_string(props.wrap_mode));
+            node.write("format", opengl::to_string(props.format));
         }
         void deserialize(const ISerializationNode& node) override
         {
@@ -55,15 +59,18 @@ namespace codex::gfx {
 
             node.read("id", id_);
             node.read("file_path", path);
-            node.read("filter_mode", reinterpret_cast<u32&>(props.filter_mode));
-            node.read("wrap_mode", reinterpret_cast<u32&>(props.wrap_mode));
-            node.read("format", reinterpret_cast<u32&>(props.format));
+            if (std::string str; node.read("filter_mode", str))
+                props.filter_mode = opengl::texture_filter_mode_from_string(str);
+            if (std::string str; node.read("wrap_mode", str))
+                props.wrap_mode = opengl::texture_wrap_mode_from_string(str);
+            if (std::string str; node.read("format", str))
+                props.format = opengl::texture_format_from_string(str);
 
             path_        = path;
-            raw_texture_ = mem::Box<opengl::Texture>::make(std::move(path), props);
+            raw_texture_ = Box<opengl::Texture>::make(std::move(path), props);
         }
 
     private:
-        mem::Box<opengl::Texture> raw_texture_ = nullptr;
+        Box<opengl::Texture> raw_texture_ = nullptr;
     };
 } // namespace codex::gfx

@@ -15,7 +15,7 @@ namespace codex::scene {
         node.write("fov", fov_);
         node.write("near_clip", near_clip_);
         node.write("far_clip", far_clip_);
-        node.write("projection_type", static_cast<u32>(projection_type_));
+        node.write("projection_type", enum_name(projection_type_));
         node.write("pan", pan_);
     }
 
@@ -26,7 +26,9 @@ namespace codex::scene {
         node.read("fov", fov_);
         node.read("near_clip", near_clip_);
         node.read("far_clip", far_clip_);
-        node.read("projection_type", reinterpret_cast<u32&>(projection_type_));
+        if (std::string str; node.read("projection_type", str))
+            if (auto val = enum_from<ProjectionType>(str))
+                projection_type_ = *val;
         node.read("pan", pan_);
     }
 } // namespace codex::scene

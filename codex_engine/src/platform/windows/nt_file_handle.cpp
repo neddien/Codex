@@ -1,6 +1,6 @@
 #include "nt_file_handle.h"
 
-#include <engine/file_system/public/file_system.h>
+#include <engine/filesystem/public/filesystem.h>
 
 namespace codex::fs {
     NTFileHandle::NTFileHandle(HANDLE handle, std::string path, const FileProperties props) noexcept

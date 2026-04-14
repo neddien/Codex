@@ -67,6 +67,8 @@ namespace codex {
         sprite_.deserialize(node);
     }
 
+    NativeBehaviourComponent::~NativeBehaviourComponent() noexcept { dispose_behaviours(); }
+
     NativeBehaviourComponent::NativeBehaviourComponent(const NativeBehaviourComponent& other)
         : pending_scripts_(other.pending_scripts_)
     {
@@ -131,7 +133,7 @@ namespace codex {
         }
     }
 
-    void NativeBehaviourComponent::attach(mem::Box<NativeBehaviour> bh)
+    void NativeBehaviourComponent::attach(Box<NativeBehaviour> bh)
     {
         // TODO: This should happen OnScenePlay().
         // Optionally, you could have a OnAttach() or OnConstruct() method
@@ -148,7 +150,7 @@ namespace codex {
         }
     }
 
-    mem::Box<NativeBehaviour> NativeBehaviourComponent::detach(const std::string& class_name)
+    Box<NativeBehaviour> NativeBehaviourComponent::detach(const std::string& class_name)
     {
         auto it = behaviours_.find(class_name);
         if (it != behaviours_.end()) {
@@ -250,7 +252,7 @@ namespace codex {
 
     void RigidBody2DComponent::serialize_impl(ISerializationNode& node) const
     {
-        node.write("body_type", static_cast<u32>(body_type));
+        node.write("body_type", enum_name(body_type));
         node.write("fixed_rotation", fixed_rotation);
         node.write("linear_damping", linear_damping);
         node.write("angular_damping", angular_damping);
@@ -261,7 +263,9 @@ namespace codex {
 
     void RigidBody2DComponent::deserialize_impl(const ISerializationNode& node)
     {
-        node.read("body_type", reinterpret_cast<u32&>(body_type));
+        if (std::string str; node.read("body_type", str))
+            if (auto val = enum_from<BodyType>(str))
+                body_type = *val;
         node.read("fixed_rotation", fixed_rotation);
         node.read("linear_damping", linear_damping);
         node.read("angular_damping", angular_damping);
@@ -329,7 +333,7 @@ namespace codex {
         node.write("grid_size", grid_size);
         node.write("tile_size", tile_size);
         node.write("current_tile", current_tile);
-        node.write("current_state", static_cast<u32>(current_state));
+        node.write("current_state", enum_name(current_state));
         node.write("current_layer", current_layer);
     }
 
@@ -352,20 +356,20 @@ namespace codex {
         node.read("grid_size", grid_size);
         node.read("tile_size", tile_size);
         node.read("current_tile", current_tile);
-        node.read("current_state", reinterpret_cast<u32&>(current_state));
+        if (std::string str; node.read("current_state", str))
+            if (auto val = enum_from<State>(str))
+                current_state = *val;
         node.read("current_layer", current_layer);
     }
 
     void IDComponent::serialize_impl(ISerializationNode& node) const
     {
-        node.write("uuid", static_cast<u64>(uuid));
+        uuid.serialize(node);
     }
 
     void IDComponent::deserialize_impl(const ISerializationNode& node)
     {
-        u64 id;
-        node.read("uuid", id);
-        uuid = UUID(id);
+        uuid.deserialize(node);
     }
 
     void BoxCollider2DComponent::serialize_impl(ISerializationNode& node) const

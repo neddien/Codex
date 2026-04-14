@@ -31,14 +31,14 @@ namespace codex::gfx {
         if (!s_shader_)
             throw InvalidOperationException("Tried creating a DebugDraw object before calling DebugDraw::init().");
 
-        vao_ = mem::Box<opengl::VertexArray>::make();
+        vao_ = Box<opengl::VertexArray>::make();
         vao_->bind();
 
-        vbo_ = mem::Box<opengl::VertexBuffer>::make();
+        vbo_ = Box<opengl::VertexBuffer>::make();
         vbo_->bind();
         vbo_->set_buffer<f32>(nullptr, verticies_.size() * sizeof(f32), opengl::BufferUsage::DYNAMIC_DRAW);
 
-        layout_ = mem::Box<opengl::VertexBufferLayout>::make();
+        layout_ = Box<opengl::VertexBufferLayout>::make();
         layout_->push<f32>(3); // a_Pos
         layout_->push<f32>(4); // a_Colour
 

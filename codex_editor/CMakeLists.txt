@@ -48,7 +48,8 @@ elseif(DEFINED CX_BUILD_TYPE_DEBUG)
 endif()
 
 # nativefiledialog-extended (Wayland-compatible file dialogs via xdg-desktop-portal)
-set(NFD_PORTAL ON CACHE BOOL "Use xdg-desktop-portal instead of GTK")
+set(NFD_PORTAL OFF CACHE BOOL "Use xdg-desktop-portal instead of GTK")
+#set(NFD_PORTAL OFF CACHE BOOL "Hella nah")
 FetchContent_Declare(
   nativefiledialog-extended
   GIT_REPOSITORY https://github.com/btzy/nativefiledialog-extended

@@ -21,5 +21,5 @@ namespace codex {
 
     template <typename T>
         requires(std::is_base_of_v<IResource, T>)
-    using ResRef = mem::Shared<T>;
+    using ResRef = Shared<T>;
 } // namespace codex

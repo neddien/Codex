@@ -12,6 +12,13 @@
 class b2World;
 
 namespace codex {
+    struct B2WorldDeleter
+    {
+        void operator()(b2World* world) noexcept;
+    };
+} // namespace codex
+
+namespace codex {
     // Forward declarations
     class Window;
     class Entity;
@@ -107,10 +114,10 @@ namespace codex {
     private:
         cc::Mutex<entt::registry> registry_;
         std::string               name_          = "Default scene";
-        mem::Box<b2World>         physics_world_ = nullptr;
+        Box<b2World, B2WorldDeleter> physics_world_ = nullptr;
         std::atomic<State>        state_         = State::Edit;
         std::thread               fixed_update_thread_;
         PhysicsProperties         physics_properties_;
-        mem::Box<Entity>          primary_camera_entity_ = nullptr;
+        Box<Entity>          primary_camera_entity_ = nullptr;
     };
 } // namespace codex

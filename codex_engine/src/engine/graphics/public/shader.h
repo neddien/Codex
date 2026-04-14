@@ -17,7 +17,7 @@ namespace codex::gfx {
         Shader(std::filesystem::path file_path, const std::string_view version = "330 core")
         {
             path_       = file_path;
-            raw_shader_ = mem::Box<opengl::Shader>::make(std::move(file_path), version);
+            raw_shader_ = Box<opengl::Shader>::make(std::move(file_path), version);
         }
         Shader(const Shader&)                = delete;
         Shader& operator=(const Shader&)     = delete;
@@ -79,10 +79,10 @@ namespace codex::gfx {
             node.read("file_path", path);
             node.read("version", version);
 
-            raw_shader_ = mem::Box<opengl::Shader>::make(std::move(path), version);
+            raw_shader_ = Box<opengl::Shader>::make(std::move(path), version);
         }
 
     private:
-        mem::Box<opengl::Shader> raw_shader_;
+        Box<opengl::Shader> raw_shader_;
     };
 } // namespace codex::gfx

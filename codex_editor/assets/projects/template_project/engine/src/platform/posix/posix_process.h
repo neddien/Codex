@@ -7,7 +7,7 @@
 namespace codex::sys {
     class CODEX_API POSIXProcess : public Process
     {
-        // So that Process::create() can create a mem::Shared<POSIXProcess> with a custom deleter.
+        // So that Process::create() can create a Shared<POSIXProcess> with a custom deleter.
         friend class Process;
 
     private:

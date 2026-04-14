@@ -15,13 +15,13 @@
     friend class ComponentFactory;                                                                                     \
                                                                                                                        \
 public:                                                                                                                \
-    [[nodiscard]] inline std::string_view type_name() const override                                                   \
+    [[nodiscard]] std::string_view type_name() const noexcept override                                                 \
     {                                                                                                                  \
         return #type;                                                                                                  \
     }                                                                                                                  \
-    [[nodiscard]] mem::Box<Component> clone() const noexcept override                                                  \
+    [[nodiscard]] Box<Component> clone() const noexcept override                                                  \
     {                                                                                                                  \
-        return mem::Box<type>{ new type{ *this } };                                                                    \
+        return Box<type>{ new type{ *this } };                                                                    \
     }
 
 namespace codex {
@@ -31,7 +31,7 @@ namespace codex {
     } // namespace scene
     class NativeBehaviour;
 
-    struct CODEX_API Component : public ISerializable
+    class CODEX_API Component : public ISerializable
     {
         friend class Entity;
         friend class Scene;
@@ -44,8 +44,8 @@ namespace codex {
         virtual ~Component() = default;
 
     public:
-        virtual std::string_view    type_name() const      = 0;
-        virtual mem::Box<Component> clone() const noexcept = 0;
+        virtual std::string_view    type_name() const noexcept = 0;
+        virtual Box<Component> clone() const noexcept     = 0;
 
     public:
         void serialize(ISerializationNode& node) const
@@ -129,7 +129,7 @@ namespace codex {
         void deserialize_impl(const ISerializationNode& node) override;
     };
 
-    struct CODEX_API SpriteRendererComponent : public Component
+    class CODEX_API SpriteRendererComponent : public Component
     {
         CX_COMPONENT(SpriteRendererComponent)
 
@@ -153,12 +153,12 @@ namespace codex {
     CX_CUSTOM_EXCEPTION(ScriptException, "An unknown behaviour exception occured.")
     CX_CUSTOM_EXCEPTION(DuplicateBehaviourException, "Cannot have more than one type of behaviour on a single entity.")
 
-    struct CODEX_API NativeBehaviourComponent : public Component
+    class CODEX_API NativeBehaviourComponent : public Component
     {
         CX_COMPONENT(NativeBehaviourComponent)
 
     public:
-        using BehaviourMap  = std::unordered_map<std::string, mem::Box<NativeBehaviour>>;
+        using BehaviourMap  = std::unordered_map<std::string, Box<NativeBehaviour>>;
         using BehaviourList = std::vector<NativeBehaviour*>;
 
     public:
@@ -167,7 +167,7 @@ namespace codex {
         NativeBehaviourComponent& operator=(const NativeBehaviourComponent& other);
         NativeBehaviourComponent(NativeBehaviourComponent&& other) noexcept            = default;
         NativeBehaviourComponent& operator=(NativeBehaviourComponent&& other) noexcept = default;
-        ~NativeBehaviourComponent() noexcept { dispose_behaviours(); }
+        ~NativeBehaviourComponent() noexcept;
 
     public:
         inline void swap(NativeBehaviourComponent& other) noexcept { std::swap(behaviours_, other.behaviours_); }
@@ -179,8 +179,8 @@ namespace codex {
 
     public:
         void                      on_init() override;
-        void                      attach(mem::Box<NativeBehaviour> bh);
-        mem::Box<NativeBehaviour> detach(const std::string& class_name);
+        void                      attach(Box<NativeBehaviour> bh);
+        Box<NativeBehaviour> detach(const std::string& class_name);
         void                      instantiate_behaviour(const std::string& class_name);
         void                      on_update(const f32 delta_time);
         void                      on_fixed_update(const f32 delta_time);
@@ -367,7 +367,7 @@ namespace codex {
         f32                                  min_distance  = 1.0f;
         f32                                  max_distance  = 100.0f;
         std::unordered_map<std::string, f32> parameters;
-        mem::Shared<ax::EventHandle>         handle;
+        Shared<ax::EventHandle>         handle;
 
     public:
         void serialize_impl(ISerializationNode& node) const override;

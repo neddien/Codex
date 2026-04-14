@@ -3,7 +3,7 @@
 #include <engine/core/engine.h>
 
 // NOTE: Include GLAD before ImGui OpenGL backend!
-#include <glad.h>
+#include <glad/glad.h>
 #include <imgui_impl_opengl3.h>
 #include <imgui_impl_sdl2.h>
 #include <imgui_internal.h>

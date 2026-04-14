@@ -30,7 +30,7 @@ namespace codex {
 
     private:
         JsonType&                                            json_;
-        mutable std::vector<mem::Box<JsonSerializationNode>> children_;
+        mutable std::vector<Box<JsonSerializationNode>> children_;
         mutable bool                                         is_array_node_;
         mutable bool                                         is_map_node_;
 
@@ -178,14 +178,14 @@ namespace codex {
         ISerializationNode& create_child(const std::string_view key) override
         {
             json_[key] = JsonType::object();
-            children_.push_back(mem::Box<JsonSerializationNode>::make(json_[key]));
+            children_.push_back(Box<JsonSerializationNode>::make(json_[key]));
             return *children_.back();
         }
 
         const ISerializationNode& child(const std::string_view key) const override
         {
             if (json_.contains(key) && json_[key].is_object()) {
-                children_.push_back(mem::Box<JsonSerializationNode>::make(const_cast<JsonType&>(json_[key])));
+                children_.push_back(Box<JsonSerializationNode>::make(const_cast<JsonType&>(json_[key])));
                 return *children_.back();
             }
             throw JsonSerializerException("array_element() failed with key: {}", key);
@@ -194,7 +194,7 @@ namespace codex {
         ISerializationNode& begin_array(const std::string_view key) override
         {
             json_[key]            = nlohmann::ordered_json::array();
-            auto child            = mem::Box<JsonSerializationNode>::make(json_[key]);
+            auto child            = Box<JsonSerializationNode>::make(json_[key]);
             child->is_array_node_ = true;
             children_.push_back(std::move(child));
             return *children_.back();
@@ -208,7 +208,7 @@ namespace codex {
             assert(is_array_node_ && "add_array_element called on non-array node");
 
             json_.push_back(nlohmann::ordered_json::object());
-            auto child = mem::Box<JsonSerializationNode>::make(json_.back());
+            auto child = Box<JsonSerializationNode>::make(json_.back());
             children_.push_back(std::move(child));
             return *children_.back();
         }
@@ -216,7 +216,7 @@ namespace codex {
         ISerializationNode& array(const std::string_view key) const override
         {
             if (json_.contains(key) && json_[key].is_array()) {
-                auto child            = mem::Box<JsonSerializationNode>::make(const_cast<JsonType&>(json_[key]));
+                auto child            = Box<JsonSerializationNode>::make(const_cast<JsonType&>(json_[key]));
                 child->is_array_node_ = true;
                 children_.push_back(std::move(child));
                 return *children_.back();
@@ -229,7 +229,7 @@ namespace codex {
         const ISerializationNode& array_element(const usize idx) const override
         {
             if (json_.is_array() && idx < json_.size()) {
-                children_.push_back(mem::Box<JsonSerializationNode>::make(const_cast<JsonType&>(json_[idx])));
+                children_.push_back(Box<JsonSerializationNode>::make(const_cast<JsonType&>(json_[idx])));
                 return *children_.back();
             }
             throw JsonSerializerException("array_element() failed with idx: {}", idx);
@@ -249,7 +249,7 @@ namespace codex {
         ISerializationNode& begin_map(const std::string_view key) override
         {
             json_[key]          = nlohmann::ordered_json::object();
-            auto child          = mem::Box<JsonSerializationNode>::make(json_[key]);
+            auto child          = Box<JsonSerializationNode>::make(json_[key]);
             child->is_map_node_ = true;
             children_.push_back(std::move(child));
             return *children_.back();
@@ -260,7 +260,7 @@ namespace codex {
             assert(is_map_node_ && "add_map_entry called on non-map node");
 
             json_[key] = nlohmann::ordered_json::object();
-            auto child = mem::Box<JsonSerializationNode>::make(json_[key]);
+            auto child = Box<JsonSerializationNode>::make(json_[key]);
             children_.push_back(std::move(child));
             return *children_.back();
         }
@@ -273,7 +273,7 @@ namespace codex {
         ISerializationNode& map(const std::string_view key) const override
         {
             if (json_.contains(key) && json_[key].is_object()) {
-                auto child          = mem::Box<JsonSerializationNode>::make(const_cast<JsonType&>(json_[key]));
+                auto child          = Box<JsonSerializationNode>::make(const_cast<JsonType&>(json_[key]));
                 child->is_map_node_ = true;
                 children_.push_back(std::move(child));
                 return *children_.back();
@@ -295,7 +295,7 @@ namespace codex {
         const ISerializationNode& map_entry(const std::string_view key) const override
         {
             if (json_.contains(key)) {
-                auto child = mem::Box<JsonSerializationNode>::make(const_cast<JsonType&>(json_[key]));
+                auto child = Box<JsonSerializationNode>::make(const_cast<JsonType&>(json_[key]));
                 children_.push_back(std::move(child));
                 return *children_.back();
             }

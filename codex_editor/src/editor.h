@@ -10,7 +10,7 @@ namespace codex::editor {
     class Editor : public Layer
     {
     private:
-        mem::Box<SceneEditorView> scene_editor_view_ = nullptr;
+        Box<SceneEditorView> scene_editor_view_ = nullptr;
 
     private:
         static std::optional<scene::EditorCamera> s_camera_;

@@ -1,5 +1,6 @@
 #include "engine.h"
 
+#include <engine/asset_manager/public/asset_manager.h>
 #include <engine/audio/audio_system.h>
 #include <engine/debug/public/profiler.h>
 #include <engine/debug/public/time_scope.h>
@@ -17,6 +18,8 @@ namespace codex {
     using namespace codex::gfx;
     using namespace codex::ax;
 
+    using EngineSubsystems = SystemManager<AssetManager>;
+
     Engine* Engine::s_instance_ = nullptr;
 
     Engine::Engine(EngineProperties args)
@@ -27,6 +30,7 @@ namespace codex {
 
     Engine::~Engine()
     {
+        EngineSubsystems::dispose_all();
         Resources::destroy();
         Input::dispose();
         AudioSystem::dispose();
@@ -35,14 +39,14 @@ namespace codex {
 
     void Engine::internal_init()
     {
-        // We're occupying uncessary 3 threads for each logger instance: engine, editor, nbman
+        // We're occupying unecessary 3 threads for each logger instance: engine, editor, nbman
         // Just use a single three for ALL logger instances.
         detail::init_loggers();
         use_engine_logger();
 
         thread_pool_ =
-            mem::Box<cc::ThreadPool>::make(std::thread::hardware_concurrency() - sys::get_engine_thread_count());
-        worker_thread_executor_ = mem::Box<cc::ThreadedExecutor>::make(*thread_pool_);
+            Box<cc::ThreadPool>::make(std::thread::hardware_concurrency() - sys::get_engine_thread_count());
+        worker_thread_executor_ = Box<cc::ThreadedExecutor>::make(*thread_pool_);
 
         info("Initialized with a Thread Pool of size: {}", thread_pool_->available_concurrency());
 
@@ -55,11 +59,13 @@ namespace codex {
             }
 
             s_instance_ = this;
-            window_     = mem::Box<Window>::make();
+            window_     = Box<Window>::make();
             window_->init(properties_.window_properties);
             window_->set_event_callback(bind_event_delegate(this, &Engine::on_event));
 
             input_ = Input::get();
+
+            EngineSubsystems::init_all();
 
             Resources::init();
             register_all_components();
@@ -118,6 +124,8 @@ namespace codex {
                 }
 
                 window_->swap_buffers();
+
+                EngineSubsystems::tick_all(delta_time_);
 
                 // FIXME: Fix the mouse dragging thing for now...
                 // What?????

@@ -4,7 +4,7 @@
 
 The VFS is a trie-based virtual filesystem that unifies multiple backing stores (disk, memory, PAK archives) behind a single path namespace. Multiple mounts can attach to the same path node; the highest-priority mount wins on lookup.
 
-Header: `<engine/file_system/public/file_system.h>`
+Header: `<engine/filesystem/public/filesystem.h>`
 
 ---
 

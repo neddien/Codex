@@ -73,7 +73,8 @@ namespace codex {
     class CODEX_API Window
     {
         friend class Engine;
-        friend class mem::Box<Window>;
+        friend class Box<Window>;
+        friend struct std::default_delete<Window>;
 
     private:
         using Box                   = std::unique_ptr<Window, std::function<void(Window*)>>;

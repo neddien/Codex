@@ -16,11 +16,13 @@ namespace codex::editor {
     {
         // TODO: Consider splitting these into their own separate init functions.
         // Setup ImGUI.
+        // FIXME: Causes a crash when the given font is missing.
         auto&              io            = ImGui::GetIO();
         static std::string ini_file_path = (EditorApplication::get_var_app_data_path() / "imgui.ini").string();
         static std::string font_file_path =
             (EditorApplication::get_app_data_path() / "Fonts/roboto/Roboto-Regular.ttf").string();
-        static std::string icon_font_path = (EditorApplication::get_app_data_path() / "Fonts/tabler-icons.ttf").string();
+        static std::string icon_font_path =
+            (EditorApplication::get_app_data_path() / "Fonts/tabler-icons.ttf").string();
 
         if (!stdfs::exists(ini_file_path)) {
             try {
@@ -28,10 +30,9 @@ namespace codex::editor {
                                  EditorApplication::get_var_app_data_path() / "imgui.ini");
             }
             catch (const std::exception& ex) {
-                Engine::warn(
-                    "Failed to create variable application data folder! Some data will be lost "
-                    "after closing the application.\n\tInner Exception: {}",
-                    ex.what());
+                Engine::warn("Failed to create variable application data folder! Some data will be lost "
+                             "after closing the application.\n\tInner Exception: {}",
+                             ex.what());
             }
         }
 
@@ -42,8 +43,8 @@ namespace codex::editor {
 
         // Load and merge Tabler Icons
         ImFontConfig config;
-        config.MergeMode  = true;
-        config.PixelSnapH = true;
+        config.MergeMode                   = true;
+        config.PixelSnapH                  = true;
         static const ImWchar icon_ranges[] = { ICON_MIN_TI, ICON_MAX_TI, 0 };
         io.Fonts->AddFontFromFileTTF(icon_font_path.c_str(), font_size, &config, icon_ranges);
 
@@ -66,7 +67,7 @@ namespace codex::editor {
 
         s_camera_ = scene::EditorCamera(1920, 1080);
 
-        scene_editor_view_ = mem::Box<SceneEditorView>::make();
+        scene_editor_view_ = Box<SceneEditorView>::make();
         scene_editor_view_->on_attach();
     }
 

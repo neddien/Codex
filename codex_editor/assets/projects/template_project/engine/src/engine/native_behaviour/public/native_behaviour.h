@@ -78,7 +78,7 @@ namespace codex {
         virtual void                                    on_update([[maybe_unused]] const f32 delta_time) {}
         virtual void                                    on_fixed_update([[maybe_unused]] const f32 delta_time) {}
         virtual void                                    on_dispose() {}
-        [[nodiscard]] virtual mem::Box<NativeBehaviour> clone() const     = 0;
+        [[nodiscard]] virtual Box<NativeBehaviour> clone() const     = 0;
         [[nodiscard]] virtual const rf::TypeInfo&       type_info() const = 0;
 
     public:

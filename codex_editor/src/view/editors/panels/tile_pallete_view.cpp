@@ -31,7 +31,7 @@ namespace codex::editor {
         props.attachments = { { .format = opengl::TextureFormat::RGBA8 } };
 
         // FIXME: Fix opengl::FrameBuffer's copy and move operators.
-        pallete_fb_ = mem::Box<opengl::FrameBuffer>::make(props);
+        pallete_fb_ = Box<opengl::FrameBuffer>::make(props);
     }
 
     void TilePalleteView::on_update(const f32 deltaTime)

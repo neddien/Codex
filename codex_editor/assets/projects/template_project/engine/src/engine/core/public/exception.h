@@ -21,6 +21,25 @@ public:                                                                         
     }
 
 namespace codex {
+    // Captures a format string and source_location at the call site.
+    // Because source_location::current() is a default argument on this struct's
+    // constructor, it evaluates where the struct is implicitly constructed —
+    // i.e. at the throw site, not inside CodexException's constructor body.
+    // Using a non-template struct with a template ctor avoids the two-step
+    // implicit-conversion chain that would occur with FmtStringWithLoc<TArgs...>.
+    struct FmtStringWithLoc
+    {
+        fmt::string_view     fmt;
+        std::source_location loc;
+
+        template <typename S>
+        FmtStringWithLoc(const S& s, std::source_location loc = std::source_location::current()) noexcept
+            : fmt(s)
+            , loc(loc)
+        {
+        }
+    };
+
     class CODEX_API CodexException : public std::exception
     {
     public:
@@ -29,9 +48,9 @@ namespace codex {
                        std::source_location   loc = std::source_location::current()) noexcept;
 
         template <typename... TArgs>
-        CodexException(fmt::format_string<TArgs...> fmt, TArgs&&... args) noexcept
-            : message_(fmt::format(fmt, std::forward<TArgs>(args)...))
-            , location_(std::source_location::current())
+        CodexException(FmtStringWithLoc fmt_loc, TArgs&&... args) noexcept
+            : message_(fmt::vformat(fmt_loc.fmt, fmt::make_format_args(args...)))
+            , location_(fmt_loc.loc)
         {
         }
 

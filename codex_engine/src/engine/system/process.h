@@ -31,12 +31,10 @@ namespace codex::sys {
         std::function<void(i32)>   on_exit          = nullptr;
     };
 
-    class CODEX_API Process : public mem::SharedManagable<Process>
+    class CODEX_API Process : public std::enable_shared_from_this<Process>
     {
-        friend class mem::Shared<Process>;
-
     public:
-        using ProcessHandle = mem::Shared<Process>;
+        using ProcessHandle = Shared<Process>;
 
     protected:
         ProcessInfo info_;

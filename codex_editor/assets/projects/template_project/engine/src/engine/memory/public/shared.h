@@ -1,196 +1,167 @@
 #pragma once
 
-#include <engine/core/public/exception.h>
+#include <memory>
 
-#include "sharable.h"
+#include "ref.h"
 
-namespace codex::mem {
-    // Forward declarations.
+namespace codex {
     template <typename T>
-    class Ref;
-    template <typename T>
-    class Shared;
-
-    template <typename T>
-    class SharedManagable
+    class Shared
     {
         template <typename U>
         friend class Shared;
 
+        template <typename U>
+        friend class Ref;
+
     public:
-        using E_Type = SharedManagable;
+        constexpr Shared() noexcept = default;
+        constexpr Shared(std::nullptr_t) noexcept
+            : impl_(nullptr)
+        {
+        }
+        explicit Shared(T* ptr)
+            requires(!std::is_void_v<T>)
+            : impl_(ptr)
+        {
+        }
+        template <typename Deleter>
+            requires(!std::is_void_v<T> && std::is_invocable_v<Deleter, T*>)
+        Shared(T* ptr, Deleter d)
+            : impl_(ptr, std::move(d))
+        {
+        }
+        // Implicit conversion from std::shared_ptr — needed for std::shared_from_this() interop.
+        Shared(std::shared_ptr<T> sp) noexcept
+            : impl_(std::move(sp))
+        {
+        }
+        Shared(const Shared&) noexcept            = default;
+        Shared(Shared&&) noexcept                 = default;
+        Shared& operator=(const Shared&) noexcept = default;
+        Shared& operator=(Shared&&) noexcept      = default;
+        ~Shared()                                 = default;
 
-    protected:
-        [[nodiscard]] Shared<T> new_shared_from_this() noexcept { return weak_ref_.lock(); }
-        [[nodiscard]] Ref<T>    new_ref_from_this() noexcept { return weak_ref_; }
+        template <typename U>
+            requires(std::is_convertible_v<U*, T*>)
+        Shared(const Shared<U>& other) noexcept
+            : impl_(other.impl_)
+        {
+        }
+        template <typename U>
+            requires(std::is_convertible_v<U*, T*>)
+        Shared(Shared<U>&& other) noexcept
+            : impl_(std::move(other.impl_))
+        {
+        }
 
-    protected:
-        Ref<T> weak_ref_ = nullptr;
-    };
+    public:
+        [[nodiscard]] T*       get() noexcept { return impl_.get(); }
+        [[nodiscard]] const T* get() const noexcept { return impl_.get(); }
 
-    template <class T, class = void>
-    struct CanSharedManagable : std::false_type
-    {
-    }; // detect unambiguous and accessible inheritance from enable_shared_from_this
+        [[nodiscard]] operator bool() const noexcept { return impl_ != nullptr; }
+                      operator std::shared_ptr<T>() const noexcept { return impl_; }
 
-    template <class T>
-    struct CanSharedManagable<T, std::void_t<typename T::E_Type>>
-        : std::is_convertible<std::remove_cv_t<T>*, typename T::E_Type*>::type
-    {
-        // is_convertible is necessary to verify unambiguous inheritance
+        T* operator->() noexcept
+            requires(!std::is_void_v<T>)
+        {
+            return impl_.get();
+        }
+        const T* operator->() const noexcept
+            requires(!std::is_void_v<T>)
+        {
+            return impl_.get();
+        }
+
+        // Use a non-void stand-in for the return type so the declaration is valid even when
+        // T=void, Clang checks the return type before evaluating requires-clauses.
+        using deref_t = std::conditional_t<std::is_void_v<T>, std::byte, T>;
+
+        deref_t& operator*() noexcept
+            requires(!std::is_void_v<T>)
+        {
+            return *impl_;
+        }
+        const deref_t& operator*() const noexcept
+            requires(!std::is_void_v<T>)
+        {
+            return *impl_;
+        }
+
+        Shared& operator=(std::nullptr_t) noexcept
+        {
+            impl_ = nullptr;
+            return *this;
+        }
+
+    public:
+        void reset(T* ptr = nullptr) { impl_.reset(ptr); }
+        void swap(Shared& other) noexcept { impl_.swap(other.impl_); }
+
+        [[nodiscard]] Ref<T>       as_ref() noexcept { return Ref<T>{ *this }; }
+        [[nodiscard]] Ref<const T> as_ref() const noexcept { return Ref<const T>{ *this }; }
+
+        // Static cast to a different type — analogous to std::static_pointer_cast.
+        template <typename U>
+        [[nodiscard]] Shared<U> as() const noexcept
+        {
+            return Shared<U>{ std::static_pointer_cast<U>(impl_) };
+        }
+
+    public:
+        // Call new directly so friend declarations on T granting Box<T>/Shared<T> access
+        // allow construction of types with private/protected ctors.
+        // Additionally, make_shared cannot be used here because it performs the allocation
+        // inside its own scope where friendship with T does not apply.
+        template <typename... Args>
+            requires(!std::is_void_v<T>)
+        [[nodiscard]] static Shared make(Args&&... args)
+        {
+            return Shared{ new T(std::forward<Args>(args)...) };
+        }
+
+        [[nodiscard]] static Shared from(T* ptr)
+            requires(!std::is_void_v<T>)
+        {
+            return Shared{ ptr };
+        }
+
+    public:
+        bool operator==(std::nullptr_t) const noexcept { return impl_ == nullptr; }
+        bool operator!=(std::nullptr_t) const noexcept { return impl_ != nullptr; }
+        bool operator==(const Shared& other) const noexcept { return impl_ == other.impl_; }
+
+    private:
+        std::shared_ptr<T> impl_;
     };
 
     template <typename T>
-    class Shared : public Sharable<T>
+    Ref<T>::Ref(const Shared<T>& s) noexcept
+        : impl_(s.impl_)
     {
-        template <typename U>
-        friend class Shared; // We don't ask questions here.
+    }
 
-        friend class Ref<T>;
+    template <typename T>
+    Ref<T>& Ref<T>::operator=(const Shared<T>& s) noexcept
+    {
+        impl_ = s.impl_;
+        return *this;
+    }
 
-    public:
-        using typename Sharable<T>::BaseType;
-        using typename Sharable<T>::Pointer;
-        using typename Sharable<T>::ConstPointer;
-        using typename Sharable<T>::Reference;
-        using typename Sharable<T>::ConstReference;
-        using typename Sharable<T>::DifferenceType;
+    template <typename T>
+    template <typename U>
+        requires(std::is_convertible_v<U*, T*>)
+    Ref<T>::Ref(const Shared<U>& other) noexcept
+        : impl_(other.impl_)
+    {
+    }
 
-    public:
-        constexpr Shared() = default;
-        constexpr Shared(std::nullptr_t)
-            : Shared()
-        {
-        }
-
-        explicit Shared(const Pointer ptr)
-        {
-            if constexpr (std::is_array_v<T>)
-                init_manager(ptr, new ManagedResource(ptr, std::default_delete<T[]>{}));
-            else
-                init_manager(ptr, new ManagedMemory(ptr));
-        }
-        template <typename Deleter>
-            requires(std::is_invocable_v<Deleter>)
-        Shared(const Pointer ptr, Deleter deleter)
-        {
-            init_manager(ptr, new ManagedResource(ptr, std::move(deleter)));
-        }
-        Shared(const Shared<T>& other) { this->copy_construct_from(other); }
-        Shared(Shared<T>&& other) noexcept { this->move_construct_from(std::move(other)); }
-        ~Shared() noexcept { this->dec_ref(); }
-
-    public:
-        template <typename U>
-            requires(std::is_convertible_v<U, T> || std::is_base_of_v<T, U>)
-        explicit Shared(U* const ptr)
-            : Shared((const Pointer)ptr)
-        {
-        }
-        template <typename U, typename Deleter>
-            requires(std::is_convertible_v<U, T> || std::is_base_of_v<T, U>)
-        Shared(U* const ptr, Deleter deleter)
-        {
-            init_manager(ptr, new ManagedResource(ptr, std::move(deleter)));
-        }
-        template <typename U>
-            requires(std::is_convertible_v<U, T> || std::is_base_of_v<T, U>)
-        Shared(const Shared<U>& other)
-        {
-            this->copy_construct_from(other);
-        }
-        template <typename U>
-            requires(std::is_convertible_v<U, T> || std::is_base_of_v<T, U>)
-        Shared(Shared<U>&& other) noexcept
-        {
-            this->move_construct_from(std::move(other));
-        }
-
-    private:
-        template <typename U>
-            requires(std::is_convertible_v<U, T> || std::is_base_of_v<T, U>)
-        Shared(U* const ptr, ManagableObject* const ctrl) noexcept
-        {
-            init_manager(ptr, ctrl);
-        }
-
-    public:
-        Shared<T>& operator=(const Shared<T>& other)
-        {
-            Shared<T>{ other }.swap(*this);
-            return *this;
-        }
-        Shared<T>& operator=(Shared<T>&& other) noexcept
-        {
-            Shared<T>{ std::move(other) }.swap(*this);
-            return *this;
-        }
-        template <typename U>
-            requires(std::is_convertible_v<U, T> || std::is_base_of_v<T, U>)
-        Shared<T>& operator=(const Shared<U>& other)
-        {
-            return this->operator=((const Shared<T>&)other);
-        }
-        template <typename U>
-            requires(std::is_convertible_v<U, T> || std::is_base_of_v<T, U>)
-        Shared<T>& operator=(Shared<U>&& other) noexcept
-        {
-            return this->operator=(std::move((Shared<T>&)other));
-        }
-
-    public:
-        [[nodiscard]] inline Ref<T>       as_ref() noexcept { return *this; }
-        [[nodiscard]] inline Ref<const T> as_ref() const noexcept { return *this; }
-
-    public:
-        constexpr                operator bool() const noexcept { return this->get() != nullptr; }
-        constexpr Pointer        operator->() noexcept { return this->get(); }
-        constexpr ConstPointer   operator->() const noexcept { return this->get(); }
-        constexpr Reference      operator*() noexcept { return *(this->get()); }
-        constexpr ConstReference operator*() const noexcept { return *(this->get()); }
-
-    public:
-        inline Shared<T>& reset(Pointer&& ptr = nullptr)
-        {
-            Shared<T>{ std::move(ptr) }.swap(*this);
-            return *this;
-        }
-
-    public:
-        template <typename U>
-        Shared<U> as() const
-        {
-            auto cast_ptr = Shared<U>{ static_cast<Shared<U>::Pointer>(this->ptr_), this->ctrl_ };
-            this->inc_ref();
-            return cast_ptr;
-        }
-
-    public:
-        template <typename... TArgs>
-        [[nodiscard]] static inline Shared<T> make(TArgs&&... args)
-        {
-            return std::move(Shared<T>{ new T(std::forward<TArgs>(args)...) });
-        }
-        [[nodiscard]] static inline Shared<T> from(Pointer&& raw_ptr)
-        {
-            Shared<T> obj{ std::move(raw_ptr) };
-            return obj;
-        }
-
-    private:
-        template <typename U>
-        void init_manager(U* const ptr, ManagableObject* const ctrl) noexcept
-        {
-            this->ptr_  = ptr;
-            this->ctrl_ = ctrl;
-
-            // This means that T is (directly or indirectly) inheriting from SharedManagable
-            //  thus should be able to create a copy (not a new) Shared<T> from within itself.
-            // This means we need to assign the weak_ref_ to point to this.
-            if constexpr (CanSharedManagable<T>::value) {
-                if (this->ptr_ && this->ptr_->weak_ref_.expired())
-                    this->ptr_->weak_ref_ = *this;
-            }
-        }
-    };
-} // namespace codex::mem
+    template <typename T>
+    Shared<T> Ref<T>::lock() const
+    {
+        auto sp = impl_.lock();
+        if (!sp)
+            throw ExpiredRefException{};
+        return Shared<T>{ std::move(sp) };
+    }
+} // namespace codex

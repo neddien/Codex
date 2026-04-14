@@ -40,7 +40,7 @@ namespace codex {
         if (fs.is_open()) {
             usize id = util::crypto::djb2_hash(file_path.generic_string());
 
-            ResRef<Texture2D> texture   = mem::Shared<Texture2D>::make(file_path, props);
+            ResRef<Texture2D> texture   = Shared<Texture2D>::make(file_path, props);
             s_instance_->resources_[id] = texture;
             fs.close();
             info("[ResourceHandler] >> File: '{}' Id: {}", file_path.string(), id);
@@ -61,7 +61,7 @@ namespace codex {
         std::ifstream fs(file_path.string());
         if (fs.is_open()) {
             const usize    id           = util::crypto::djb2_hash(file_path.generic_string());
-            ResRef<Shader> shader       = mem::Shared<Shader>::make(file_path, version);
+            ResRef<Shader> shader       = Shared<Shader>::make(file_path, version);
             s_instance_->resources_[id] = shader;
             fs.close();
             info("[ResourceHandler] >> File: '{}' Id: {}", file_path.string(), id);

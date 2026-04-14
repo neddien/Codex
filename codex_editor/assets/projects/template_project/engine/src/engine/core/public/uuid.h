@@ -1,7 +1,9 @@
 #pragma once
 
+#include <engine/core/public/serializer.h>
+
 namespace codex {
-    class CODEX_API UUID
+    class CODEX_API UUID : public ISerializable
     {
     public:
         UUID() noexcept;
@@ -12,7 +14,11 @@ namespace codex {
         [[nodiscard]] bool               operator==(const UUID& other) const noexcept { return uuid_ == other.uuid_; }
 
     public:
-        [[nodiscard]] inline std::string to_string() const noexcept { return std::to_string(uuid_); }
+        [[nodiscard]] std::string  to_string() const noexcept;
+        [[nodiscard]] static UUID  from_string(std::string_view str) noexcept;
+
+        void serialize(ISerializationNode& node) const override;
+        void deserialize(const ISerializationNode& node) override;
 
     private:
         u64                                       uuid_;

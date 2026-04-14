@@ -171,16 +171,16 @@ namespace codex {
 
     protected:
         EngineProperties        properties_;
-        mem::Box<Window>        window_    = nullptr;
+        Box<Window>        window_    = nullptr;
         bool                    running_   = true;
         bool                    minimized_ = false;
         LayerStack              layer_stack_;
         f32                     delta_time_  = 0.0f;
         imgui::ImGuiLayer*      imgui_layer_ = nullptr;
         Input*                  input_       = nullptr;
-        mem::Box<cc::ThreadPool>          thread_pool_;
+        Box<cc::ThreadPool>          thread_pool_;
         cc::CooperativeExecutor           main_thread_executor_;
-        mem::Box<cc::ThreadedExecutor>    worker_thread_executor_;
+        Box<cc::ThreadedExecutor>    worker_thread_executor_;
 
     private:
         void internal_init();

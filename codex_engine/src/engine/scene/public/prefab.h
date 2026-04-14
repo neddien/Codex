@@ -28,6 +28,6 @@ namespace codex::scene {
         void deserialize(const ISerializationNode& node) override;
 
     private:
-        std::vector<mem::Box<Component>> components_;
+        std::vector<Box<Component>> components_;
     };
 } // namespace codex::scene
