@@ -59,8 +59,8 @@
             "generator": "Unix Makefiles",
             "binaryDir": "${sourceDir}/builds/${presetName}",
             "cacheVariables": {
-                "CMAKE_C_COMPILER": "clang",
-                "CMAKE_CXX_COMPILER": "clang++",
+                "CMAKE_C_COMPILER": "gcc",
+                "CMAKE_CXX_COMPILER": "g++",
                 "CMAKE_PRESET_NAME": "${presetName}",
                 "CX_ENABLE_CEDITOR": "on"
             },
@@ -162,7 +162,10 @@
                 "strategy": "external"
             },
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug"
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_CXX_FLAGS": "-O0 -g",
+                "CMAKE_C_FLAGS": "-O0 -g",
+                "CX_ENABLE_TESTGAME": "1"
             }
         },
         {

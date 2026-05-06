@@ -111,16 +111,17 @@ See `doc/FileSystem.md` for the full VFS/PAK API reference.
 
 ```
 ┌────────────────────────────────────────────────────────┐
-│                    AssetManager  [PLANNED]              │
-│  - AssetHandle<T> load(AssetPath)                      │
-│  - cc::Task<AssetHandle<T>> load_async(AssetPath)      │
-│  - unload(AssetHandle)                                 │
-│  - get_metadata(AssetPath)                             │
+│                    AssetManager  [PARTIAL]              │
+│  - Asset<T> load<T>(FileHandle)                        │
+│  - Asset<T> load<T>(FileHandle, ImportSettings)        │
+│  - register_loader<TLoader>(extensions)                │
+│  - get_loader_by_ext / get_loader_by_type              │
+│  [ ] caching, unload, UUID-based load                  │
 ├────────────────────────────────────────────────────────┤
-│                  Asset Registry  [PLANNED]              │
-│  - UUID → AssetPath mapping                            │
-│  - Dependency graph                                    │
-│  - Metadata cache (type, size, dependencies)           │
+│                  Asset Registry  [PARTIAL]              │
+│  - scan(vfs, path) — async, generates .cxmeta sidecars │
+│  - UUID ↔ path maps (internal)                         │
+│  [ ] public UUID resolution, dependency graph          │
 ├────────────────────────────────────────────────────────┤
 │           Virtual File System  [IMPLEMENTED]            │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
@@ -157,43 +158,30 @@ See `doc/FileSystem.md` for the full VFS/PAK API reference.
 
 ## Core Components
 
-### 1. Asset Path & Handle
+### 1. Asset Types & Handles (Implemented)
 
 ```cpp
-// Logical path, not filesystem path
-struct AssetPath {
-    std::string path;  // e.g., "textures/player/idle.png"
-    UUID uuid;         // Stable across renames
-
-    // Comparison operators for use in maps
-    bool operator==(const AssetPath& other) const;
-    bool operator<(const AssetPath& other) const;
+// Base interface — all asset types inherit from this
+class IAsset {
+public:
+    [[nodiscard]] virtual std::string_view type_name() const noexcept = 0;
 };
 
-// Type-safe handle with ref-counting
-template<typename T>
-class AssetHandle {
+// Register a type name on an IAsset subclass (used by loaders)
+// CX_ASSET(TypeName) — injects ktype_name() and type_name() override
+CX_ASSET(Texture2D)
 
-public:
-    AssetHandle() = default;
-    AssetHandle(const AssetPath& path);
+// Logical path + stable UUID
+struct AssetPath : ISerializable {
+    std::string path;
+    UUID        uuid;
+};
 
-    // Access operators
-    T* operator->() { ensure_loaded(); return asset_.get(); }
-    T& operator*() { EnsureLoaded(); return *asset_; }
-
-    // State queries
-    bool is_loaded() const { return loaded_; }
-    bool is_valid() const { return !path_.path.empty(); }
-    const AssetPath& path() const { return path_; }
-
-private:
-    void ensure_loaded();
-
-private:
-    AssetPath path_;
-    Shared<T> asset_;  // Lazy-loaded
-    bool loaded_ = false;
+// Loaded asset result
+template<AssetType TAsset>
+struct Asset {
+    Shared<TAsset> asset;
+    AssetPath      path;
 };
 ```
 
@@ -269,140 +257,104 @@ auto disk = mem::Shared<DiskMount>::make("/project/assets", /*priority=*/0);
 vfs.mount(disk, "assets");
 ```
 
-### 4. Asset Registry (Editor)
+### 4. Asset Registry (Implemented — partial)
 
 ```cpp
-// Metadata sidecar file structure (.cxmeta)
-struct AssetMetadata {
-    UUID uuid;
-    std::string type;            // "Texture2D", "Shader", "Prefab", etc.
-    std::string source_path;     // Original import path
-    u64 lastModified;            // Timestamp for change detection
-    std::vector<UUID> dependencies;
-
-    // Type-specific import settings
-    nlohmann::json import_settings;
-
-    // Serialization
-    void serialize(ISerializatioNode& node) const;
-    void deserialize(const ISerializatioNode& node);
+// Metadata sidecar (written as <asset_dir>/.meta/<filename>.cxmeta)
+struct AssetMetadata : ISerializable {
+    AssetPath              path;            // logical path + UUID
+    std::string            filename;        // basename
+    std::string            type;            // "Texture2D", "Shader", etc.
+    u32                    checksum;        // CRC32 of file content
+    std::vector<AssetPath> dependencies;
+    Box<ISerializable>     import_settings; // loader-specific, nullable
 };
 
-// Asset registry for editor
-class AssetRegistry {
+class AssetRegistry : public Loggable<"AssetRegistry"> {
 public:
-    AssetRegistry(VFS* vfs, const std::string& asset_root);
+    // Async recursive scan: generates/refreshes .cxmeta sidecars under path/.meta/
+    cc::Task<void> scan(Shared<fs::VirtualFilesystem> vfs, const std::string path);
 
-    // Scanning
-    void scan_dir(const std::string& dir, bool recursive = true);
-    void refresh();  // Re-scan for changes
-
-    // Lookups
-    UUID uuid(const std::string& path) const;
-    std::string path(const UUID& uuid) const;
-    const AssetMetadata* metadata(const UUID& uuid) const;
-    const AssetMetadata* metadata(const std::string& path) const;
-
-    // Modification
-    void set_metadata(const UUID& uuid, const AssetMetadata& metadata);
-    UUID register_asset(const std::string& path);  // Creates new UUID
-    void unregister_asset(const UUID& uuid);
-
-    // Queries
-    std::vector<UUID> get_assets_by_type(const std::string& type) const;
-    std::vector<UUID> dependencies(const UUID& uuid) const;
-    std::vector<UUID> dependents(const UUID& uuid) const;  // Reverse deps
-
-private:
-    void load_metadata(const std::string& path);
-    void save_metadata(const UUID& uuid);
-    std::string metadata_path(const std::string& assetPath);
-    
-private:
-    std::unordered_map<UUID, AssetMetadata> metadata_;
-    std::unordered_map<std::string, UUID> path_to_uuid_;
-    std::unordered_map<UUID, std::string> uuid_to_path_;
-    VFS* vfs_;
-    std::string asset_root_;
+    // Update internal maps when an asset is renamed/moved
+    void move_asset(const std::string& old_path, const std::string& new_path);
 };
 ```
 
 **Example .cxmeta sidecar file (JSON):**
-
 ```json
 {
+    "path": "assets/textures/player.png",
     "uuid": "550e8400-e29b-41d4-a716-446655440000",
+    "filename": "player.png",
     "type": "Texture2D",
-    "source_path": "textures/player/idle.png",
-    "last_modified": 1706284800,
+    "checksum": 3141592653,
     "dependencies": [],
     "import_settings": {
-        "filter_mode": "Bilinear",
+        "filter_mode": "Nearest",
+        "mipmap_mode": "None",
         "wrap_mode": "Clamp",
-        "compression": "DXT5",
-        "generate_mipmaps": true,
-        "max_size": 2048
+        "format": "RGBA8"
     }
 }
 ```
 
-### 5. Asset Manager
+**Usage:**
+```cpp
+// Scan an asset directory — spawns worker tasks, writes .cxmeta files
+co_await AssetManager::registry().scan(vfs, "assets/textures");
+```
+
+### 5. Asset Manager (Implemented — partial)
 
 ```cpp
-class AssetManager {
+// Singleton via System<AssetManager>
+class AssetManager : public System<AssetManager>, public Loggable<"AssetManager"> {
 public:
-    // Initialization
-    void init(const std::string& project_root);
+    // Load by FileHandle — uses registered loader for TAsset
+    template<AssetType TAsset>
+    static Asset<TAsset> load(Shared<fs::FileHandle> fh) noexcept;
+
+    // Load with explicit import settings
+    template<AssetType TAsset, Serializable TParam>
+    static Asset<TAsset> load(Shared<fs::FileHandle> fh, const TParam& param) noexcept;
+
+    // Loader registration (called during init or plugin setup)
+    template<AssetLoader TLoader>
+    static void register_loader(std::initializer_list<std::string_view> extensions) noexcept;
+
+    // Loader lookup
+    static Shared<IAssetLoader> get_loader_by_ext(const std::string& extension) noexcept;
+    static Shared<IAssetLoader> get_loader_by_type(const std::string& type_name) noexcept;
+
+    static AssetRegistry& registry() noexcept;
+
+    void init();    // Registers built-in loaders (Texture2D for png/jpg/jpeg/bmp/gif)
     void dispose();
-
-    // Loading
-    template<typename T>
-    AssetHandle<T> load(const std::string& path);
-
-    template<typename T>
-    AssetHandle<T> load(const UUID& uuid);
-
-    template<typename T>
-    cc::Task<void> load_async(const std::string& path);
-
-    // Unloading
-    void unload(const UUID& uuid);
-    void unload_unused();  // Unload assets with refcount 0
-
-    // Queries
-    bool loaded(const UUID& uuid) const;
-    template<typename T>
-    T* if_loaded(const UUID& uuid);
-
-    // VFS access
-    VFS& vfs() { return vfs_; }
-    AssetRegistry* registry() { return registry_.get(); }
-
-    // Loader registration
-    template<typename T>
-    void register_loader(mem::Box<IAssetLoader> loader);
-
-private:
-    VFS* vfs_;
-    mem::Box<AssetRegistry> registry_;  // Editor only
-
-    // Asset cache (loaded assets)
-    std::unordered_map<UUID, Shared<IResource>> loaded_assets_;
-    std::unordered_map<UUID, u32> ref_counts_;
-
-    // Asset loaders by type
-    std::unordered_map<std::string, Box<IAssetLoader>> loaders_;
 };
 
-// Asset loader interface
-class IAssetLoader {
+// Loader base — inherit from this to implement a loader
+// TAssetImportSettings = void for loaders without settings
+template<AssetType TAsset, ImportSettingsType TAssetImportSettings>
+class AssetLoaderBase : public IAssetLoader {
 public:
-    virtual ~IAssetLoader() = default;
-    virtual Shared<IResource> load(const std::vector<u8>& data,
-                                    const AssetMetadata& metadata) = 0;
-    virtual std::string type_name() const = 0;
-    virtual std::vector<std::string> extensions() const = 0;
+    virtual Shared<TAsset> load(Shared<fs::FileHandle> fh,
+                                const TAssetImportSettings& params) const noexcept = 0;
 };
+
+// Example: Texture2D loader (stub — load() returns empty for now)
+class Texture2DLoader : public AssetLoaderBase<Texture2D, Texture2D::ImportSettings> {
+    Shared<Texture2D> load(Shared<fs::FileHandle> fh,
+                           const Texture2D::ImportSettings& params) const noexcept override;
+};
+```
+
+**Usage:**
+```cpp
+// Open a file via VFS, then load
+auto fh  = vfs.open("assets/textures/player.png", { FileMode::Read });
+auto tex = AssetManager::load<gfx::Texture2D>(fh);
+// tex.asset — Shared<Texture2D>
+// tex.path  — AssetPath with UUID
 ```
 
 ---
@@ -587,17 +539,23 @@ From Simon Coenen's article:
 - Platform `FileHandle` implementations: `LinuxFileHandle` (`pread`/`pwrite`), `NtFileHandle` (Windows `OVERLAPPED`)
 - Async file ops via `cc::Task<T>` (C++20 coroutines)
 
-### Phase 2: Asset Registry (Editor) — **PLANNED**
-1. Define `.cxmeta` sidecar file format
-2. Implement `AssetRegistry` with UUID mapping
-3. Directory scanning and metadata caching
-4. Dependency tracking between assets
+### Phase 2: Asset Registry (Editor) — **PARTIAL**
+- [x] `.cxmeta` sidecar file format (JSON, `AssetMetadata` serializable)
+- [x] `AssetRegistry` with internal UUID ↔ path maps
+- [x] `AssetRegistry::scan(vfs, path)` — async directory walk, CRC32 checksumming, `.cxmeta` generation
+- [ ] Public UUID resolution API (`uuid(path)`, `path(uuid)`)
+- [ ] Dependency tracking between assets
 
-### Phase 3: Asset Manager — **PLANNED**
-1. Create `AssetManager` with typed loading API
-2. Implement asset caching with ref-counting
-3. Register loaders for existing types (Texture2D, Shader)
-4. Add support for new types (Prefab, SpriteSheet, Animation)
+### Phase 3: Asset Manager — **PARTIAL**
+- [x] `AssetManager` singleton (`System<AssetManager>`)
+- [x] `load<TAsset>(fh)` and `load<TAsset>(fh, params)` typed load API
+- [x] `register_loader<TLoader>(extensions)` with lookup by extension and type name
+- [x] `Texture2DLoader` registered for `png/jpg/jpeg/bmp/gif`; `Texture2D::ImportSettings` serializable
+- [x] `init()` / `dispose()` lifecycle
+- [ ] Asset caching / ref-counting
+- [ ] `unload()` / `unload_unused()`
+- [ ] `Texture2DLoader::load()` body (currently returns empty `Shared<Texture2D>`)
+- [ ] Loaders for Shader, Prefab, SpriteSheet, Animation
 
 ### Phase 4: Editor Integration — **PLANNED**
 1. Implement `ContentBrowserView` using VFS and Registry

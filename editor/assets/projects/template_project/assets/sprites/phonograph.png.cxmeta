@@ -1,0 +1,15 @@
+{
+    "path": "/editor/project/assets/sprites/phonograph.png",
+    "uuid": "f18c-2c42-3ed1a3dc",
+    "type": "Texture2D",
+    "checksum": 137047651,
+    "size": 577,
+    "last_modified": 1778001289,
+    "dependencies": [],
+    "import_settings": {
+        "filter_mode": "Nearest",
+        "mipmap_mode": "None",
+        "wrap_mode": "Mirror",
+        "format": "None"
+    }
+}

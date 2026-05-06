@@ -285,4 +285,4 @@ Then open ~builds/vs2022/Codex.sln~ in Visual Studio.
 
 Codex uses FMOD as its audio engine. See the [[https://www.fmod.com/][FMOD website]] for more information.
 
-[[file:./Logos/fmod.svg]]
+[[file:./logos/fmod.svg]]

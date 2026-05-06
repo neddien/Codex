@@ -1,8 +1,26 @@
 #+author: Neddiendrohu
 #+title: Misc
 
-* Logging
-Each layer and system has its own logger instance:
+* String hashes instead of strings themselves
+In scenarios where strings need to be compared, it is best to compare their hashes.
+Since these strings are not persistent, the STL hashing function can be used.
+
+* Events for certain classes
++ Events for Filesystem
++ Events for asset manager/asset registry
++ Events for Native Behaviour
++ Subscribe to events and bind a function to the event raise
+** Example event
+=VFSWatchEvent=:
 #+begin_src cpp
-CX_SYSTEM_REGISTER(AudioSystem) // will expand to 
+vfs.watch_dir("/edit/project/assets");
+vfs.watch_file("/edit/project/proj.conf");
+vfs.watch_dir("/edit/self", { .recrusive = true });
+vfs.dispatch_event<events::VFSWatchEvent>([this](const events::VFSWatchEvent& e) {
+    log(Info, "File/dir changed: {}", e.path());
+});
 #+end_src
+
+* OpenGL multi-threaded drawcall queue
+Add multi-threaded drawcall queue for OpenGL, just submit the drawcalls to a queue and then execute them on the mainthread.
+WHy? Because you can load assets asynchronously using =AssetManager::load_async<gfx::Texture2D>(path)= except you =Texure2D= because it makes opengl calls which execute on a different thread when you call =load_async=.

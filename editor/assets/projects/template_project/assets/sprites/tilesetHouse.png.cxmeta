@@ -1,0 +1,15 @@
+{
+    "path": "/editor/project/assets/sprites/tilesetHouse.png",
+    "uuid": "bd3a-6901-d0797f19",
+    "type": "Texture2D",
+    "checksum": 1210165820,
+    "size": 31895,
+    "last_modified": 1775422800,
+    "dependencies": [],
+    "import_settings": {
+        "filter_mode": "Linear",
+        "mipmap_mode": "None",
+        "wrap_mode": "Mirror",
+        "format": "None"
+    }
+}

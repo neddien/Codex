@@ -1,36 +1,31 @@
-add_executable (TestWork "src/main.cpp")
+add_executable(TestWork "src/main.cpp")
 
-# Set the C++ Standard to 20 for this target
 set_property(TARGET TestWork PROPERTY CXX_STANDARD 20)
 
 target_link_libraries(TestWork CodexEngine-static)
 add_dependencies(TestWork CodexEngine-static)
 
-get_target_property(CODEX_BUILD_DIR CodexEngine-static BINARY_DIR)
-
-# Function to copy the binaries of dependencies to the binary directory of a target
-function(copy_dependencies_of TARGET_NAME)
-    get_target_property(target_type ${TARGET_NAME} TYPE)
-    if (target_type STREQUAL "SHARED_LIBRARY")
-        get_target_property(target_dependencies ${TARGET_NAME} INTERFACE_LINK_LIBRARIES)
-        foreach(dep ${target_dependencies})
-            copy_dependencies_of(dep)
-            add_custom_command(TARGET ${TARGET_NAME}
-                POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${dep}> $<TARGET_FILE_DIR:${TARGET_NAME}>
-                COMMENT ":: Copying ${dep} to ${TARGET_NAME} binary directory"
-            )
-        endforeach()
+if(DEFINED CX_BUILD_TYPE_DEBUG)
+    if(DEFINED CX_COMPILER_MSVC)
+        target_compile_options(TestWork PRIVATE /W0)
+    else()
+        target_compile_options(TestWork PRIVATE -w)
     endif()
-endfunction()
+endif()
 
 get_target_property(CODEX_CMAKE_SOURCE_DIR CodexEngine-static SOURCE_DIR)
+
+target_precompile_headers(TestWork PRIVATE "${CODEX_CMAKE_SOURCE_DIR}/src/pch/sdafx.h")
+target_include_directories(TestWork PRIVATE "${CODEX_CMAKE_SOURCE_DIR}/src/pch")
+
 add_custom_command(
     TARGET TestWork
     POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:SDL2> $<TARGET_FILE_DIR:TestWork>
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:SDL2main> $<TARGET_FILE_DIR:TestWork>
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CodexEngine> $<TARGET_FILE_DIR:TestWork>
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CodexEngine-static> $<TARGET_FILE_DIR:TestWork>
-    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CODEX_CMAKE_SOURCE_DIR}/assets/" "${CMAKE_BINARY_DIR}/TestWork"
+    COMMAND ${CMAKE_COMMAND} -E copy
+        "${CODEX_CMAKE_SOURCE_DIR}/assets/gl_shaders/batch_renderer2d_quad.glsl"
+        "$<TARGET_FILE_DIR:TestWork>/batch_renderer2d_quad.glsl"
+    COMMAND ${CMAKE_COMMAND} -E copy
+        "${CODEX_CMAKE_SOURCE_DIR}/assets/images/blue_pascal.png"
+        "$<TARGET_FILE_DIR:TestWork>/blue_pascal.png"
+    COMMENT ":: Copying TestWork assets"
 )

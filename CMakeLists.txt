@@ -106,14 +106,14 @@ else()
 endif()
 
 # Add sub projects.
-add_subdirectory("codex_engine")
+add_subdirectory("codex")
 
 if(DEFINED CX_ENABLE_NETNT)
   add_subdirectory("NetNT")
 endif()
 if(DEFINED CX_ENABLE_TESTGAME)
-  #add_subdirectory("TestWork")
+  add_subdirectory("test_work")
 endif()
 if(DEFINED CX_ENABLE_CEDITOR)
-  add_subdirectory("codex_editor")
+  add_subdirectory("editor")
 endif()

@@ -1,118 +1,110 @@
 #include <codex.h>
 #include <engine/core/entry_point.h>
-#include <iostream>
-
-#include "include/player_controller.h"
 
 using namespace codex;
 
-class TestLayer : public Layer
+class TestLayer : public Layer, public Loggable<"TestLayer">
 {
-private:
-    mem::Box<Scene>               scene_        = nullptr;
-    ResRef<gfx::Shader>           batch_shader_ = nullptr;
-    mem::Box<scene::Camera>       camera_       = nullptr;
-    mem::Box<opengl::FrameBuffer> framebuffer_  = nullptr;
-    Entity                        entity_       = Entity::None();
-
 public:
     void on_attach() override
     {
         const auto width  = Engine::window().width();
         const auto height = Engine::window().height();
-        scene_           = mem::Box<Scene>::make();
-        batch_shader_     = Resources::load<gfx::Shader>("GLShaders/batchRenderer.glsl");
-        batch_shader_->compile_shader({ { "CX_MAX_SLOT_COUNT", opengl::capabilities::max_texture_slot_count() } });
-        camera_ = mem::Box<Camera>::New(width, height);
+
+        vfs_.mount(Shared<fs::DiskMount>::make(std::filesystem::current_path(), 0), "/assets", true);
+        log(Info, "VFS: Mounted /assets as {}", std::filesystem::current_path().generic_string());
 
         gfx::Renderer::init(width, height);
-        // gfx::BatchRenderer2D::bindShader(batch_shader_.get());
-
-        opengl::FrameBufferProperties props;
-
-        opengl::TextureProperties main;
-        main.format     = opengl::TextureFormat::RGBA8;
-        main.filterMode = opengl::TextureFilterMode::Nearest;
-
-        opengl::TextureProperties id;
-        id.format     = opengl::TextureFormat::RedInt32;
-        id.filterMode = opengl::TextureFilterMode::Nearest;
-
-        props.attachments.push_back(main);
-        props.attachments.push_back(id);
-        props.width  = Engine::window().width();
-        props.height = Engine::window().height();
-        // framebuffer_ = std::make_unique<opengl::FrameBuffer>(props);
-        // framebuffer_->Unbind();
-
-        entity_ = scene_->create_entity();
-        Sprite sp(Resources::load<gfx::Texture2D>("Sprites/machine.png"));
-        sp.set_size({ 256, 256 });
-        entity_.add_component<SpriteRendererComponent>(sp);
-
-        auto a = scene_->create_entity();
-        a.add_component<SpriteRendererComponent>(sp);
-        a.get_component<TransformComponent>().position = { 700.0f, 50.0f, 0.0f };
-    }
-    void on_update(const f32 deltaTime) override
-    {
-        batch_shader_->bind();
-        batch_shader_->set_uniform_mat4f("u_View", camera_->view_matrix());
-        batch_shader_->set_uniform_mat4f("u_Proj", camera_->projection_matrix());
-
-        // framebuffer_->bind();
+        gfx::BatchRenderer2D::init(vfs_, "/assets/batch_renderer2d_quad.glsl");
         gfx::Renderer::set_clear_colour(0.2f, 0.2f, 0.2f, 1.0f);
+
+        camera_ = scene::Camera(width, height);
+
+        auto fh = vfs_.open("/assets/blue_pascal.png");
+        if (fh) {
+            std::vector<u8> buf(fh->size());
+            fh->read(buf.data(), buf.size());
+
+            texture_ = gfx::Texture2D{ buf.data(), buf.size() };
+
+            log(Info, "Loaded texture: {}", fh->path());
+        }
+
+        sprite_scale_           = { 256.0f * 2, 256.0f * 2, 1.0f };
+        sprite_transform_.scale = sprite_scale_;
+        window_orig_size_       = { Engine::window().width(), Engine::window().height() };
+    }
+
+    void on_detach() override
+    {
+        gfx::BatchRenderer2D::dispose();
+        gfx::Renderer::dispose();
+    }
+
+    void on_update(const f32 delta_time) override
+    {
+        // Keep sprite centred at the camera focal point.
+        sprite_transform_.position = camera_transform_.position;
+
         gfx::Renderer::clear();
-        gfx::BatchRenderer2D::begin();
-        scene_->on_runtime_update(deltaTime);
+        gfx::BatchRenderer2D::begin(camera_, camera_transform_);
+
+        if (texture_) {
+            gfx::BatchRenderer2D::render_rect(
+                &texture_, opengl::Rectf{ 0.0f, 0.0f, (f32)texture_.width(), (f32)texture_.height() },
+                sprite_transform_.to_matrix(), Vector4f{ 1.0f, 1.0f, 1.0f, 1.0f });
+        }
+
         gfx::BatchRenderer2D::end();
 
-        if (Input::is_mouse_down(Mouse::LeftMouse))
-        {
-            if (entity_)
-            {
-                Vector2f pos = { Input::mouse_x(), Input::mouse_y() };
-                // fmt::println("Selected entity at {} is {}", pos, framebuffer_->ReadPixel(1, pos.x, pos.y));
-            }
-        }
-        // framebuffer_->Unbind();
+        const auto title =
+            fmt::format("TestWork: Pascal Demo @ {}fps, {}ms", static_cast<u32>(1.0f / delta_time), delta_time);
+        Engine::window().set_title(title.c_str());
     }
+
+    void on_event(events::Event& e) override
+    {
+        events::EventDispatcher d{ e };
+        d.dispatch<events::WindowResizeEvent>(
+            [this](const events::WindowResizeEvent& ev)
+            {
+                camera_.set_width(ev.width());
+                camera_.set_height(ev.height());
+
+                const auto scaler       = std::min(ev.width() / window_orig_size_.x, ev.height() / window_orig_size_.y);
+                sprite_transform_.scale = Vector3f{ sprite_scale_.x * scaler, sprite_scale_.y * scaler, 1.0f };
+
+                return true;
+            });
+    }
+
+private:
+    fs::VirtualFilesystem vfs_;
+    scene::Camera         camera_;
+    TransformComponent    camera_transform_;
+    gfx::Texture2D        texture_;
+    Vector2f              window_orig_size_;
+    Vector3f              sprite_scale_;
+    TransformComponent    sprite_transform_;
 };
 
 class TestWork : public Engine
 {
 public:
-    TestWork(const EngineProperties& properties)
-        : codex::Engine(properties)
+    explicit TestWork(const EngineProperties& properties)
+        : Engine(properties)
     {
-        /*
-        scene_  = (EditorScene*)window_->GetCurrentScene();
-        player_ = scene_->create_entity();
-
-        auto tex = Resources::load<codex::Texture2D>("Sprites/machine.png");
-
-        Sprite sprite(tex);
-        // f32 scale_factor = 0.05f;
-        // sprite.set_texture_coords({ 0.0f, 0.0f, (f32)sprite.width() * scale_factor,
-        // (f32)sprite.height() * scale_factor, });
-        player_.add_component<SpriteRendererComponent>(sprite);
-        auto& res = player_.get_component<TransformComponent>().scale;
-        res.x     = 0.05f;
-        res.y     = 0.05f;
-
-        player_.add_component<NativeBehaviourComponent>().bind<player_controller>();
-        */
         push_layer(new TestLayer());
     }
-
-    ~TestWork() override {}
+    ~TestWork() override = default;
 };
 
 Engine* codex::create_engine(const codex::EngineArgs args)
 {
     return new TestWork(
-        EngineProperties{ .name             = "TestWork",
-                          .cwd              = "./",
-                          .args             = args,
-                          .window_properties = { .width = 800, .height = 600, .frame_cap = 0, .vsync = false } });
+        EngineProperties{ .name              = "TestWork",
+                          .cwd               = "./",
+                          .args              = args,
+                          .flags             = codex::EngineFlags::Video | codex::EngineFlags::Logger,
+                          .window_properties = { .width = 800, .height = 600, .frame_cap = 300, .vsync = false } });
 }

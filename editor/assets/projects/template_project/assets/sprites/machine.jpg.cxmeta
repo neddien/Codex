@@ -1,0 +1,15 @@
+{
+    "path": "/editor/project/assets/sprites/machine.jpg",
+    "uuid": "0fc8-e3f5-864307e1",
+    "type": "Texture2D",
+    "checksum": 1784860645,
+    "size": 156670,
+    "last_modified": 1778001276,
+    "dependencies": [],
+    "import_settings": {
+        "filter_mode": "Nearest",
+        "mipmap_mode": "None",
+        "wrap_mode": "Mirror",
+        "format": "None"
+    }
+}
