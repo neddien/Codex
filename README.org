@@ -1,4 +1,4 @@
-#+title: Codex Engine
+#+title: CODEX
 #+author: Neddiendrohu
 
 * Overview
