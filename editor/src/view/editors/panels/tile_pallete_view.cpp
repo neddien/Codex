@@ -120,7 +120,7 @@ namespace codex::editor {
 
                     auto current_viewport_window_size = ImGui::GetContentRegionAvail();
                     viewport_size_ = Vector2f{ current_viewport_window_size.x, current_viewport_window_size.y };
-                    ImGui::Image(reinterpret_cast<ImTextureID>(pallete_fb_->colour_attachment_id_at(0)),
+                    ImGui::Image(static_cast<ImTextureID>(pallete_fb_->colour_attachment_id_at(0)),
                                  current_viewport_window_size, { 0, 1 }, { 1, 0 });
 
                     viewport_focused_ = ImGui::IsWindowFocused();

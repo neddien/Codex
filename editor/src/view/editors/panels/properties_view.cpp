@@ -227,7 +227,7 @@ namespace codex::editor {
 
                         ImGui::BeginGroup();
                         if (sprite)
-                            ImGui::Image(reinterpret_cast<ImTextureID>(texture->gl_id()), { 100.0f, 100.0f }, { 0, 1 },
+                            ImGui::Image(static_cast<ImTextureID>(texture->gl_id()), { 100.0f, 100.0f }, { 0, 1 },
                                          { 1, 0 });
                         else
                             ImGui::Text("No bound texture.");
@@ -635,7 +635,7 @@ namespace codex::editor {
 
                             ImGui::BeginGroup();
                             if (c.sprite)
-                                ImGui::Image(reinterpret_cast<ImTextureID>(c.sprite.texture()->gl_id()),
+                                ImGui::Image(static_cast<ImTextureID>(c.sprite.texture()->gl_id()),
                                              { 100.0f, 100.0f }, { 0, 1 }, { 1, 0 });
                             else
                                 ImGui::Text("No bound texture.");
@@ -757,7 +757,7 @@ namespace codex::editor {
 
                             ImGui::BeginGroup();
                             if (c.sprite)
-                                ImGui::Image(reinterpret_cast<ImTextureID>(c.sprite.texture()->gl_id()),
+                                ImGui::Image(static_cast<ImTextureID>(c.sprite.texture()->gl_id()),
                                              { 100.0f, 100.0f }, { 0, 1 }, { 1, 0 });
                             else
                                 ImGui::Text("No bound texture.");
@@ -866,7 +866,7 @@ namespace codex::editor {
 
                                 ImGui::BeginGroup();
                                 if (c.sprite)
-                                    ImGui::Image(reinterpret_cast<ImTextureID>(c.sprite.texture()->gl_id()),
+                                    ImGui::Image(static_cast<ImTextureID>(c.sprite.texture()->gl_id()),
                                                  { 100.0f, 100.0f }, { 0, 1 }, { 1, 0 });
                                 else
                                     ImGui::Text("No bound texture.");

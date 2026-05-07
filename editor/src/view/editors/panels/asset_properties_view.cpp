@@ -48,8 +48,7 @@ namespace codex::editor {
             ImGui::BeginGroup();
             if (texture_asset) {
                 //  TODO: Have like a default no-texture-loaded image.
-                ImGui::Image(reinterpret_cast<ImTextureID>(texture_asset->gl_id()), { 100.0f, 100.0f }, { 0, 1 },
-                             { 1, 0 });
+                ImGui::Image(static_cast<ImTextureID>(texture_asset->gl_id()), { 100.0f, 100.0f }, { 0, 1 }, { 1, 0 });
             }
 
             static char tex_path_buf[256] = {};

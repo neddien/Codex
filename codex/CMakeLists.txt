@@ -8,85 +8,19 @@ set(CX_VER_REV 0)
 # Enable fPIC on all linkable targets
 set(CMAKE_POSITION_INDEPENDENT_CODE on)
 
-# Build options for some of these libraries
-set(BOX2D_BUILD_TESTBED
-    OFF
-    CACHE BOOL "" FORCE)
-set(BOX2D_BUILD_TESTBED
-    OFF
-    CACHE BOOL "" FORCE)
-set(BOX2D_BUILD_UNIT_TESTS
-    OFF
-    CACHE BOOL "" FORCE)
-set(BOX2D_BUILD_DOCS
-    OFF
-    CACHE BOOL "" FORCE)
-
-set(SDL_AUDIO
-    OFF
-    CACHE BOOL "" FORCE)
-set(SDL_RENDER
-    OFF
-    CACHE BOOL "" FORCE)
-set(SDL_SENSOR
-    OFF
-    CACHE BOOL "" FORCE)
-set(SDL_POWER
-    OFF
-    CACHE BOOL "" FORCE)
-set(SDL_LOCALE
-    OFF
-    CACHE BOOL "" FORCE)
-set(SDL_FILESYSTEM
-    OFF
-    CACHE BOOL "" FORCE)
-set(SDL_TEST
-    OFF
-    CACHE BOOL "" FORCE)
-# For now we want SDL as a static library to free ourselves from absurd DLL problems on Windows
-set(SDL_SHARED
-    OFF
-    CACHE BOOL "" FORCE)
-set(SDL_STATIC
-    ON
-    CACHE BOOL "" FORCE)
-
 # Fetch modules
 FetchContent_Declare(
   logex
   GIT_REPOSITORY git@github.com:neddien/Logex
   GIT_TAG master)
-FetchContent_Declare(
-  sdl
-  GIT_REPOSITORY git@github.com:libsdl-org/SDL
-  GIT_TAG release-2.32.x)
-FetchContent_Declare(
-  box2d
-  GIT_REPOSITORY git@github.com:erincatto/box2d
-  GIT_TAG v2.4.2)
-FetchContent_Declare(
-  imgui
-  GIT_REPOSITORY git@github.com:ocornut/imgui
-  GIT_TAG a028c2d)
-FetchContent_Declare(
-  json
-  GIT_REPOSITORY git@github.com:nlohmann/json
-  GIT_TAG v3.12.0)
-FetchContent_Declare(
-  lz4
-  GIT_REPOSITORY https://github.com/lz4/lz4
-  GIT_TAG v1.9.4
-  SOURCE_SUBDIR build/cmake)
-
-set(LZ4_BUILD_CLI        OFF CACHE BOOL "" FORCE)
-set(LZ4_BUILD_LEGACY_LZ4C OFF CACHE BOOL "" FORCE)
-
 FetchContent_MakeAvailable(logex)
-FetchContent_MakeAvailable(sdl)
-FetchContent_MakeAvailable(box2d)
-FetchContent_MakeAvailable(imgui)
-FetchContent_MakeAvailable(json)
-FetchContent_MakeAvailable(lz4)
+
+# SDL2, box2d, nlohmann_json, lz4, imgui come from Conan (see conanfile.py)
+find_package(SDL2 REQUIRED)
+find_package(box2d REQUIRED)
+find_package(nlohmann_json REQUIRED)
+find_package(LZ4 REQUIRED)
+find_package(imgui REQUIRED)
 
 set(ENGINE_PLATFORM_DIR "src/platform")
 
@@ -287,26 +221,13 @@ endif()
 
 # ============= # Libraries   # ============= #
 
-# SDL
+# SDL2
 if(ANDROID)
-  find_package(SDL2 REQUIRED)
-  target_include_directories(CodexEngine PUBLIC ${SDL2_INCLUDE_DIR})
-  target_link_libraries(CodexEngine PUBLIC ${SDL2_LIBRARIES})
-
-  target_include_directories(CodexEngine-static PUBLIC ${SDL2_INCLUDE_DIR})
-  target_link_libraries(CodexEngine-static PUBLIC ${SDL2_LIBRARIES})
+  target_link_libraries(CodexEngine PUBLIC SDL2::SDL2 SDL2::SDL2main)
+  target_link_libraries(CodexEngine-static PUBLIC SDL2::SDL2 SDL2::SDL2main)
 else()
-  if(SDL_STATIC AND NOT SDL_SHARED)
-    set(SDL2_LIBRARIES SDL2-static SDL2main)
-  else()
-    set(SDL2_LIBRARIES SDL2 SDL2main)
-  endif()
-
-  target_link_libraries(CodexEngine PUBLIC ${SDL2_LIBRARIES})
-  add_dependencies(CodexEngine ${SDL2_LIBRARIES})
-
-  target_include_directories(CodexEngine-static PUBLIC ${SDL2_INCLUDE_DIR})
-  target_link_libraries(CodexEngine-static PUBLIC ${SDL2_LIBRARIES})
+  target_link_libraries(CodexEngine PUBLIC SDL2::SDL2-static SDL2::SDL2main)
+  target_link_libraries(CodexEngine-static PUBLIC SDL2::SDL2-static SDL2::SDL2main)
 endif()
 
 # Logex
@@ -315,43 +236,25 @@ target_link_libraries(CodexEngine PUBLIC ${LOGEX_LIBRARIES})
 target_link_libraries(CodexEngine-static PUBLIC ${LOGEX_LIBRARIES})
 
 # nlohmann json
-set(JSON_INCLUDE_DIR ${json_SOURCE_DIR}/include)
-set(JSON_LIBRARIES nlohmann_json)
-target_include_directories(CodexEngine PUBLIC ${JSON_INCLUDE_DIR})
-target_link_libraries(CodexEngine PRIVATE ${JSON_LIBRARIES})
-target_include_directories(CodexEngine-static PUBLIC ${JSON_INCLUDE_DIR})
-target_link_libraries(CodexEngine-static PRIVATE ${JSON_LIBRARIES})
+target_link_libraries(CodexEngine PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(CodexEngine-static PRIVATE nlohmann_json::nlohmann_json)
 
-# ImGui
-set(IMGUI_INCLUDE_DIR ${imgui_SOURCE_DIR}/ ${imgui_SOURCE_DIR}/backends
-                      ${imgui_SOURCE_DIR}/examples ${imgui_SOURCE_DIR}/misc ${imgui_SOURCE_DIR}/misc/cpp)
-file(
-  GLOB_RECURSE
-  IMGUI_HEADER_FILES
-  "${imgui_SOURCE_DIR}/imconfig.h"
-  "${imgui_SOURCE_DIR}/imgui.h"
-  "${imgui_SOURCE_DIR}/imgui_internal.h"
-  "${imgui_SOURCE_DIR}/imstb_rectpack.h"
-  "${imgui_SOURCE_DIR}/imstb_textedit.h"
-  "${imgui_SOURCE_DIR}/imstb_truetype.h"
-  "${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.h") 
-file(
-  GLOB_RECURSE
-  IMGUI_SOURCE_FILES
-  "${imgui_SOURCE_DIR}/imgui.cpp"
-  "${imgui_SOURCE_DIR}/imgui_widgets.cpp"
-  "${imgui_SOURCE_DIR}/imgui_draw.cpp"
-  "${imgui_SOURCE_DIR}/imgui_demo.cpp"
-  "${imgui_SOURCE_DIR}/imgui_tables.cpp"
-  "${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp"
-  "${imgui_SOURCE_DIR}/backends/imgui_impl_sdl2.cpp"
-  "${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.cpp")
-target_sources(CodexEngine PUBLIC ${IMGUI_HEADER_FILES} ${IMGUI_SOURCE_FILES})
-target_sources(CodexEngine-static PUBLIC ${IMGUI_HEADER_FILES}
-                                         ${IMGUI_SOURCE_FILES})
+# ImGui, core from Conan, backends compiled by us because they are
+# thin platform-specific adapters that imgui intentionally excludes from the library.
+# Conan's data cmake sets imgui_PACKAGE_FOLDER_<CONFIG> as a plain path.
+string(TOUPPER "${CMAKE_BUILD_TYPE}" _imgui_cfg)
+set(_imgui_root "${imgui_PACKAGE_FOLDER_${_imgui_cfg}}")
 
-target_include_directories(CodexEngine PUBLIC ${IMGUI_INCLUDE_DIR})
-target_include_directories(CodexEngine-static PUBLIC ${IMGUI_INCLUDE_DIR})
+foreach(_cx_tgt CodexEngine CodexEngine-static)
+    target_link_libraries(${_cx_tgt} PUBLIC imgui::imgui)
+    target_include_directories(${_cx_tgt} PUBLIC
+        "${_imgui_root}/res/bindings"
+        "${_imgui_root}/res/misc/cpp")
+    target_sources(${_cx_tgt} PRIVATE
+        "${_imgui_root}/res/bindings/imgui_impl_opengl3.cpp"
+        "${_imgui_root}/res/bindings/imgui_impl_sdl2.cpp"
+        "${_imgui_root}/res/misc/cpp/imgui_stdlib.cpp")
+endforeach()
 
 # glm
 set(GLM_LIBRARIES glm)
@@ -360,19 +263,13 @@ target_link_libraries(CodexEngine-static PRIVATE ${GLM_LIBRARIES})
 target_include_directories(CodexEngine PUBLIC "vendor/glm")
 target_include_directories(CodexEngine-static PUBLIC "vendor/glm")
 
-# box2d Disable box2d's test sub-project, we don't need it.
-set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
-set(BOX2D_BUILD_TESTBED OFF)
-set(BOX2D_INCLUDE_DIR ${box2d_SOURCE_DIR}/include)
-set(BOX2D_LIBRARIES box2d)
-target_include_directories(CodexEngine PUBLIC ${BOX2D_INCLUDE_DIR})
-target_link_libraries(CodexEngine PRIVATE ${BOX2D_LIBRARIES})
-target_include_directories(CodexEngine-static PUBLIC ${BOX2D_INCLUDE_DIR})
-target_link_libraries(CodexEngine-static PRIVATE ${BOX2D_LIBRARIES})
+# box2d
+target_link_libraries(CodexEngine PRIVATE box2d::box2d)
+target_link_libraries(CodexEngine-static PRIVATE box2d::box2d)
 
 # lz4
-target_link_libraries(CodexEngine PUBLIC lz4_static)
-target_link_libraries(CodexEngine-static PUBLIC lz4_static)
+target_link_libraries(CodexEngine PUBLIC LZ4::lz4_static)
+target_link_libraries(CodexEngine-static PUBLIC LZ4::lz4_static)
 
 # Net Native
 # set(NETNT_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/NetNT/src)
@@ -520,17 +417,14 @@ target_compile_definitions(
 
 # ======================= # INSTALLATION # ======================= #
 if(DEFINED CX_PLATFORM_WINDOWS)
-  install(TARGETS SDL2-static SDL2main glm nlohmann_json CodexEngine DESTINATION bin)
+  install(TARGETS glm CodexEngine DESTINATION bin)
   install(FILES "${FMOD_CORE_DLL_PATH}" "${FMOD_STUDIO_DLL_PATH}" DESTINATION bin)
 
   # Program Files (or same location as the binary) for unmodifiable file data.
   # App Data for modifidable file data.
 elseif(DEFINED CX_PLATFORM_UNIX)
   install(
-    TARGETS SDL2-static
-            SDL2main
-            glm
-            nlohmann_json
+    TARGETS glm
             CodexEngine
             CodexEngine-static
     DESTINATION lib)
