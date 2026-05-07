@@ -1,11 +1,16 @@
 import subprocess
 import os
 from conan import ConanFile
+from conan.tools.cmake import CMakeToolchain
 
 
 class CodexConan(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
     generators = "CMakeToolchain", "CMakeDeps"
+
+    def generate(self):
+        tc = CMakeToolchain(self)
+        tc.user_presets_path = False
 
     def requirements(self):
         self.requires("sdl/2.32.10")

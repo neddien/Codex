@@ -6,7 +6,7 @@
             "hidden": true,
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/builds/${presetName}",
-            "toolchainFile": "${sourceDir}/builds/${presetName}/conan_toolchain.cmake",
+            "toolchainFile": "${sourceDir}/builds/conan/conan_toolchain.cmake",
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "cl.exe",
                 "CMAKE_CXX_COMPILER": "cl.exe",
@@ -26,7 +26,7 @@
             "binaryDir": "${sourceDir}/builds/${presetName}",
             "installDir": "C:/Program Files/Carbine/CEditor",
             "displayName": "vs2022",
-            "toolchainFile": "${sourceDir}/builds/${presetName}/conan_toolchain.cmake",
+            "toolchainFile": "${sourceDir}/builds/conan/conan_toolchain.cmake",
             "cacheVariables": {
                 "CMAKE_PRESET_NAME": "${presetName}",
                 "CX_ENABLE_CEDITOR": "on"
@@ -42,7 +42,7 @@
             "hidden": true,
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/builds/${presetName}",
-            "toolchainFile": "${sourceDir}/builds/${presetName}/conan_toolchain.cmake",
+            "toolchainFile": "${sourceDir}/builds/conan/conan_toolchain.cmake",
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "clang.exe",
                 "CMAKE_CXX_COMPILER": "clang++.exe",
@@ -61,10 +61,8 @@
             "hidden": true,
             "generator": "Unix Makefiles",
             "binaryDir": "${sourceDir}/builds/${presetName}",
-            "toolchainFile": "${sourceDir}/builds/${presetName}/conan_toolchain.cmake",
+            "toolchainFile": "${sourceDir}/builds/conan/conan_toolchain.cmake",
             "cacheVariables": {
-                "CMAKE_C_COMPILER": "gcc",
-                "CMAKE_CXX_COMPILER": "g++",
                 "CMAKE_PRESET_NAME": "${presetName}",
                 "CX_ENABLE_CEDITOR": "on"
             },
@@ -79,10 +77,8 @@
             "hidden": true,
             "generator": "Unix Makefiles",
             "binaryDir": "${sourceDir}/builds/${presetName}",
-            "toolchainFile": "${sourceDir}/builds/${presetName}/conan_toolchain.cmake",
+            "toolchainFile": "${sourceDir}/builds/conan/conan_toolchain.cmake",
             "cacheVariables": {
-                "CMAKE_C_COMPILER": "clang",
-                "CMAKE_CXX_COMPILER": "clang++",
                 "CMAKE_PRESET_NAME": "${presetName}",
                 "CX_ENABLE_CEDITOR": "on"
             },
@@ -102,7 +98,8 @@
                 "strategy": "external"
             },
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug"
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CX_ENABLE_TESTWORK": "1"
             }
         },
         {
@@ -116,7 +113,7 @@
             },
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
-		"CX_ENABLE_TESTGAME": "1"
+		            "CX_ENABLE_TESTGAME": "1"
             }
         },
         {
@@ -170,7 +167,7 @@
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CMAKE_CXX_FLAGS": "-O0 -g",
                 "CMAKE_C_FLAGS": "-O0 -g",
-                "CX_ENABLE_TESTGAME": "1"
+                "CX_ENABLE_TESTWORK": "1"
             }
         },
         {
@@ -203,7 +200,8 @@
                 "strategy": "external"
             },
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug"
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CX_ENABLE_TESTWORK": "1"
             }
         },
         {

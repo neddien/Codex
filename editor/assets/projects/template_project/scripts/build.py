@@ -112,7 +112,7 @@ def cmd_build(args: argparse.Namespace) -> None:
     preset, needs_configure = _resolve_preset(args.preset, args.config)
     build_path = _build_dir(preset)
 
-    if needs_configure:
+    def _cmake_conf() -> None:
         com.Chrono.begin()
         com.log("CMake configuration started.")
         res = com.run(
@@ -126,6 +126,23 @@ def cmd_build(args: argparse.Namespace) -> None:
             com.panic("CMake configuration failed.")
         elapsed = com.Chrono.end()
         com.log(f"CMake configuration finished. Took: {elapsed:.2f}ms")
+
+    def _conan_install() -> None:
+        com.Chrono.begin()
+        com.log("Conan install started.")
+        res = com.run(
+            f"conan install . --output-folder=builds/conan --build=missing -s build_type={args.lib_config.lower().capitalize()}",
+            stdout=stdout,
+            stderr=stdout,
+        )
+        if res.returncode != 0:
+            com.panic("Conan installation failed.")
+        elapsed = com.Chrono.end()
+        com.log(f"Conan installation finished. Took: {elapsed:.2f}ms")
+
+    if needs_configure:
+        _conan_install()
+        _cmake_conf()
 
     com.Chrono.begin()
     res = com.run(
@@ -198,6 +215,13 @@ def _make_parser() -> argparse.ArgumentParser:
     build.add_argument(
         "--config", metavar="TYPE",
         help="Build configuration substring to match (e.g. debug, release)",
+        default="debug",
+    )
+    build.add_argument(
+        "--lib-config", metavar="TYPE",
+        dest="lib_config",
+        help="Library build configuration for Conan (e.g. debug, release)",
+        default="debug",
     )
     build.add_argument(
         "--no-parallel", action="store_true",

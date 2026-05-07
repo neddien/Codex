@@ -4,6 +4,7 @@ import os
 import re
 import sys
 import time
+import json
 import shutil
 import ctypes
 import platform
@@ -41,6 +42,55 @@ class CMakeInspector:
             for line in fs:
                 if line.startswith(var_name):
                     return line.strip().split("=")[1]
+
+class CMakePresetInspector:
+    class Preset:
+        json_ = None
+
+        def __init__(self, json_obj):
+            if json_obj:
+                self.json_ = json_obj
+            else:
+                raise RuntimeError("Passed an invalid json object to Preset")
+
+        def name(self) -> str:
+            return json_["name"]
+        def hidden(self) -> bool:
+            return json_["hidden"]
+        def generator(self) -> str:
+            return json_["generator"]
+        def binary_dir(self) -> str:
+            return json_["binaryDir"]
+        def install_dir(self) -> str:
+            return json_["installDir"]
+        def display_name(self) -> str:
+            return json_["displayName"]
+        def toolchain_file(self) -> str:
+            return json_["toolchainFile"]
+        def inherits(self) -> list[str]:
+            if isinstance(json_["inherits"], str):
+                return [json_["inherits"]]
+            return json_["inherits"]
+
+    preset_file_: str = None
+    json_  = None
+
+    def __init__(self, file_path):
+        self.preset_file_ = file_path
+        if not os.path.exists(self.preset_file_):
+            raise RuntimeError("Invalid CMake Presets file.")
+
+        self.json_ = json.loads(self.preset_file_)
+
+    def presets(self) -> list[Preset]:
+        preset_list: list[str] = []
+
+        presets = self.json_["configurePresets"]
+        if presets:
+            for preset_json in presets:
+                preset_list.append(Preset(preset_json))
+
+        return preset_list
 
 
 def log(msg):

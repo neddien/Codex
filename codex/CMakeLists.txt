@@ -509,7 +509,7 @@ add_custom_target(
     -D "CX_VER_MAJ=${CX_VER_MAJ}"
     -D "CX_VER_MIN=${CX_VER_MIN}"
     -D "CX_VER_REV=${CX_VER_REV}"
-    -P "${CMAKE_SOURCE_DIR}/scripts/increment_build_count.cmake"
+    -P "${CMAKE_SOURCE_DIR}/cmake/increment_build_count.cmake"
   COMMENT "Incrementing build counter..."
   VERBATIM)
 
