@@ -97,26 +97,27 @@ namespace codex::gfx {
                       });
     }
 
-    void BatchRenderer2D::end()
+    void BatchRenderer2D::end(gfx::Shader* custom_end_shader)
     {
+        CX_DEBUG_PROFILE_SCOPE("BatchRenderer2D::end")
         // std::vector<RenderBatch*> sorted_batch = s_batches_;
         // std::sort(sorted_batch.begin(), sorted_batch.end(), std::less{});
 
-        s_quad_shader_->bind();
-        s_quad_shader_->set_uniform_mat4f("u_View", s_current_camera_view_mat_);
-        s_quad_shader_->set_uniform_mat4f("u_Proj", s_current_camera_->projection_matrix());
-        s_quad_shader_->unbind();
+        Shader* cur_shader = (custom_end_shader) ? custom_end_shader : s_quad_shader_;
 
-        {
-            CX_DEBUG_PROFILE_SCOPE()
+        cur_shader->bind();
+        cur_shader->set_uniform_mat4f("u_View", s_current_camera_view_mat_);
+        cur_shader->set_uniform_mat4f("u_Proj", s_current_camera_->projection_matrix());
+        cur_shader->unbind();
 
-            std::for_each(s_batches_.begin(), s_batches_.end(),
-                          [](auto& b)
-                          {
-                              if (b.count() > 0)
-                                  b.render();
-                          });
-        }
+        std::for_each(s_batches_.begin(), s_batches_.end(),
+                      [cur_shader](RenderBatch& b)
+                      {
+                          if (b.count() > 0) {
+                              b.bind_shader(cur_shader);
+                              b.render();
+                          }
+                      });
 
         s_current_camera_ = nullptr;
     }

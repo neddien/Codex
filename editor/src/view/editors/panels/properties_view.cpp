@@ -106,15 +106,13 @@ namespace codex::editor {
                         for (const auto& script : vec) {
                             const auto& behaviours = c.behaviours();
 
-                            const auto it = std::find_if(behaviours.cbegin(), behaviours.cend(),
-                                                         [&script](const auto& e) { return e.first == script; });
+                            const auto it =
+                                std::find_if(behaviours.cbegin(), behaviours.cend(), [&script](const NativeBehaviour* e)
+                                             { return e->type_info().name() == script; });
 
                             if (it == behaviours.end()) {
                                 if (ImGui::Selectable(script.c_str(), false)) {
-                                    auto script_instance = NBMan::create_instance(script);
-                                    if (script_instance) {
-                                        c.attach(std::move(script_instance));
-                                    } else {
+                                    if (!c.attach(script)) {
                                         error("Failed to create an NB instance of: {}", script);
                                     }
                                 }
@@ -128,17 +126,17 @@ namespace codex::editor {
                     ImGui::Columns(1);
 
                     // Display attached scripts and their serialized fields.
-                    auto&                  behaviours = c.behaviours();
-                    std::list<std::string> possible_scripts_to_detach;
+                    std::vector<NativeBehaviour*> behaviours = c.behaviours();
+                    std::list<std::string>        possible_scripts_to_detach;
                     for (auto it = behaviours.begin(); it != behaviours.end(); ++it) {
-                        auto& [k, v] = *it;
+                        NativeBehaviour* v = *it;
 
                         const auto& type_info = v->type_info();
-                        const auto  type_name = std::string{ type_info.type_name() };
+                        const auto  type_name = std::string{ type_info.name() };
 
                         if (ImGui::CollapsingHeader(type_name.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
                             if (ImGui::Button("Detach script")) {
-                                possible_scripts_to_detach.push_back(it->first);
+                                possible_scripts_to_detach.emplace_back(type_info.name());
                                 continue;
                             }
 
@@ -156,38 +154,33 @@ namespace codex::editor {
 
                                     case I32:
                                     case U32: {
-                                        ImGui::DragInt(prop_id.c_str(),
-                                                       type_info.property_value<i32>(v.get(), prop.name));
+                                        ImGui::DragInt(prop_id.c_str(), type_info.property_value<i32>(v, prop.name));
                                         break;
                                     }
                                     case F32:
                                     case F64:
                                     case F128: {
-                                        ImGui::DragFloat(prop_id.c_str(),
-                                                         type_info.property_value<f32>(v.get(), prop.name));
+                                        ImGui::DragFloat(prop_id.c_str(), type_info.property_value<f32>(v, prop.name));
                                         break;
                                     }
                                     case String: {
                                         ImGui::InputText(prop_id.c_str(),
-                                                         type_info.property_value<std::string>(v.get(), prop.name));
+                                                         type_info.property_value<std::string>(v, prop.name));
                                         break;
                                     }
                                     case Boolean: {
-                                        ImGui::Checkbox(prop_id.c_str(),
-                                                        type_info.property_value<bool>(v.get(), prop.name));
+                                        ImGui::Checkbox(prop_id.c_str(), type_info.property_value<bool>(v, prop.name));
                                         break;
                                     }
                                     case Vector2f: {
                                         SceneEditorView::draw_vec2_control(
-                                            prop_id.c_str(),
-                                            *type_info.property_value<math::Vector2f>(v.get(), prop.name),
+                                            prop_id.c_str(), *type_info.property_value<math::Vector2f>(v, prop.name),
                                             d->column_width);
                                         break;
                                     }
                                     case Vector3f: {
                                         SceneEditorView::draw_vec3_control(
-                                            prop_id.c_str(),
-                                            *type_info.property_value<math::Vector3f>(v.get(), prop.name),
+                                            prop_id.c_str(), *type_info.property_value<math::Vector3f>(v, prop.name),
                                             d->column_width);
                                         break;
                                     }
@@ -214,34 +207,21 @@ namespace codex::editor {
                 }
                 if (open) {
                     ImGui::Dummy(ImVec2(0.0f, 10.0f));
-                    auto& c       = d->selected_entity.entity.get_component<SpriteRendererComponent>();
-                    auto& sprite  = c.sprite();
-                    auto  texture = sprite.texture();
+                    auto& c      = d->selected_entity.entity.get_component<SpriteRendererComponent>();
+                    auto& sprite = c.sprite();
 
-                    // Texture prewview image
+                    // Texture
                     {
                         ImGui::Columns(2);
                         ImGui::SetColumnWidth(0, d->column_width);
                         ImGui::Text("Texture: ");
                         ImGui::NextColumn();
 
-                        ImGui::BeginGroup();
-                        if (sprite)
-                            ImGui::Image(static_cast<ImTextureID>(texture->gl_id()), { 100.0f, 100.0f }, { 0, 1 },
-                                         { 1, 0 });
-                        else
-                            ImGui::Text("No bound texture.");
+                        auto      tex_asset = sprite.texture();
+                        AssetPath tex_path  = tex_asset ? tex_asset.path() : AssetPath{};
+                        if (render_asset_path_box("##sprite_tex", "Texture2D", tex_path))
+                            sprite.set_texture(AssetManager::load<gfx::Texture2D>(tex_path));
 
-                        static char tex_path_buf[256] = {};
-                        ImGui::SetNextItemWidth(100.0f);
-                        ImGui::InputText("##tex_path", tex_path_buf, sizeof(tex_path_buf));
-                        ImGui::SameLine();
-                        if (ImGui::Button("Load")) {
-                            // TODO: Check if AssetManager::load<T> returned a valid object, or maybe make load throw an
-                            // exception?
-                            sprite.set_texture(AssetManager::load<gfx::Texture2D>(tex_path_buf));
-                        }
-                        ImGui::EndGroup();
                         ImGui::Columns(1);
                         ImGui::Dummy(ImVec2(0.0f, 10.0f));
                     }
@@ -529,7 +509,7 @@ namespace codex::editor {
 
                     // Physics material 2d.
                     {
-                        draw_physics_material_2d_control(c.physics_material, d->column_width);
+                        render_physics_material_2d_control(c.physics_material, d->column_width);
                     }
 
                     ImGui::Dummy(ImVec2(0.0f, 10.0f));
@@ -566,7 +546,7 @@ namespace codex::editor {
 
                     // Physics material 2d.
                     {
-                        draw_physics_material_2d_control(c.physics_material, d->column_width);
+                        render_physics_material_2d_control(c.physics_material, d->column_width);
                     }
                 }
                 if (remove)
@@ -626,28 +606,18 @@ namespace codex::editor {
 
                     // Sprite preview
                     {
-                        // Texture prewview image
+                        // Texture
                         {
                             ImGui::Columns(2);
                             ImGui::SetColumnWidth(0, d->column_width);
                             ImGui::Text("Texture: ");
                             ImGui::NextColumn();
 
-                            ImGui::BeginGroup();
-                            if (c.sprite)
-                                ImGui::Image(static_cast<ImTextureID>(c.sprite.texture()->gl_id()),
-                                             { 100.0f, 100.0f }, { 0, 1 }, { 1, 0 });
-                            else
-                                ImGui::Text("No bound texture.");
+                            auto      tex_asset = c.sprite.texture();
+                            AssetPath tex_path  = tex_asset ? tex_asset.path() : AssetPath{};
+                            if (render_asset_path_box("##tilemap_tex", "Texture2D", tex_path))
+                                c.sprite.set_texture(AssetManager::load<gfx::Texture2D>(tex_path));
 
-                            static char s_tex_path_buf[256] = {};
-                            ImGui::SetNextItemWidth(120.0f);
-                            ImGui::InputText("##tex_path", s_tex_path_buf, sizeof(s_tex_path_buf));
-                            ImGui::SameLine();
-                            if (ImGui::Button("Load")) {
-                                c.sprite.set_texture(AssetManager::load<gfx::Texture2D>(s_tex_path_buf));
-                            }
-                            ImGui::EndGroup();
                             ImGui::Columns(1);
                             ImGui::Dummy(ImVec2(0.0f, 10.0f));
                         }
@@ -663,15 +633,15 @@ namespace codex::editor {
                             const char* preview_item = nullptr;
                             const auto& props        = texture->properties();
                             switch (props.filter_mode) {
-                                case opengl::TextureFilterMode::Linear: preview_item = "Linear"; break;
-                                case opengl::TextureFilterMode::Nearest: preview_item = "Nearest"; break;
+                                case gfx::TextureFilterMode::Linear: preview_item = "Linear"; break;
+                                case gfx::TextureFilterMode::Nearest: preview_item = "Nearest"; break;
                             }
                             if (ImGui::BeginCombo("##texture_filter_mode", preview_item)) {
                                 if (ImGui::Selectable("Nearest",
-                                                      props.filter_mode == opengl::TextureFilterMode::Nearest)) {
-                                    if (props.filter_mode != opengl::TextureFilterMode::Nearest) {
+                                                      props.filter_mode == gfx::TextureFilterMode::Nearest)) {
+                                    if (props.filter_mode != gfx::TextureFilterMode::Nearest) {
                                         auto new_props        = props;
-                                        new_props.filter_mode = opengl::TextureFilterMode::Nearest;
+                                        new_props.filter_mode = gfx::TextureFilterMode::Nearest;
 
                                         // TODO: Proper re-import ?
                                         auto path = texture.path();
@@ -679,11 +649,10 @@ namespace codex::editor {
                                             path.uuid(), gfx::Texture2D::ImportSettings{ new_props });
                                     }
                                 }
-                                if (ImGui::Selectable("Linear",
-                                                      props.filter_mode == opengl::TextureFilterMode::Linear)) {
-                                    if (props.filter_mode != opengl::TextureFilterMode::Linear) {
+                                if (ImGui::Selectable("Linear", props.filter_mode == gfx::TextureFilterMode::Linear)) {
+                                    if (props.filter_mode != gfx::TextureFilterMode::Linear) {
                                         auto new_props        = props;
-                                        new_props.filter_mode = opengl::TextureFilterMode::Linear;
+                                        new_props.filter_mode = gfx::TextureFilterMode::Linear;
 
                                         // TODO: Proper re-import ?
                                         auto path = texture.path();
@@ -739,7 +708,7 @@ namespace codex::editor {
             if (d->selected_entity.entity.has_component<TilesetAnimationComponent>()) {
                 auto& c      = d->selected_entity.entity.get_component<TilesetAnimationComponent>();
                 bool  remove = false;
-                bool  open   = ImGui::CollapsingHeader("Tileset Animation Componnet", ImGuiTreeNodeFlags_DefaultOpen);
+                bool  open   = ImGui::CollapsingHeader("Tileset Animation Component", ImGuiTreeNodeFlags_DefaultOpen);
                 if (ImGui::BeginPopupContextItem()) {
                     if (ImGui::MenuItem("Remove Component"))
                         remove = true;
@@ -748,28 +717,18 @@ namespace codex::editor {
                 if (open) {
                     // Sprite preview
                     {
-                        // Texture prewview image
+                        // Texture
                         {
                             ImGui::Columns(2);
                             ImGui::SetColumnWidth(0, d->column_width);
                             ImGui::Text("Texture: ");
                             ImGui::NextColumn();
 
-                            ImGui::BeginGroup();
-                            if (c.sprite)
-                                ImGui::Image(static_cast<ImTextureID>(c.sprite.texture()->gl_id()),
-                                             { 100.0f, 100.0f }, { 0, 1 }, { 1, 0 });
-                            else
-                                ImGui::Text("No bound texture.");
+                            auto      tex_asset = c.sprite.texture();
+                            AssetPath tex_path  = tex_asset ? tex_asset.path() : AssetPath{};
+                            if (render_asset_path_box("##tsanim_tex", "Texture2D", tex_path))
+                                c.sprite.set_texture(AssetManager::load<gfx::Texture2D>(tex_path));
 
-                            static char s_tex_path_buf[256] = {};
-                            ImGui::SetNextItemWidth(120.0f);
-                            ImGui::InputText("##tex_path", s_tex_path_buf, sizeof(s_tex_path_buf));
-                            ImGui::SameLine();
-                            if (ImGui::Button("Load")) {
-                                c.sprite.set_texture(AssetManager::load<gfx::Texture2D>(s_tex_path_buf));
-                            }
-                            ImGui::EndGroup();
                             ImGui::Columns(1);
                             ImGui::Dummy(ImVec2(0.0f, 10.0f));
                         }
@@ -785,15 +744,15 @@ namespace codex::editor {
                             const char* preview_item = nullptr;
                             const auto& props        = texture->properties();
                             switch (props.filter_mode) {
-                                case opengl::TextureFilterMode::Linear: preview_item = "Linear"; break;
-                                case opengl::TextureFilterMode::Nearest: preview_item = "Nearest"; break;
+                                case gfx::TextureFilterMode::Linear: preview_item = "Linear"; break;
+                                case gfx::TextureFilterMode::Nearest: preview_item = "Nearest"; break;
                             }
-                            if (ImGui::BeginCombo("##texture_filter_mode", preview_item)) {
+                            if (ImGui::BeginCombo("##tsanim_filter_mode", preview_item)) {
                                 if (ImGui::Selectable("Nearest",
-                                                      props.filter_mode == opengl::TextureFilterMode::Nearest)) {
-                                    if (props.filter_mode != opengl::TextureFilterMode::Nearest) {
+                                                      props.filter_mode == gfx::TextureFilterMode::Nearest)) {
+                                    if (props.filter_mode != gfx::TextureFilterMode::Nearest) {
                                         auto new_props        = props;
-                                        new_props.filter_mode = opengl::TextureFilterMode::Nearest;
+                                        new_props.filter_mode = gfx::TextureFilterMode::Nearest;
 
                                         // TODO: Proper re-import ?
                                         auto path = texture.path();
@@ -801,11 +760,10 @@ namespace codex::editor {
                                             path.uuid(), gfx::Texture2D::ImportSettings{ new_props });
                                     }
                                 }
-                                if (ImGui::Selectable("Linear",
-                                                      props.filter_mode == opengl::TextureFilterMode::Linear)) {
-                                    if (props.filter_mode != opengl::TextureFilterMode::Linear) {
+                                if (ImGui::Selectable("Linear", props.filter_mode == gfx::TextureFilterMode::Linear)) {
+                                    if (props.filter_mode != gfx::TextureFilterMode::Linear) {
                                         auto new_props        = props;
-                                        new_props.filter_mode = opengl::TextureFilterMode::Linear;
+                                        new_props.filter_mode = gfx::TextureFilterMode::Linear;
 
                                         // TODO: Proper re-import ?
                                         auto path = texture.path();
@@ -819,17 +777,44 @@ namespace codex::editor {
                             ImGui::Columns(1);
                         }
 
+                        // Grid size
+                        {
+                            SceneEditorView::draw_vec2_control("Grid size", c.grid_size, d->column_width);
+                            ImGui::Dummy(ImVec2(0.0f, 4.0f));
+                        }
+
                         // Add animation button
                         {
                             if (ImGui::Button("Add an animation")) {
-                                c.animations["animation #" + std::to_string(c.animations.size())] =
-                                    TilesetAnimationComponent::Animation{};
+                                TilesetAnimationComponent::Animation a;
+                                a.name = "animation #" + std::to_string(c.animations.size());
+                                c.animations.push_back(std::move(a));
                             }
                         }
                     }
 
-                    for (auto& [name, anim] : c.animations) {
-                        if (ImGui::TreeNodeEx((name + "##tile_set_anim_" + name).c_str())) {
+                    i32 anim_to_remove = -1;
+
+                    for (usize i = 0; i < c.animations.size(); ++i) {
+                        auto&             anim = c.animations[i];
+                        const std::string id   = std::to_string(i);
+
+                        if (ImGui::TreeNodeEx((anim.name + "##tile_set_anim_" + id).c_str())) {
+                            // Name
+                            {
+                                ImGui::Columns(2);
+                                ImGui::SetColumnWidth(0, d->column_width);
+                                ImGui::Text("Name");
+                                ImGui::NextColumn();
+                                char name_buf[256];
+                                std::strncpy(name_buf, anim.name.c_str(), sizeof(name_buf) - 1);
+                                name_buf[sizeof(name_buf) - 1] = '\0';
+                                if (ImGui::InputText(("##anim_name_" + id).c_str(), name_buf, sizeof(name_buf),
+                                                     ImGuiInputTextFlags_EnterReturnsTrue))
+                                    anim.name = name_buf;
+                                ImGui::Columns(1);
+                            }
+
                             // Starting tile
                             {
                                 SceneEditorView::draw_vec2_control("Starting tile", anim.starting_tile,
@@ -842,8 +827,8 @@ namespace codex::editor {
                                 ImGui::SetColumnWidth(0, d->column_width);
                                 ImGui::Text("Frame count");
                                 ImGui::NextColumn();
-                                ImGui::DragInt(("###drag_int_" + name).c_str(),
-                                               reinterpret_cast<i32*>(&anim.frame_count), 1.0f, 0);
+                                ImGui::DragInt(("##drag_int_" + id).c_str(), reinterpret_cast<i32*>(&anim.frame_count),
+                                               1.0f, 0);
                                 ImGui::Columns(1);
                             }
 
@@ -853,32 +838,46 @@ namespace codex::editor {
                                 ImGui::SetColumnWidth(0, d->column_width);
                                 ImGui::Text("Frame rate");
                                 ImGui::NextColumn();
-                                ImGui::DragFloat(("###drag_f32_" + name).c_str(), &anim.frame_rate, 1.0f, 0);
+                                ImGui::DragFloat(("##drag_f32_" + id).c_str(), &anim.frame_rate, 1.0f, 0);
                                 ImGui::Columns(1);
                             }
 
-                            // Animation preview
+                            // Animation preview (first frame tile)
                             {
                                 ImGui::Columns(2);
                                 ImGui::SetColumnWidth(0, d->column_width);
-                                ImGui::Text("Texture: ");
+                                ImGui::Text("Preview: ");
                                 ImGui::NextColumn();
 
                                 ImGui::BeginGroup();
-                                if (c.sprite)
-                                    ImGui::Image(static_cast<ImTextureID>(c.sprite.texture()->gl_id()),
-                                                 { 100.0f, 100.0f }, { 0, 1 }, { 1, 0 });
-                                else
+                                if (c.sprite) {
+                                    auto   texture = c.sprite.texture();
+                                    f32    tex_w   = static_cast<f32>(texture->width());
+                                    f32    tex_h   = static_cast<f32>(texture->height());
+                                    f32    tile_x  = anim.starting_tile.x * c.grid_size.x;
+                                    f32    tile_y  = anim.starting_tile.y * c.grid_size.y;
+                                    ImVec2 uv0     = { tile_x / tex_w, 1.0f - tile_y / tex_h };
+                                    ImVec2 uv1     = { (tile_x + c.grid_size.x) / tex_w,
+                                                       1.0f - (tile_y + c.grid_size.y) / tex_h };
+                                    ImGui::Image((ImTextureID)(texture->gl_id()), { 100.0f, 100.0f }, uv0, uv1);
+                                } else {
                                     ImGui::Text("No bound texture.");
+                                }
 
                                 ImGui::EndGroup();
                                 ImGui::Columns(1);
                                 ImGui::Dummy(ImVec2(0.0f, 10.0f));
                             }
 
+                            if (ImGui::Button(("Remove##tsanim_rm_" + id).c_str()))
+                                anim_to_remove = static_cast<i32>(i);
+
                             ImGui::TreePop();
                         }
                     }
+
+                    if (anim_to_remove >= 0)
+                        c.animations.erase(c.animations.begin() + anim_to_remove);
                 }
                 if (remove)
                     d->selected_entity.entity.remove_component<TilesetAnimationComponent>();
@@ -1099,7 +1098,8 @@ namespace codex::editor {
         ImGui::End();
     }
 
-    void PropertiesView::draw_physics_material_2d_control(phys::PhysicsMaterial2D& mat, const f32 columnWidth) noexcept
+    void PropertiesView::render_physics_material_2d_control(phys::PhysicsMaterial2D& mat,
+                                                            const f32                columnWidth) noexcept
     {
         if (ImGui::TreeNodeEx("Physics Material 2D", ImGuiTreeNodeFlags_DefaultOpen)) {
             // Density
@@ -1144,5 +1144,57 @@ namespace codex::editor {
 
             ImGui::TreePop();
         }
+    }
+
+    bool PropertiesView::render_asset_path_box(const char* label, std::string_view accepted_type,
+                                               AssetPath& path) noexcept
+    {
+        bool changed = false;
+
+        const f32    box_h = 52.0f;
+        const f32    box_w = ImGui::GetContentRegionAvail().x;
+        const ImVec2 pos   = ImGui::GetCursorScreenPos();
+
+        ImGui::InvisibleButton(label, { box_w, box_h });
+        const bool hovered = ImGui::IsItemHovered();
+
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        dl->AddRectFilled(pos, { pos.x + box_w, pos.y + box_h }, ImGui::GetColorU32(ImGuiCol_FrameBg), 4.0f);
+        dl->AddRect(pos, { pos.x + box_w, pos.y + box_h },
+                    hovered ? ImGui::GetColorU32(ImGuiCol_ButtonHovered) : ImGui::GetColorU32(ImGuiCol_Border), 4.0f);
+
+        const f32    thumb = box_h - 8.0f;
+        const ImVec2 tl    = { pos.x + 4.0f, pos.y + 4.0f };
+        const ImVec2 br    = { tl.x + thumb, tl.y + thumb };
+
+        bool has_thumbnail = false;
+        if (accepted_type == "Texture2D" && !path.path().empty()) {
+            if (auto asset = AssetManager::load<gfx::Texture2D>(path).as_shared()) {
+                dl->AddImage((ImTextureID)asset->gl_id(), tl, br, { 0, 1 }, { 1, 0 });
+                has_thumbnail = true;
+            }
+        }
+
+        const std::string name =
+            path.path().empty() ? "Drop an asset here..." : std::filesystem::path(path.path()).filename().string();
+        const ImU32 text_col =
+            path.path().empty() ? ImGui::GetColorU32(ImGuiCol_TextDisabled) : ImGui::GetColorU32(ImGuiCol_Text);
+        const f32 text_x = has_thumbnail ? br.x + 6.0f : pos.x + (box_w - ImGui::CalcTextSize(name.c_str()).x) * 0.5f;
+        const f32 text_y = pos.y + (box_h - ImGui::GetTextLineHeight()) * 0.5f;
+        dl->AddText({ text_x, text_y }, text_col, name.c_str());
+
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CX_ASSET")) {
+                UUID           dropped = *static_cast<const UUID*>(payload->Data);
+                AssetMetadata* meta    = AssetManager::registry().asset_metadata(dropped);
+                if (meta && meta->type == accepted_type) {
+                    path    = meta->path;
+                    changed = true;
+                }
+            }
+            ImGui::EndDragDropTarget();
+        }
+
+        return changed;
     }
 } // namespace codex::editor

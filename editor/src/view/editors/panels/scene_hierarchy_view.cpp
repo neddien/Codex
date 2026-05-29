@@ -37,7 +37,7 @@ namespace codex::editor {
             ImGui::Text("Entities");
             static auto action_delete = false;
             static auto action_rename = false;
-            auto        entities      = scene->get_all_entities_with_component<TagComponent>();
+            auto        entities      = scene->entities_with_component<TagComponent>();
             for (auto& e : entities) {
                 auto& tag_component = e.get_component<TagComponent>();
                 if (ImGui::Selectable((tag_component.tag + "##entity").c_str(), d->selected_entity.entity == e,

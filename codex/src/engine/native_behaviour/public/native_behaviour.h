@@ -1,22 +1,22 @@
 #pragma once
 
+#include <engine/audio/public/audio.h>
 #include <engine/core/public/log.h>
 #include <engine/core/public/serializer.h>
 #include <engine/reflection/public/reflection.h>
-#include <engine/scene/public/entity.inl>
+#include <engine/scene/public/scene.h>
 
 namespace codex {
     // Forward declarations.
     class Entity;
     struct NativeBehaviourComponent;
+    class NBMan;
 
     class CODEX_API NativeBehaviour : public ISerializable
     {
         friend class Scene;
         friend struct NativeBehaviourComponent;
-
-    public:
-        inline void set_owner(const Entity entity) noexcept { parent_ = entity; }
+        friend class NBMan;
 
     public:
         virtual ~NativeBehaviour() {}
@@ -29,10 +29,10 @@ namespace codex {
             return parent_.scene_->create_entity(tag);
         }
         void               remove_entity(Entity entity) { parent_.scene_->remove_entity(entity); }
-        [[nodiscard]] auto get_all_entities() { return parent_.scene_->get_all_entities(); }
-        [[nodiscard]] auto get_all_entities_with_tag(const std::string_view tag)
+        [[nodiscard]] auto entities() { return parent_.scene_->entities(); }
+        [[nodiscard]] auto entities_with_tag(const std::string_view tag)
         {
-            return parent_.scene_->get_all_entities_with_tag(tag);
+            return parent_.scene_->entities_with_tag(tag);
         }
         [[nodiscard]] auto        entity_count() const noexcept { return parent_.scene_->entity_count(); }
         [[nodiscard]] const auto& current_scene() const noexcept { return parent_.scene_; }
@@ -41,9 +41,9 @@ namespace codex {
     public:
         template <typename T>
             requires(std::is_base_of_v<Component, T>)
-        [[nodiscard]] auto get_all_entities_with_component()
+        [[nodiscard]] auto entities_with_component()
         {
-            return parent_.scene_->get_all_entities_with_component<T>();
+            return parent_.scene_->entities_with_component<T>();
         }
         template <typename T, typename... TArgs>
         T& add_component(TArgs&&... args)
@@ -84,49 +84,12 @@ namespace codex {
     public:
         ax::EventHandle get_audio_event(const std::string_view event_path);
 
-    protected:
-        using enum LogLevel;
-
-        // ---- Logging (routes to the behaviour logger) -----------------------
-        template <typename... TArgs>
-        void log(const LogLevel level, const std::string_view fmt, TArgs&&... args) const
-        {
-            detail::dispatch_log(level, type_info().type_name(),
-                                 fmt::format(fmt::runtime(fmt), std::forward<TArgs>(args)...));
-        }
-        template <typename... TArgs>
-        void info(const std::string_view fmt, TArgs&&... args) const
-        {
-            log(LogLevel::Info, fmt, std::forward<TArgs>(args)...);
-        }
-        template <typename... TArgs>
-        void warn(const std::string_view fmt, TArgs&&... args) const
-        {
-            log(LogLevel::Warn, fmt, std::forward<TArgs>(args)...);
-        }
-        template <typename... TArgs>
-        void error(const std::string_view fmt, TArgs&&... args) const
-        {
-            log(LogLevel::Error, fmt, std::forward<TArgs>(args)...);
-        }
-        template <typename... TArgs>
-        void fatal(const std::string_view fmt, TArgs&&... args) const
-        {
-            log(LogLevel::Fatal, fmt, std::forward<TArgs>(args)...);
-        }
-        template <typename... TArgs>
-        void trace(TraceLocation fmt_spec, TArgs&&... args) const
-        {
-            const auto& loc = fmt_spec.loc;
-            const auto  msg = fmt::format(
-                fmt::runtime("{} {}:{}: {}"), std::filesystem::path(loc.file_name()).filename().string(),
-                loc.function_name(), loc.line(), fmt::format(fmt::runtime(fmt_spec.fmt), std::forward<TArgs>(args)...));
-            detail::dispatch_log(LogLevel::Debug, type_info().type_name(), msg);
-        }
-
     public:
         void serialize(ISerializationNode& node) const override;
         void deserialize(const ISerializationNode& node) override;
+
+    private:
+        inline void set_owner(const Entity entity) noexcept { parent_ = entity; }
 
     protected:
         Entity parent_;

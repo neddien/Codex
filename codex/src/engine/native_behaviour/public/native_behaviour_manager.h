@@ -1,5 +1,8 @@
 #pragma once
 
+#include <engine/algorithm/public/dense_vector.h>
+#include <engine/asset_manager/public/asset_manager.h>
+#include <engine/core/public/common_third_party_libs.h>
 #include <engine/memory/public/memory.h>
 #include <engine/native_behaviour/public/native_behaviour.h>
 
@@ -10,56 +13,70 @@ namespace codex {
         class DLib;
     }
 
-    class CODEX_API NBMan : public Loggable<"NativeBehaviourManager">
+    // TODO: Add  thread safety
+    class CODEX_API NBMan : public System<NBMan>, public Loggable<"NativeBehaviourManager">
     {
     public:
         using FactoryFn = std::function<Box<NativeBehaviour>()>;
 
     public:
-        NBMan() = default;
+        struct BHRecord
+        {
+            std::string type_name;
+            usize       type_hash;
+            FactoryFn   factory;
+        };
+
+        // While NBMan does implement the System<T> trait meaning its ctors are already defined
+        // but we're gonna need to define them here explicitly to prevent the compiler from
+        // synthesizes them inline and cuasing compile errors in the public domain because of DLib.
+        // More specifically editor projects fail to compile.
+    public:
+        NBMan() noexcept;
         ~NBMan() noexcept;
+        NBMan(NBMan&&) noexcept            = delete;
+        NBMan& operator=(NBMan&&) noexcept = delete;
         NBMan(const NBMan&)                = delete;
         NBMan& operator=(const NBMan&)     = delete;
-        NBMan(NBMan&&) noexcept            = default;
-        NBMan& operator=(NBMan&&) noexcept = default;
 
     public:
-        [[nodiscard]] static NBMan& get();
+        static void init();
+        static void dispose() noexcept;
 
     public:
         template <typename T>
-        static void register_type(const std::string& type_name)
+        static void register_type(const std::string_view type_name)
         {
-            get().types_[type_name] = []() -> Box<NativeBehaviour> { return Box<T>::make(); };
+            auto&    self = get();
+            BHRecord record{
+                .type_name = std::string{ type_name },
+                .type_hash = util::crypto::fnv1a(type_name),
+                .factory   = [] { return Box<T>::make(); },
+            };
+            self.types_[record.type_hash] = std::move(record);
         }
 
     public:
-        [[nodiscard]] static Box<NativeBehaviour> create_instance(const std::string& type_name)
-        {
-            auto& types = get().types_;
-            auto  it    = types.find(type_name);
-            if (it != types.end())
-                return std::move(it->second());
-            return nullptr;
-        }
-        [[nodiscard]] static bool is_type_registered(const std::string& type_name)
-        {
-            return get().types_.find(type_name) != get().types_.end();
-        }
-        [[nodiscard]] static std::vector<std::string> registered_types()
-        {
-            std::vector<std::string> types;
-            for (const auto& pair : get().types_)
-                types.push_back(pair.first);
-            return types;
-        }
-        static void               load(const std::filesystem::path path, Scene& scene);
-        static void               unload(const bool save_to_pending = true);
-        [[nodiscard]] static bool instance_loaded() noexcept;
+        static void                                   load(const std::filesystem::path path, Scene& scene);
+        static void                                   unload(const bool save_to_pending = true);
+        [[nodiscard]] static bool                     is_type_registered(const std::string_view type_name);
+        [[nodiscard]] static std::vector<std::string> registered_types() noexcept;
+        [[nodiscard]] static bool                     instance_loaded() noexcept;
+        [[nodiscard]] static const BHRecord*          type_record(const std::string_view type) noexcept;
 
     private:
-        std::unordered_map<std::string, FactoryFn> types_;
-        Box<sys::DLib>                             nb_instance_;
-        Scene*                                     scene_ = nullptr;
+        Box<sys::DLib>                       nb_instance_;
+        Scene*                               scene_ = nullptr;
+        absl::flat_hash_map<usize, BHRecord> types_;
+    };
+
+    // Null-loader, meaning just register it into the Asset Registry but don't treat it as an Asset.
+    // This is so that it will show up in the Content Browser inside the Editor.
+    class NBScriptSourceNullLoader : public NullAssetLoader<"CXXSource">
+    {
+    };
+
+    class NBScriptHeaderNullLoader : public NullAssetLoader<"CXXHeader">
+    {
     };
 } // namespace codex

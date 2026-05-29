@@ -61,8 +61,8 @@ namespace codex::editor {
         Shared<Scene>                 runtime_scene;
         std::filesystem::path         script_module_path;
         SelectedEntityDescriptor      selected_entity;
-        f32                           column_width  = 140.0f;
-        Vector4f                      select_colour = { 0.5f, 1.0f, 0.5f, 1.0f };
+        f32                           column_width = 140.0f;
+        Vector4f                      select_colour{ 0.9f, 0.5f, 0.07f, 1.0f };
         std::filesystem::path         current_project_path;
         std::atomic<CompilationState> compilation_state{ CompilationState::Idle };
         std::atomic<bool>             pending_nb_load{ false };
@@ -73,6 +73,8 @@ namespace codex::editor {
         std::condition_variable       registry_state_cv;
         bool                          registry_state_ready{ false };
         UUID                          selected_asset{};
+        Box<gfx::Shader>              outline_shader{};
+        f32                           outline_border_size = .05f;
 
     public:
         void reset() noexcept
@@ -82,11 +84,15 @@ namespace codex::editor {
             script_module_path      = std::filesystem::path{};
             selected_entity         = SelectedEntityDescriptor{};
             column_width            = 140.0f;
-            select_colour           = { .5f, 1.0f, .5f, 1.0f };
+            select_colour           = { 0.9f, 0.5f, 0.07f, 1.0f };
             current_project_path    = std::filesystem::path{};
             compilation_state       = CompilationState::Idle;
             pending_nb_load         = false;
             compilation_finish_time = .0f;
+            registry_state          = AssetRegistryState::Idle;
+            registry_state_ready    = false;
+            selected_asset          = {};
+            outline_border_size     = .05f;
 
             active_scene = editor_scene;
         }
@@ -103,6 +109,11 @@ namespace codex::editor {
             std::swap(select_colour, other.select_colour);
             std::swap(current_project_path, other.current_project_path);
             std::swap(compilation_finish_time, other.compilation_finish_time);
+            std::swap(registry_state, other.registry_state);
+            std::swap(registry_state_ready, other.registry_state_ready);
+            std::swap(selected_asset, other.selected_asset);
+            std::swap(outline_shader, other.outline_shader);
+            std::swap(outline_border_size, other.outline_border_size);
             vfs.swap(other.vfs);
         }
     };
@@ -186,6 +197,10 @@ namespace codex::editor {
                 }
             }
         }
+
+    private:
+        void load_outline_shader();
+        void viewport_resize();
 
     public:
         static void render_grid(gfx::DebugDraw& renderer, const scene::EditorCamera& camera,

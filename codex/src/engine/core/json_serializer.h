@@ -31,13 +31,13 @@ namespace codex {
     private:
         JsonType&                                       json_;
         mutable std::vector<Box<JsonSerializationNode>> children_;
-        mutable bool                                    is_array_node_;
+        mutable bool                                    array_node_;
         mutable bool                                    is_map_node_;
 
     public:
         explicit JsonSerializationNode(JsonType& jsonObj)
             : json_(jsonObj)
-            , is_array_node_(false)
+            , array_node_(false)
         {
         }
 
@@ -194,19 +194,23 @@ namespace codex {
 
         ISerializationNode& begin_array(const std::string_view key) override
         {
-            json_[key]            = nlohmann::ordered_json::array();
-            auto child            = Box<JsonSerializationNode>::make(json_[key]);
-            child->is_array_node_ = true;
+            json_[key]         = nlohmann::ordered_json::array();
+            auto child         = Box<JsonSerializationNode>::make(json_[key]);
+            child->array_node_ = true;
             children_.push_back(std::move(child));
             return *children_.back();
         }
 
-        void end_array() override {}
+        void end_array() override
+        {
+            /* clang-format off */
+            /* clang-format on */
+        }
 
         ISerializationNode& add_array_element() override
         {
             // This should only be called on array nodes
-            assert(is_array_node_ && "add_array_element called on non-array node");
+            assert(array_node_ && "add_array_element called on non-array node");
 
             json_.push_back(nlohmann::ordered_json::object());
             auto child = Box<JsonSerializationNode>::make(json_.back());
@@ -217,8 +221,8 @@ namespace codex {
         ISerializationNode& array(const std::string_view key) const override
         {
             if (json_.contains(key) && json_[key].is_array()) {
-                auto child            = Box<JsonSerializationNode>::make(const_cast<JsonType&>(json_[key]));
-                child->is_array_node_ = true;
+                auto child         = Box<JsonSerializationNode>::make(const_cast<JsonType&>(json_[key]));
+                child->array_node_ = true;
                 children_.push_back(std::move(child));
                 return *children_.back();
             }

@@ -35,16 +35,18 @@ namespace codex::editor {
         void render_asset_grid();
         void render_breadcrumb();
         void render_icon_size_slider();
+        void render_asset_based_on_type(const AssetMetadata& meta, const ImVec2 screen_pos) noexcept;
 
     private:
-        std::string                current_path_;
-        std::string                root_path_;
-        UUID                       selected_;
-        f32                        icon_size_ = 80.0f;
-        bool                       dirty_     = true;
-        std::vector<AssetMetadata> cache_;
-        mutable std::shared_mutex  mutex_;
-        mutable TreeNode           root_node_;
+        std::unordered_map<UUID, Shared<void>> asset_cache_;
+        std::string                            current_path_;
+        std::string                            root_path_;
+        UUID                                   selected_;
+        f32                                    icon_size_ = 80.0f;
+        bool                                   dirty_     = true;
+        std::vector<AssetMetadata>             cache_;
+        mutable std::shared_mutex              mutex_;
+        mutable TreeNode                       root_node_;
     };
 
     class File

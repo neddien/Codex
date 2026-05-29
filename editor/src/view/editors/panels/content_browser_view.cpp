@@ -10,8 +10,12 @@ namespace codex::editor {
     {
         if (meta.type == "Texture2D")
             return ICON_TI_PHOTO;
-        if (meta.type == "NBScript")
+        if (meta.type == "CXXSource")
             return ICON_TI_BRAND_CPP;
+        if (meta.type == "CXXHeader")
+            return ICON_TI_LETTER_H;
+        if (meta.type == "Shader")
+            return ICON_TI_SPHERE;
         return ICON_TI_FILE;
     }
 
@@ -30,7 +34,7 @@ namespace codex::editor {
         auto d = get_descriptor().lock();
 
         // Wait for the assets to be scanned
-        Engine::get_worker_pool().submit(
+        Engine::worker_pool().submit(
             [this]
             {
                 auto d = get_descriptor().lock();
@@ -218,7 +222,6 @@ namespace codex::editor {
         ImGui::Columns(columns, nullptr, false);
 
         for (AssetMetadata& meta : cache_) {
-            const char*       icon       = icon_for_asset(meta);
             const bool        selected   = meta.path.uuid() == selected_;
             const ImVec2      screen_pos = ImGui::GetCursorScreenPos();
             const std::string btn_id     = fmt::format("##{}", meta.path.uuid());
@@ -237,14 +240,15 @@ namespace codex::editor {
                     screen_pos, { screen_pos.x + icon_size_, screen_pos.y + item_h }, color, 4.0f);
             }
 
+            if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
+                UUID uuid = meta.path.uuid();
+                ImGui::SetDragDropPayload("CX_ASSET", &uuid, sizeof(uuid));
+                ImGui::Text("%s  %s", icon_for_asset(meta), meta.name.c_str());
+                ImGui::EndDragDropSource();
+            }
+
             // Icon centered in the icon area (XL font rasterized at 64px)
-            ImGui::PushFont(Editor::get_xl_icon_font());
-            const f32 icon_w  = ImGui::CalcTextSize(icon).x;
-            const f32 icon_fh = ImGui::GetTextLineHeight();
-            ImGui::SetCursorScreenPos(
-                { screen_pos.x + (icon_size_ - icon_w) * 0.5f, screen_pos.y + (icon_size_ - icon_fh) * 0.5f });
-            ImGui::Text("%s", icon);
-            ImGui::PopFont();
+            render_asset_based_on_type(meta, screen_pos);
 
             // Name truncated and centered below icon
             const std::string name   = truncate_name(meta.name, icon_size_);
@@ -286,5 +290,37 @@ namespace codex::editor {
             if (ImGui::SmallButton(id.c_str()))
                 chdir_nolock(acc);
         }
+    }
+
+    void ContentBrowserView::render_asset_based_on_type(const AssetMetadata& meta, const ImVec2 screen_pos) noexcept
+    {
+        if (meta.type == "Texture2D") {
+            Shared<gfx::Texture2D> asset = nullptr;
+            if (auto it = asset_cache_.find(meta.path.uuid()); it != asset_cache_.end())
+                asset = it->second.as<gfx::Texture2D>();
+            else {
+                asset = AssetManager::load<gfx::Texture2D>(meta.path).as_shared();
+                if (asset) {
+                    auto [_, did_insert] = asset_cache_.try_emplace(meta.path.uuid(), asset.as<void>());
+                    assert(did_insert);
+                }
+            }
+
+            if (asset) {
+                ImGui::SetCursorScreenPos({ screen_pos.x + (0) * 0.5f, screen_pos.y + (0) * 0.5f });
+                ImGui::Image((ImTextureID)asset->gl_id(), { icon_size_, icon_size_ }, { 0, 1 }, { 1, 0 });
+                return;
+            }
+        }
+
+        const char* icon = icon_for_asset(meta);
+
+        ImGui::PushFont(Editor::get_xl_icon_font());
+        const f32 icon_w  = ImGui::CalcTextSize(icon).x;
+        const f32 icon_fh = ImGui::GetTextLineHeight();
+        ImGui::SetCursorScreenPos(
+            { screen_pos.x + (icon_size_ - icon_w) * 0.5f, screen_pos.y + (icon_size_ - icon_fh) * 0.5f });
+        ImGui::Text("%s", icon);
+        ImGui::PopFont();
     }
 } // namespace codex::editor

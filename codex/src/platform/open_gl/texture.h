@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <filesystem>
 
-#include "constants.h"
+#include "common.h"
 
 namespace codex::opengl {
     enum class TextureFormat : i32

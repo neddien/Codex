@@ -19,6 +19,11 @@ namespace codex::gfx {
         static void set_clear_colour(const f32 r, const f32 g, const f32 b, const f32 a);
         static void render(const opengl::VertexArray* vertex_array, const opengl::IndexBuffer* index_buffer,
                            const opengl::Shader* shader);
+        static void stencil_test(const bool enable) noexcept;
+        static void stencil_mask(const u32 mask) noexcept;
+        static void stencil_op(const opengl::Enum sfail, const opengl::Enum dpfail, const opengl::Enum dppass) noexcept;
+        static void stencil_fn(const opengl::Enum fn, const i32 ref, const u32 mask) noexcept;
+        static void colour_mask(const bool r, const bool g, const bool b, const bool a) noexcept;
 
     private:
         i32               width_;

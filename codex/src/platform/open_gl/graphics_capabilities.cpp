@@ -1,6 +1,6 @@
 #include "graphics_capabilities.h"
 
-#include "constants.h"
+#include "common.h"
 
 namespace codex::opengl {
     namespace capabilities {

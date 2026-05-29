@@ -11,14 +11,13 @@ namespace codex {
 
         auto loader = Shared<TLoader>::make();
 
-        self.loaders_.try_emplace(loader->asset_type_id(), loader.template as<TLoader>());
+        self.loaders_.try_emplace(loader->asset_type_hash(), loader.template as<TLoader>());
         for (const auto& e : extensions) {
-            bool result = self.loaders_by_ext_.try_emplace(std::hash<std::string_view>{}(e), loader).second;
+            bool result = self.loaders_by_ext_.try_emplace(util::crypto::fnv1a(e), loader).second;
             assert(result);
         }
 
-        bool result =
-            self.loaders_by_type_.try_emplace(std::hash<std::string_view>{}(loader->asset_type_name()), loader).second;
+        bool result = self.loaders_by_type_.try_emplace(util::crypto::fnv1a(loader->asset_type_name()), loader).second;
         assert(result);
     }
 

@@ -6,21 +6,14 @@
 #include <engine/scene/public/components.h>
 #include <engine/scene/public/entity.h>
 
-#define CX_REGISTER_COMPONENT(type) ComponentFactory::instance().register_component<type>(#type);
+#define CX_REGISTER_COMPONENT(type) ComponentFactory::get().register_component<type>(#type);
 
 namespace codex {
-    class ComponentFactory
+    class ComponentFactory : public System<ComponentFactory>
     {
     public:
         using DeserializerFn = std::function<void(const ISerializationNode&, Entity)>;
         using InstantiateFn  = std::function<void(const Component&, Entity)>;
-
-    public:
-        static ComponentFactory& instance()
-        {
-            static ComponentFactory inst;
-            return inst;
-        }
 
     public:
         template <typename T>
@@ -89,7 +82,7 @@ namespace codex {
     {
     };
 
-    // NOTE: Do not forget to add a new entry for Scene::get_all_entities_with_component<T>() and AllComponents<T...>
+    // NOTE: Do not forget to add a new entry for Scene::entities_with_component<T>() and AllComponents<T...>
     // when adding a new component!
     using AllComponents =
         ComponentGroup<IDComponent, TransformComponent, TagComponent, SpriteRendererComponent, NativeBehaviourComponent,

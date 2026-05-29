@@ -378,14 +378,13 @@ namespace codex {
         if (native_window_) {
             // sdl_window_ = SDL_CreateWindowFrom(native_window_, flags_ |
             // SDL_WINDOW_OPENGL);
-            throw SDLException("Native windows are not supported.");
+            throw SDLException("Native windows are not supported");
         } else
             sdl_window_ = SDL_CreateWindow(title_.c_str(), pos_x_, pos_y_, width_, height_,
                                            flags_ | SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI);
 
         if (!sdl_window_) {
             throw SDLException("Failed to create an SDL window.\n\tSDL Error: {}", SDL_GetError());
-            // sdl_throw_error(__LINE__, "ERROR: FAILED TO CREATE SDL WINDOW!");
         }
         SDL_ClearError();
 
@@ -395,8 +394,6 @@ namespace codex {
             throw SDLException("Failed to create an OpenGL context from the SDL "
                                "window.\n\tSDL Error: {}",
                                SDL_GetError());
-            // SDLThrowError(__LINE__, "ERROR: FAILED TO CREATE AN OPENGL
-            // CONTEXT FROM SDL WINDOW!");
         }
         SDL_ClearError();
 
@@ -405,8 +402,7 @@ namespace codex {
 
         // Initialize GLAD
         if (gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
-            // gladLoadGL();
-            info("GLad loaded");
+            info("OpenGL loaded");
             info("Vendor:\t\t{}", (const char*)glGetString(GL_VENDOR));
             info("Renderer:\t\t{}", (const char*)glGetString(GL_RENDERER));
             info("Version:\t\t{}", (const char*)glGetString(GL_VERSION));
@@ -441,7 +437,7 @@ namespace codex {
     void Window::process_events()
     {
         static Engine&     app   = Engine::get();
-        static ImGuiLayer* imgui = app.mgui_layer();
+        static ImGuiLayer* imgui = app.imgui_layer();
 
         while (SDL_PollEvent(&sdl_event_)) {
             if (imgui)

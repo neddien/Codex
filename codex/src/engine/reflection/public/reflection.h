@@ -76,7 +76,7 @@ namespace codex::rf {
         }
 
     public:
-        [[nodiscard]] inline std::string_view             type_name() const noexcept { return type_name_; }
+        [[nodiscard]] inline std::string_view             name() const noexcept { return type_name_; }
         [[nodiscard]] inline const std::vector<Property>& properties() const noexcept { return properties_; }
         inline void add_property(const std::string_view name, const PropertyType type, const usize offset,
                                  const std::string_view display_name = "", const std::string_view category = "General",

@@ -39,4 +39,29 @@ namespace codex::gfx {
     {
         get().internal_renderer_->render(vertex_array, index_buffer, shader);
     }
+
+    void Renderer::stencil_test(const bool enable) noexcept
+    {
+        get().internal_renderer_->stencil_test(enable);
+    }
+
+    void Renderer::stencil_mask(const u32 mask) noexcept
+    {
+        get().internal_renderer_->stencil_mask(mask);
+    }
+
+    void Renderer::stencil_op(const opengl::Enum sfail, const opengl::Enum dpfail, const opengl::Enum dppass) noexcept
+    {
+        get().internal_renderer_->stencil_op(sfail, dpfail, dppass);
+    }
+
+    void Renderer::stencil_fn(const opengl::Enum fn, const i32 ref, const u32 mask) noexcept
+    {
+        get().internal_renderer_->stencil_fn(fn, ref, mask);
+    }
+
+    void Renderer::colour_mask(const bool r, const bool g, const bool b, const bool a) noexcept
+    {
+        get().internal_renderer_->colour_mask(r, g, b, a);
+    }
 } // namespace codex::gfx

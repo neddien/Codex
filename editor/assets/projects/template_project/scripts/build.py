@@ -140,9 +140,12 @@ def cmd_build(args: argparse.Namespace) -> None:
         elapsed = com.Chrono.end()
         com.log(f"Conan installation finished. Took: {elapsed:.2f}ms")
 
-    if needs_configure:
+    if args.conan_sync:
         _conan_install()
+
+    if needs_configure:
         _cmake_conf()
+
 
     com.Chrono.begin()
     res = com.run(
@@ -242,6 +245,10 @@ def _make_parser() -> argparse.ArgumentParser:
     build.add_argument(
         "--vglrun", action="store_true",
         help="Prefix the editor launch with vglrun (VirtualGL; implies --run)",
+    )
+    build.add_argument("--conan-sync", action="store_true",
+        dest="conan_sync",
+        help="Synchronize Conan packages"
     )
 
     # -- clear ---------------------------------------------------------------

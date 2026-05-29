@@ -1,0 +1,2 @@
+# Ignore conan, because this is generated
+conan/

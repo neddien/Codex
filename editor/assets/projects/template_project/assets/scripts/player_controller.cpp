@@ -2,15 +2,18 @@
 
 void PlayerController::on_init()
 {
-    rb2d_   = &get_component<RigidBody2DComponent>();
+    if (has_component<RigidBody2DComponent>())
+        rb2d_ = &get_component<RigidBody2DComponent>();
+    else
+        log(Error, "Doesnt have a rigidbody component");
     camera_ = primary_camera_entity();
 }
 
-void PlayerController::on_update(const f32 delta_time)
+void PlayerController::on_update(const f32 dt)
 {
 }
 
-void PlayerController::on_fixed_update(const f32 delta_time)
+void PlayerController::on_fixed_update(const f32 dt)
 {
     if (camera_ && rb2d_) {
         auto& camera    = camera_.get_component<CameraComponent>();
@@ -32,6 +35,8 @@ void PlayerController::on_fixed_update(const f32 delta_time)
             rb2d_->apply_torque(1.0f);
         if (Input::is_key_down(Key::Right))
             rb2d_->apply_torque(-1.0f);
+        if (Input::is_key_down(Key::F))
+            throw CodexException("Why did you press F?");
 
         rb2d_->apply_force(current_velocity_);
     }

@@ -45,6 +45,7 @@ namespace codex {
         [[nodiscard]] virtual Shared<void>              load_asset(Shared<fs::FileHandle>      fh,
                                                                    const IAssetImportSettings* params = nullptr) const noexcept = 0;
         [[nodiscard]] virtual std::type_index           asset_type_id() const noexcept   = 0;
+        [[nodiscard]] virtual usize                     asset_type_hash() const noexcept = 0;
         [[nodiscard]] virtual std::string_view          asset_type_name() const noexcept = 0;
         [[nodiscard]] virtual Box<IAssetImportSettings> default_import_settings() const noexcept { return nullptr; };
     };
@@ -53,6 +54,8 @@ namespace codex {
     concept AssetType = requires(T& obj) {
         { std::derived_from<T, IAsset> };
         { obj.type_name() } -> std::convertible_to<std::string_view>;
+    } || requires {
+        { std::is_same_v<T, void> };
     };
 
     template <typename T>
@@ -64,6 +67,17 @@ namespace codex {
     class AssetLoaderBase : public IAssetLoader
     {
     public:
+        [[nodiscard]] virtual Shared<TAsset> load(Shared<fs::FileHandle>      fh,
+                                                  const TAssetImportSettings& params) const noexcept = 0;
+        [[nodiscard]] std::type_index        asset_type_id() const noexcept { return typeid(TAsset); }
+        [[nodiscard]] usize            asset_type_hash() const noexcept override { return typeid(TAsset).hash_code(); }
+        [[nodiscard]] std::string_view asset_type_name() const noexcept override { return TAsset::ktype_name(); }
+        [[nodiscard]] Box<IAssetImportSettings> default_import_settings() const noexcept override
+        {
+            return Box<TAssetImportSettings>::make().template as<TAssetImportSettings>();
+        }
+
+    private:
         [[nodiscard]] Shared<void> load_asset(Shared<fs::FileHandle>      fh,
                                               const IAssetImportSettings* params = nullptr) const noexcept override
         {
@@ -71,27 +85,38 @@ namespace codex {
                 return load(fh, *static_cast<const TAssetImportSettings*>(params));
             return load(fh, TAssetImportSettings{});
         }
-        [[nodiscard]] virtual Shared<TAsset> load(Shared<fs::FileHandle>      fh,
-                                                  const TAssetImportSettings& params) const noexcept = 0;
-        [[nodiscard]] std::type_index        asset_type_id() const noexcept { return typeid(TAsset); }
-        [[nodiscard]] std::string_view       asset_type_name() const noexcept override { return TAsset::ktype_name(); }
-        [[nodiscard]] Box<IAssetImportSettings> default_import_settings() const noexcept override
-        {
-            return Box<TAssetImportSettings>::make().template as<TAssetImportSettings>();
-        }
     };
 
     template <AssetType TAsset>
     class AssetLoaderBase<TAsset, void> : public IAssetLoader
     {
     public:
+        [[nodiscard]] virtual Shared<TAsset> load(Shared<fs::FileHandle> fh) const noexcept = 0;
+        [[nodiscard]] std::type_index        asset_type_id() const noexcept override { return typeid(TAsset); }
+        [[nodiscard]] usize            asset_type_hash() const noexcept override { return typeid(TAsset).hash_code(); }
+        [[nodiscard]] std::string_view asset_type_name() const noexcept override { return TAsset::ktype_name(); }
+
+    private:
         [[nodiscard]] Shared<void> load_asset(Shared<fs::FileHandle> fh, const IAssetImportSettings*) const noexcept
         {
             return load(fh).template as<void>();
         }
-        [[nodiscard]] virtual Shared<TAsset> load(Shared<fs::FileHandle> fh) const noexcept = 0;
-        [[nodiscard]] std::type_index        asset_type_id() const noexcept override { return typeid(TAsset); }
-        [[nodiscard]] std::string_view       asset_type_name() const noexcept override { return TAsset::ktype_name(); }
+    };
+
+    template <FixedString TypeName>
+    class NullAssetLoader : public IAssetLoader
+    {
+    public:
+        [[nodiscard]] std::type_index asset_type_id() const noexcept override { return typeid(void); }
+        [[nodiscard]] usize asset_type_hash() const noexcept override { return util::crypto::fnv1a(TypeName); }
+        [[nodiscard]] std::string_view asset_type_name() const noexcept override { return TypeName; }
+
+    private:
+        [[nodiscard]] Shared<void> load_asset(Shared<fs::FileHandle>,
+                                              const IAssetImportSettings*) const noexcept override
+        {
+            return nullptr;
+        }
     };
 
     struct AssetPath : public ISerializable
@@ -106,7 +131,7 @@ namespace codex {
         AssetPath(const std::string_view path, const UUID uuid = UUID{}) noexcept
             : path_{ path }
             , uuid_{ uuid }
-            , hash_{ std::hash<std::string>{}(path_) }
+            , hash_{ util::crypto::fnv1a(path_) }
         {
         }
 
@@ -192,7 +217,7 @@ namespace codex {
         [[nodiscard]] bool     valid() const noexcept { return asset_ != nullptr; }
         [[nodiscard]] explicit operator bool() const noexcept { return valid(); }
 
-        [[nodiscard]] Shared<TAsset> shared() const noexcept { return asset_; }
+        [[nodiscard]] Shared<TAsset> as_shared() const noexcept { return asset_; }
 
         Shared<TAsset> release() noexcept
         {
@@ -217,7 +242,7 @@ namespace std {
     {
         [[nodiscard]] std::size_t operator()(const codex::AssetPath& path) const noexcept
         {
-            return std::hash<codex::UUID>{}(path.uuid()) ^ std::hash<std::string>{}(path.path());
+            return (codex::u64)path.uuid() ^ codex::util::crypto::fnv1a(path.path());
         }
     };
 } // namespace std

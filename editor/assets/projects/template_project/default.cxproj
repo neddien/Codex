@@ -144,7 +144,7 @@
                 {
                     "type": "SpriteRendererComponent",
                     "asset": {
-                        "path": "/editor/project/assets/sprites/gramaphone.png",
+                        "path": "/editor/project/assets/sprites/phonograph.png",
                         "uuid": "f18c-2c42-3ed1a3dc"
                     },
                     "texture_coords": {
@@ -200,6 +200,36 @@
                 },
                 {
                     "type": "AudioListenerComponent"
+                }
+            ]
+        },
+        {
+            "components": [
+                {
+                    "type": "IDComponent",
+                    "uuid": "ee7a-9b7d-0c89a576"
+                },
+                {
+                    "type": "TransformComponent",
+                    "position": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": 0.0
+                    },
+                    "rotation": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": 0.0
+                    },
+                    "scale": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    }
+                },
+                {
+                    "type": "TagComponent",
+                    "tag": "Entity 4"
                 }
             ]
         }

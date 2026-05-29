@@ -13,7 +13,7 @@ int main(int argc, char** argv)
 {
     try {
         auto app = codex::create_engine({ argc, argv });
-        GImGui   = codex::Engine::mgui_layer()->imgui_context();
+        GImGui   = codex::Engine::imgui_layer()->imgui_context();
         app->on_init();
         app->run();
         delete app;

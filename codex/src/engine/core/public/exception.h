@@ -1,6 +1,6 @@
 #pragma once
 
-#include <fmt/core.h>
+#include <engine/core/public/common_third_party_libs.h>
 
 #define CX_CUSTOM_EXCEPTION(name, default_msg)                                                                         \
     class name : public CodexException                                                                                 \

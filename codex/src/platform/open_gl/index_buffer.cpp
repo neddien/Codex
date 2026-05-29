@@ -30,7 +30,7 @@ namespace codex::opengl {
     {
         GL_Call(glGenBuffers(1, &renderer_id_));
         GL_Call(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderer_id_));
-        GL_Call(glBufferData(GL_ELEMENT_ARRAY_BUFFER, index_count * sizeof(u32), data, GL_STATIC_DRAW));
+        GL_Call(glBufferData(GL_ELEMENT_ARRAY_BUFFER, index_count * sizeof(u32), data, to_glenum(usage)));
         indices_ = index_count;
     }
 } // namespace codex::opengl

@@ -1,9 +1,8 @@
 #pragma once
 
 #include <engine/concurrency/public/mutex.h>
+#include <engine/core/public/common_third_party_libs.h>
 #include <engine/core/public/uuid.h>
-
-#include <entt.hpp>
 
 namespace codex {
     // Forward declarations.
@@ -54,6 +53,8 @@ namespace codex {
         [[nodiscard]] UUID                      uuid() const noexcept;
         [[nodiscard]] TransformComponent&       transform() noexcept;
         [[nodiscard]] const TransformComponent& transform() const noexcept;
+        [[nodiscard]] const Scene*              scene() const noexcept;
+        [[nodiscard]] Scene*                    scene() noexcept;
 
     public:
         template <typename T, typename... TArgs>

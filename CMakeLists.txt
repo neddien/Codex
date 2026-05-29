@@ -88,9 +88,11 @@ set(CX_ROOT_DIR ${CMAKE_SOURCE_DIR})
 # Export compile_commands.json for the LSPs.
 set(CMAKE_EXPORT_COMPILE_COMMANDS on)
 
+message(STATUS "${PROJECT_NAME}: Preset: ${CMAKE_PRESET_NAME}")
+
 # If we're not on VS, then copy compile_commands.json for LSPs like clangd and
 # ccls.
-message(":: Generator: " ${CMAKE_GENERATOR})
+message(STATUS "${PROJECT_NAME}: Generator: " ${CMAKE_GENERATOR})
 if(NOT CMAKE_GENERATOR MATCHES "Visual Studio")
   add_custom_command(
     OUTPUT ${CMAKE_SOURCE_DIR}/compile_commands.json
@@ -107,6 +109,7 @@ endif()
 
 # Add sub projects.
 add_subdirectory("codex")
+add_subdirectory("runtime")
 
 if(DEFINED CX_ENABLE_NETNT)
   add_subdirectory("NetNT")

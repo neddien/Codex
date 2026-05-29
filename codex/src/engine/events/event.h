@@ -1,7 +1,7 @@
 #pragma once
 
 #include <engine/core/public/common_def.h>
-#include <fmt/core.h>
+#include <engine/core/public/common_third_party_libs.h>
 
 #undef None
 

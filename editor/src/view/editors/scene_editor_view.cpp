@@ -143,9 +143,14 @@ namespace codex::editor {
         this->attach_panel<ContentBrowserView>();
         this->attach_panel<AssetPropertiesView>();
 
+        load_outline_shader();
+
         opengl::FrameBufferProperties props;
-        props.attachments = { { .format = opengl::TextureFormat::RGBA8 },
-                              { .format = opengl::TextureFormat::RedInt32 } };
+        props.attachments = {
+            { .format = opengl::TextureFormat::RGBA8 },
+            { .format = opengl::TextureFormat::RedInt32 },
+            { .format = opengl::TextureFormat::Depth24Stencil8 },
+        };
 
         // TODO: This is the scene render resolution so you should not hard code this.
         props.width  = 1920;
@@ -159,6 +164,7 @@ namespace codex::editor {
         // glEnable(GL_DEPTH_TEST);
         // glDepthFunc(GL_LESS);
 
+        // TODO: Remove this hardcoded path
         load_project("/home/endrohu/dev/Codex.nb/editor/assets/projects/template_project/default.cxproj");
     }
 
@@ -167,7 +173,7 @@ namespace codex::editor {
         unload_project();
     }
 
-    void SceneEditorView::on_update(const f32 deltaTime)
+    void SceneEditorView::on_update(const f32 dt)
     {
         auto& d     = descriptor_;
         auto  scene = d->active_scene.lock();
@@ -178,9 +184,11 @@ namespace codex::editor {
             NBMan::load(d->script_module_path, *scene);
             ConsoleMan::append_message("-- Script module load finished.");
 
-            auto nbc_view = scene->get_all_entities_with_component<NativeBehaviourComponent>();
+            auto nbc_view = scene->entities_with_component<NativeBehaviourComponent>();
+            /*
             for (auto& e : nbc_view)
                 e.get_component<NativeBehaviourComponent>().attach_pending_scripts();
+            */
         }
 
         // Auto-hide compilation notification after 3 seconds.
@@ -198,26 +206,12 @@ namespace codex::editor {
 
         framebuffer_->bind();
 
-        // Viewport resize
-        {
-            CX_DEBUG_PROFILE_SCOPE("on_update::viewport_resize")
-
-            auto&       camera          = Editor::get_viewport_camera();
-            static auto prev_viewport   = viewport_size_;
-            static auto prev_camera_pan = camera.pan();
-            if (viewport_size_ != prev_viewport || camera.pan() != prev_camera_pan) {
-                camera.set_width(viewport_size_.x);
-                camera.set_height(viewport_size_.y);
-                prev_viewport   = viewport_size_;
-                prev_camera_pan = camera.pan();
-                framebuffer_->resize((u32)viewport_size_.x, (u32)viewport_size_.y);
-            }
-        }
+        viewport_resize();
 
         gfx::Renderer::set_clear_colour(0.2f, 0.2f, 0.2f, 1.0f);
         gfx::Renderer::clear();
 
-        debug_draw_.begin(Editor::get_viewport_camera());
+        debug_draw_.begin(Editor::viewport_camera());
 
         switch (scene->state()) {
             case Scene::State::Edit: {
@@ -225,25 +219,90 @@ namespace codex::editor {
 
                 if (d->selected_entity.entity) {
                     if (d->selected_entity.entity.has_component<GridRendererComponent>()) {
-                        render_grid(debug_draw_, Editor::get_viewport_camera(),
+                        render_grid(debug_draw_, Editor::viewport_camera(),
                                     d->selected_entity.entity.get_component<GridRendererComponent>());
                     }
                 }
 
                 visualize_lines();
 
-                scene->on_editor_update(deltaTime, Editor::get_viewport_camera());
+                gfx::Renderer::stencil_test(false);
+                scene->on_editor_update(dt, Editor::viewport_camera());
+
+                if (d->selected_entity.entity && d->outline_shader &&
+                    d->selected_entity.entity.has_component<SpriteRendererComponent>()) {
+                    const auto&                tc  = d->selected_entity.entity.get_component<TransformComponent>();
+                    const auto&                src = d->selected_entity.entity.get_component<SpriteRendererComponent>();
+                    const scene::EditorCamera& camera = Editor::viewport_camera();
+
+                    gfx::Renderer::stencil_mask(0xff);
+                    gfx::Renderer::stencil_op(opengl::Enum::Keep, opengl::Enum::Keep, opengl::Enum::Replace);
+                    gfx::Renderer::stencil_fn(opengl::Enum::Always, 1, 0xff);
+                    gfx::Renderer::stencil_test(true);
+                    gfx::Renderer::colour_mask(false, false, false, false);
+
+                    // TODO: This is TRASH but I don't care about it right now.
+                    //  render d->selected_entity ONLY!
+                    {
+                        if (const auto& s = src.sprite(); s) {
+                            gfx::BatchRenderer2D::begin(Editor::viewport_camera());
+
+                            const auto size = s.size();
+                            // The scaling we do here is the Sprite's size.
+
+                            // TODO: Get rid of this and optimize this?
+                            const auto transform =
+                                tc.to_matrix() * glm::scale(glm::identity<Matrix4f>(), { size.x, size.y, 1.0f });
+                            gfx::BatchRenderer2D::render_sprite(src.sprite(), transform,
+                                                                static_cast<i32>(d->selected_entity.entity));
+
+                            gfx::BatchRenderer2D::end();
+                        }
+                    }
+
+                    d->outline_shader->bind();
+                    d->outline_shader->set_uniform_4f("u_outline_colour", d->select_colour.x, d->select_colour.y,
+                                                      d->select_colour.z, d->select_colour.w);
+                    d->outline_shader->set_uniform_1f("u_outline_size", d->outline_border_size);
+                    gfx::Renderer::stencil_mask(0x00);
+                    gfx::Renderer::stencil_fn(opengl::Enum::NotEqual, 1, 0xff);
+                    gfx::Renderer::colour_mask(true, true, true, true);
+
+                    // TODO: This is also TRASH but I don't care about it right now.
+                    // render outline!
+                    {
+                        if (const auto& s = src.sprite(); s) {
+                            gfx::BatchRenderer2D::begin(Editor::viewport_camera());
+
+                            const auto size = s.size();
+                            // The scaling we do here is the Sprite's size.
+
+                            // TODO: Get rid of this and optimize this?
+                            const auto transform =
+                                tc.to_matrix() * glm::scale(glm::identity<Matrix4f>(), { size.x, size.y, 1.0f });
+                            gfx::BatchRenderer2D::render_sprite(src.sprite(), transform,
+                                                                static_cast<i32>(d->selected_entity.entity));
+
+                            gfx::BatchRenderer2D::end(d->outline_shader.get());
+                        }
+                    }
+
+                    gfx::Renderer::stencil_mask(0xff);
+                    gfx::Renderer::stencil_test(false);
+                    d->outline_shader->unbind();
+                }
                 break;
             }
             case Scene::State::Play: {
                 CX_DEBUG_PROFILE_SCOPE("on_update::on_runtime_update")
-                scene->on_runtime_update(deltaTime);
+                viewport_resize();
+                scene->on_runtime_update(dt);
                 break;
             }
             case Scene::State::Simulate: {
                 CX_DEBUG_PROFILE_SCOPE("on_update::on_simulation_update")
                 visualize_lines();
-                scene->on_simulation_update(deltaTime, Editor::get_viewport_camera());
+                scene->on_simulation_update(dt, Editor::viewport_camera());
                 break;
             }
         }
@@ -277,12 +336,12 @@ namespace codex::editor {
 
         // Update our panels.
         for (auto& panel : view_panels_)
-            panel->on_pre_update(deltaTime);
+            panel->on_pre_update(dt);
     }
 
     void SceneEditorView::on_imgui_render()
     {
-        CX_DEBUG_PROFILE_SCOPE()
+        CX_DEBUG_PROFILE_SCOPE("SceneEditorView::on_imgui_render")
 
         auto& d  = descriptor_;
         auto& io = ImGui::GetIO();
@@ -324,7 +383,7 @@ namespace codex::editor {
             ImGuizmo::BeginFrame();
 
             // Enable docking on the main window.
-            ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport());
+            ImGui::DockSpaceOverViewport(0);
 
             static bool show_demo_window = true;
             ImGui::ShowDemoWindow(&show_demo_window);
@@ -360,18 +419,6 @@ namespace codex::editor {
                     }
                     if (ImGui::MenuItem("Clear build files")) {
                         auto& d = descriptor_;
-                        // d->active_scene.lock()->UnloadScriptModule();
-
-                        /*
-                        const auto files =
-                            fs::get_all_files_with_extensions(d->current_project_path / "Assets/", { ".h", ".hpp", ".hh"
-                        }); std::vector<rf::RFScript> rf_files; rf_files.reserve(files.size());
-
-                        const auto output_path = stdfs::absolute(d->current_project_path / "int/");
-                        for (const auto& f : files)
-                            rf_files.emplace_back(f).EmitMetadata(output_path);
-                        rf::RFScript::EmitBaseClass(output_path, rf_files);
-                        */
 
                         sys::ProcessInfo p_info;
 
@@ -439,7 +486,7 @@ namespace codex::editor {
         // Engine viewport
         {
             auto                 active_scene = d->active_scene.lock();
-            scene::EditorCamera& camera       = Editor::get_viewport_camera();
+            scene::EditorCamera& camera       = Editor::viewport_camera();
 
             ImGui::Begin("Viewport");
             const auto viewport_min_region = ImGui::GetWindowContentRegionMin();
@@ -452,8 +499,8 @@ namespace codex::editor {
 
             auto current_viewport_window_size = ImGui::GetContentRegionAvail();
             viewport_size_ = Vector2f{ current_viewport_window_size.x, current_viewport_window_size.y };
-            ImGui::Image(static_cast<ImTextureID>(framebuffer_->colour_attachment_id_at(0)),
-                         current_viewport_window_size, { 0, 1 }, { 1, 0 });
+            ImGui::Image((ImTextureID)(framebuffer_->colour_attachment_id_at(0)), current_viewport_window_size,
+                         { 0, 1 }, { 1, 0 });
 
             viewport_focused_ = ImGui::IsWindowFocused();
             viewport_hovered_ = ImGui::IsWindowHovered();
@@ -496,12 +543,28 @@ namespace codex::editor {
 
         // Render info
         {
-            ImGui::Begin("Render Info");
-            ImGui::Text("Renderer information");
-            ImGui::Text("FPS: %u", Engine::fps());
-            ImGui::Text("Delta time: %f", Engine::delta());
-            ImGui::Text("Batch count: %zu", gfx::BatchRenderer2D::batch_count());
-            ImGui::Text("Total quad count: %zu", gfx::BatchRenderer2D::quad_count());
+            ImGui::Begin("RHI Info");
+            // switch (Engine::RenderingHardwareInterface::CurrentAPI()) {
+            //     case GraphicsAPI::OpenGL:
+            //     {
+            //         if (ImGui::TreeNodeEx("OpenGL"))
+            //     }
+            //     break;
+            //     case GraphicsAPI::Vulkan:
+            //     {
+            //         if (ImGui::TreeNodeEx("OpenGL"))
+            //     }
+            //     break;
+            // }
+
+            if (ImGui::CollapsingHeader("OpenGL", ImGuiTreeNodeFlags_DefaultOpen)) {
+                ImGui::Text("FPS: %u", Engine::fps());
+                ImGui::Text("Delta time: %f", Engine::delta());
+                ImGui::Text("Batch count: %zu", gfx::BatchRenderer2D::batch_count());
+                ImGui::Text("Total quad count: %zu", gfx::BatchRenderer2D::quad_count());
+                ImGui::Text("Command Queue Size: 0");
+                // ImGui::TreePop();
+            }
             ImGui::End();
         }
 
@@ -524,7 +587,7 @@ namespace codex::editor {
             }
         }
 
-        Engine::get().mgui_layer()->block_events(block_events);
+        Engine::get().imgui_layer()->block_events(block_events);
 
         // Compilation status overlay (bottom-right)
         {
@@ -627,7 +690,7 @@ namespace codex::editor {
             if (d->selected_entity.entity && d->selected_entity.entity.has_component<TilemapComponent>()) {
                 if (Input::is_mouse_down(Mouse::LeftMouse)) {
                     auto& tmc    = d->selected_entity.entity.get_component<TilemapComponent>();
-                    auto& camera = Editor::get_viewport_camera();
+                    auto& camera = Editor::viewport_camera();
 
                     // Vector conversion fiesta
                     const auto camera_dim =
@@ -659,7 +722,7 @@ namespace codex::editor {
 
             if (Input::is_mouse_down(Mouse::MiddleMouse)) {
                 if (Input::is_mouse_dragging()) {
-                    auto&      camera = Editor::get_viewport_camera();
+                    auto&      camera = Editor::viewport_camera();
                     const auto vec =
                         Vector3f{ Input::mouse_delta_x(), Input::mouse_delta_y() * -1.0f, .0f } * camera.pan();
                     if (vec.x <= 10 && vec.y <= 10)
@@ -669,7 +732,7 @@ namespace codex::editor {
             } else if (d->selected_entity.entity && d->selected_entity.entity.has_component<TilemapComponent>()) {
                 if (Input::is_mouse_down(Mouse::LeftMouse)) {
                     auto& tmc    = d->selected_entity.entity.get_component<TilemapComponent>();
-                    auto& camera = Editor::get_viewport_camera();
+                    auto& camera = Editor::viewport_camera();
 
                     // Vector conversion fiesta
                     const auto camera_dim =
@@ -697,7 +760,7 @@ namespace codex::editor {
         mouse_pos.y = (viewport_bounds_[1] - viewport_bounds_[0]).y - mouse_pos.y;
         if (mouse_pos.x >= 0 && mouse_pos.y >= 0 && mouse_pos.x <= viewport_size_.x &&
             mouse_pos.y <= viewport_size_.y) {
-            auto& camera = Editor::get_viewport_camera();
+            auto& camera = Editor::viewport_camera();
 
             // TODO: These should be Editor global
             constexpr auto camera_pan_min = 0.005f;
@@ -762,10 +825,17 @@ namespace codex::editor {
         auto& d = descriptor_;
         d->selected_entity.deselect();
         d->runtime_scene = Shared<Scene>::make();
-        d->editor_scene->copy_to(*d->runtime_scene);
-        d->active_scene = d->runtime_scene;
-        d->active_scene.lock()->set_state(Scene::State::Play);
-        d->active_scene.lock()->on_runtime_start();
+        nlohmann::ordered_json json;
+        JsonSerializationNode  node{ json };
+        d->editor_scene->clone_via_serialization(*d->runtime_scene, node);
+        // d->editor_scene->copy_to(*d->runtime_scene);
+
+        d->active_scene   = d->runtime_scene;
+        auto active_scene = d->active_scene.lock();
+        assert(active_scene);
+
+        active_scene->set_state(Scene::State::Play);
+        active_scene->on_runtime_start();
     }
 
     void SceneEditorView::on_scene_simulate() noexcept
@@ -773,10 +843,17 @@ namespace codex::editor {
         auto& d = descriptor_;
         d->selected_entity.deselect();
         d->runtime_scene = Shared<Scene>::make();
-        d->editor_scene->copy_to(*d->runtime_scene);
-        d->active_scene = d->runtime_scene;
-        d->active_scene.lock()->set_state(Scene::State::Simulate);
-        d->active_scene.lock()->on_simulation_start();
+        nlohmann::ordered_json json;
+        JsonSerializationNode  node{ json };
+        d->editor_scene->clone_via_serialization(*d->runtime_scene, node);
+        // d->editor_scene->copy_to(*d->runtime_scene);
+
+        d->active_scene   = d->runtime_scene;
+        auto active_scene = d->active_scene.lock();
+        assert(active_scene);
+
+        active_scene->set_state(Scene::State::Simulate);
+        active_scene->on_simulation_start();
     }
 
     void SceneEditorView::on_scene_stop() noexcept
@@ -802,14 +879,13 @@ namespace codex::editor {
 
     void SceneEditorView::visualize_lines() const noexcept
     {
-        CX_DEBUG_PROFILE_SCOPE()
+        CX_DEBUG_PROFILE_SCOPE("SceneEditorView::visualize_lines")
 
         const auto& d = descriptor_;
 
         // Visualize colliders
         {
-            const auto box_colliders =
-                d->active_scene.lock()->get_all_entities_with_component<BoxCollider2DComponent>();
+            const auto box_colliders = d->active_scene.lock()->entities_with_component<BoxCollider2DComponent>();
             for (const auto& e : box_colliders) {
                 const auto& bc = e.get_component<BoxCollider2DComponent>();
                 const auto& tc = e.get_component<TransformComponent>();
@@ -818,8 +894,7 @@ namespace codex::editor {
                                          tc.rotation.z);
             }
 
-            const auto circle_colliders =
-                d->active_scene.lock()->get_all_entities_with_component<CircleCollider2DComponent>();
+            const auto circle_colliders = d->active_scene.lock()->entities_with_component<CircleCollider2DComponent>();
             for (const auto& e : circle_colliders) {
                 const auto& cc = e.get_component<CircleCollider2DComponent>();
                 const auto& tc = e.get_component<TransformComponent>();
@@ -830,7 +905,7 @@ namespace codex::editor {
 
         // Visualize camera
         {
-            const auto cameras = d->active_scene.lock()->get_all_entities_with_component<CameraComponent>();
+            const auto cameras = d->active_scene.lock()->entities_with_component<CameraComponent>();
             for (const auto& e : cameras) {
                 const auto& tc = e.get_component<TransformComponent>();
                 const auto& cc = e.get_component<CameraComponent>();
@@ -859,7 +934,7 @@ namespace codex::editor {
         AssetManager::init(*d->vfs, "/editor/project/assets");
 
         d->registry_state = AssetRegistryState::Scanning;
-        Engine::get_worker_pool().submit(
+        Engine::worker_pool().submit(
             [this]
             {
                 std::scoped_lock guard{ descriptor_->registry_state_mutex };
@@ -922,7 +997,7 @@ namespace codex::editor {
     void SceneEditorView::render_grid(gfx::DebugDraw& renderer, const scene::EditorCamera& camera,
                                       const GridRendererComponent& c) noexcept
     {
-        CX_DEBUG_PROFILE_SCOPE()
+        CX_DEBUG_PROFILE_SCOPE("SceneEditorView::render_grid")
 
         const auto camera_dim = Vector2{ camera.width() * camera.pan(), camera.height() * camera.pan() };
         const auto camera_pos = camera.pos() - Vector3f{ camera_dim / 2, 0.0f };
@@ -937,6 +1012,57 @@ namespace codex::editor {
         for (auto i = 0; i < count.y; ++i) {
             renderer.draw_line_2d({ camera_pos.x, start_pos.y + i * c.cell_size.y },
                                   { camera_pos.x + camera_dim.x, start_pos.y + i * c.cell_size.y }, c.colour);
+        }
+    }
+
+    void SceneEditorView::load_outline_shader()
+    {
+        std::string shader_src;
+        if (auto fh = EditorApplication::vfs().open("/editor/share/gl_shaders/batch_renderer2d_quad_outline.glsl",
+                                                    { fs::FileMode::Read });
+            fh) {
+            shader_src.resize(fh->size());
+            fh->read(shader_src.data(), fh->size());
+            descriptor_->outline_shader = Box<gfx::Shader>::make(std::move(shader_src));
+            if (descriptor_->outline_shader->compile_shader()) {
+                descriptor_->outline_shader->bind();
+                descriptor_->outline_shader->set_uniform_4f("u_outline_colour", descriptor_->select_colour.x,
+                                                            descriptor_->select_colour.y, descriptor_->select_colour.z,
+                                                            descriptor_->select_colour.w);
+                descriptor_->outline_shader->unbind();
+            } else {
+                log(Error, "Failed to compile outline shader");
+                descriptor_->outline_shader.reset();
+            }
+        } else
+            log(Error, "Failed to load source for outline shader");
+    }
+
+    void SceneEditorView::viewport_resize()
+
+    {
+        auto& d = descriptor_;
+
+        CX_DEBUG_PROFILE_SCOPE("on_update::viewport_resize")
+
+        auto scene = d->active_scene.lock();
+        assert(scene);
+
+        scene::Camera* camera = nullptr;
+        if (scene->state() == Scene::State::Play) {
+            Entity entity = scene->primary_camera_entity();
+            camera        = &entity.get_component<CameraComponent>().camera;
+        } else
+            camera = &Editor::viewport_camera();
+
+        static auto prev_viewport = viewport_size_;
+        if (viewport_size_ != prev_viewport || viewport_size_ != Vector2f{ camera->width(), camera->height() }) {
+            camera->set_width(viewport_size_.x);
+            camera->set_height(viewport_size_.y);
+            prev_viewport = viewport_size_;
+            framebuffer_->resize((u32)viewport_size_.x, (u32)viewport_size_.y);
+            log(Info, "Primary framebuffer resize: {}x{}", framebuffer_->properties().width,
+                framebuffer_->properties().height);
         }
     }
 
@@ -958,7 +1084,7 @@ namespace codex::editor {
         ImGui::PushMultiItemsWidths(3, ImGui::CalcItemWidth());
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
 
-        float  lineHeight = GImGui->Font->Scale + GImGui->Style.FramePadding.y * 2.0f;
+        float  lineHeight = ImGui::GetFrameHeight();
         ImVec2 buttonSize = { lineHeight + 3.0f, lineHeight };
 
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.8f, 0.1f, 0.15f, 1.0f });
@@ -1028,7 +1154,7 @@ namespace codex::editor {
         ImGui::PushMultiItemsWidths(3, ImGui::CalcItemWidth());
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0, 0 });
 
-        f32    lineHeight = GImGui->Font->Scale + GImGui->Style.FramePadding.y * 2.0f;
+        f32    lineHeight = ImGui::GetFrameHeight();
         ImVec2 buttonSize = { lineHeight + 3.0f, lineHeight };
 
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.8f, 0.1f, 0.15f, 1.0f });

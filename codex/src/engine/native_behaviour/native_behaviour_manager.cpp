@@ -5,58 +5,87 @@
 #include <engine/system/dynamic_library.h>
 
 namespace codex {
-    NBMan::~NBMan() noexcept
+    NBMan::NBMan() noexcept  = default;
+    NBMan::~NBMan() noexcept = default;
+
+    void NBMan::init()
     {
-        if (nb_instance_) {
-            const auto path = nb_instance_->get_path().string();
-            types_.clear();
-            nb_instance_.reset();
-            scene_ = nullptr;
-            info("~NBMan(): {}", path);
-        }
+        auto& self = get();
+        self.log(Info, "Subsystem initialized");
     }
 
-    NBMan& NBMan::get()
+    void NBMan::dispose() noexcept
     {
-        static NBMan instance;
-        return instance;
+        auto& self = get();
+        if (self.nb_instance_) {
+            const auto path = self.nb_instance_->get_path().string();
+            self.types_.clear();
+            self.nb_instance_.reset();
+            self.scene_ = nullptr;
+        }
+
+        self.log(Info, "Subsystem disposed");
     }
 
     void NBMan::load(const std::filesystem::path path, Scene& scene)
     {
-        auto& instance = get();
-        if (instance.nb_instance_) {
+        auto& self = get();
+        if (self.nb_instance_) {
             throw ScriptException("An NBMan instance has already been loaded.");
         }
 
-        instance.scene_       = &scene;
-        instance.nb_instance_ = Box<sys::DLib>::make(std::move(path));
+        self.scene_       = &scene;
+        self.nb_instance_ = Box<sys::DLib>::make(std::move(path));
 
-        instance.info("Script module loaded: {}", instance.nb_instance_->get_path().string());
+        self.log(Info, "Script module loaded: {}", self.nb_instance_->get_path().string());
     }
 
     void NBMan::unload(const bool save_to_pending)
     {
-        auto& instance = get();
-        if (instance.nb_instance_) {
-            if (save_to_pending && instance.scene_) {
-                auto nbc_view = instance.scene_->get_all_entities_with_component<NativeBehaviourComponent>();
-                for (auto& e : nbc_view)
-                    e.get_component<NativeBehaviourComponent>().save_attached_to_pending();
+        auto& self = get();
+        if (self.nb_instance_) {
+            if (save_to_pending && self.scene_) {
+                auto nbc_view = self.scene_->entities_with_component<NativeBehaviourComponent>();
+                // for (auto& e : nbc_view)
+                //     e.get_component<NativeBehaviourComponent>().save_attached_to_pending();
             }
 
-            const auto path = instance.nb_instance_->get_path().string();
-            instance.types_.clear();
-            instance.nb_instance_.reset();
-            instance.scene_ = nullptr;
-            instance.info("Script module unloaded: {}", path);
+            const auto path = self.nb_instance_->get_path().string();
+            self.types_.clear();
+            self.nb_instance_.reset();
+            self.scene_ = nullptr;
+            self.log(Info, "Script module unloaded: {}", path);
         } else {
             throw ScriptException("No NBMan instance loaded.");
         }
     }
 
+    bool NBMan::is_type_registered(const std::string_view type_name)
+    {
+        /* clang-format: no inline */
+        auto& self = get();
+        return self.types_.contains(util::crypto::fnv1a(type_name));
+    }
+
+    std::vector<std::string> NBMan::registered_types() noexcept
+    {
+        auto&                    self = get();
+        std::vector<std::string> types;
+        types.reserve(self.types_.size());
+        for (const auto& [x, y] : self.types_)
+            types.push_back(y.type_name);
+        return types;
+    }
+
     bool NBMan::instance_loaded() noexcept
     {
         return get().nb_instance_;
+    }
+
+    const NBMan::BHRecord* NBMan::type_record(const std::string_view type) noexcept
+    {
+        auto&       self = get();
+        const usize hash = util::crypto::fnv1a(type);
+        return (self.types_.contains(hash)) ? &self.types_[hash] : nullptr;
     }
 } // namespace codex

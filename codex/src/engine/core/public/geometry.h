@@ -1,6 +1,6 @@
 #pragma once
 
-#include <glm/glm.hpp>
+#include <engine/core/public/common_third_party_libs.h>
 #include <platform/open_gl/geometry.h>
 
 namespace codex::math {

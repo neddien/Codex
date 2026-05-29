@@ -2,15 +2,17 @@
 
 #include <engine/asset_manager/public/asset_manager.h>
 #include <engine/audio/audio_system.h>
+#include <engine/core/project.h>
+#include <engine/core/public/version.h>
 #include <engine/debug/public/profiler.h>
 #include <engine/debug/public/time_scope.h>
 #include <engine/scene/component_factory.h>
 #include <engine/scene/public/components.inl>
+#include <engine/scene/public/entity.inl>
 #include <engine/scene/public/scene.h>
 
 #include "public/exception.h"
 #include "public/input.h"
-#include <engine/core/public/version.h>
 
 namespace codex {
     namespace stdfs = std::filesystem;
@@ -22,7 +24,17 @@ namespace codex {
     Engine* Engine::s_instance_ = nullptr;
 
     Engine::Engine(EngineProperties args)
-        : properties_{ std::move(args) }
+        : project_{ Box<EngineProject>::make() }
+        , properties_{ project_->engine_properties }
+
+    {
+        properties_ = std::move(args);
+        internal_init();
+    }
+
+    Engine::Engine(const EngineProject& project)
+        : project_{ Box<EngineProject>::make(project) }
+        , properties_{ project_->engine_properties }
     {
         internal_init();
     }
@@ -46,12 +58,18 @@ namespace codex {
 
     void Engine::internal_init()
     {
-        if (properties_.flags & EngineFlags::Logger)
-            codex::detail::init_logger();
+        if (properties_.flags & EngineFlags::Logger) {
+            // TODO: Engine ctor might take a LogInitProperties?
+            // using LoggerProperties = codex::detail::LogInitProperties;
+            codex::detail::LogInitProperties props;
+            codex::detail::init_logger(props);
+        }
 
         log(Info, "Codex Engine v{} (build {} {})", CX_VERSION_STRING, CX_BUILD_COUNT, CX_COMPILER_BIN);
 
-        thread_pool_ = Box<cc::ThreadPool>::make(std::thread::hardware_concurrency() - sys::get_engine_thread_count());
+        // const auto thread_count = 4;
+        const auto thread_count = std::thread::hardware_concurrency() - sys::get_engine_thread_count();
+        thread_pool_            = Box<cc::ThreadPool>::make(thread_count);
         worker_thread_executor_ = Box<cc::ThreadedExecutor>::make(*thread_pool_);
 
         try {
@@ -79,6 +97,8 @@ namespace codex {
             if (properties_.flags & EngineFlags::Audio) {
                 AudioSystem::init();
             }
+
+            NBMan::init();
 
             imgui_layer_ = new ImGuiLayer();
             push_overlay(imgui_layer_);

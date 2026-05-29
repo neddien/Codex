@@ -18,6 +18,8 @@ int main(int argc, char** argv);
 namespace codex {
     // Forward declarations.
     class Input;
+    class EngineProject;
+    class EngineUserProject;
     namespace events {
         class WindowResizeEvent;
     } // namespace events
@@ -27,13 +29,13 @@ namespace codex {
 
     CX_CUSTOM_EXCEPTION(InvalidPathException, "The path supplied is invalid.");
 
-    [[nodiscard]] constexpr auto get_dedicated_thread_count() noexcept
+    [[nodiscard]] constexpr auto dedicated_thread_count() noexcept
     {
         // Fixed and dedicated threads are as follow:
         // Update Thread or Main Thread
         // Audio Thread
         // Physics Thread
-        // Available Threads: std::thread::hardware_concurrency() - get_dedicated_thread_count()
+        // Available Threads: std::thread::hardware_concurrency() - dedicated_thread_count()
         return 3;
     }
 
@@ -77,6 +79,7 @@ namespace codex {
 
     public:
         explicit Engine(EngineProperties props);
+        explicit Engine(const EngineProject& project);
         Engine(const Engine&)            = delete;
         Engine& operator=(const Engine&) = delete;
         Engine(Engine&&)                 = delete;
@@ -85,6 +88,7 @@ namespace codex {
 
     public:
         // FIXME: Throw a NullReferenceException when an Engine instance hasn't yet been created.
+        [[nodiscard]] static inline auto project() noexcept -> const EngineProject& { return *s_instance_->project_; }
         [[nodiscard]] static inline auto window() noexcept -> Window& { return *s_instance_->window_; }
         [[nodiscard]] static inline auto get() noexcept -> Engine& { return *s_instance_; }
         [[nodiscard]] static inline auto fps() noexcept -> u32
@@ -96,22 +100,19 @@ namespace codex {
             return s_instance_->properties_.window_properties.frame_cap;
         }
         [[nodiscard]] static inline auto delta() noexcept -> f32 { return s_instance_->delta_time_; }
-        [[nodiscard]] static inline auto mgui_layer() noexcept -> imgui::ImGuiLayer*
+        [[nodiscard]] static inline auto imgui_layer() noexcept -> imgui::ImGuiLayer*
         {
             return s_instance_->imgui_layer_;
         }
-        [[nodiscard]] static inline auto get_worker_pool() noexcept -> cc::ThreadedExecutor&
+        [[nodiscard]] static inline auto worker_pool() noexcept -> cc::ThreadedExecutor&
         {
             return *s_instance_->worker_thread_executor_;
         }
-        [[nodiscard]] static inline auto get_cooperative_pool() noexcept -> cc::CooperativeExecutor&
+        [[nodiscard]] static inline auto cooperative_pool() noexcept -> cc::CooperativeExecutor&
         {
             return s_instance_->main_thread_executor_;
         }
-        [[nodiscard]] static inline auto get_current_thread_id() noexcept -> u32
-        {
-            return sys::get_current_thread_id();
-        }
+        [[nodiscard]] static inline auto thread_id() noexcept -> u32 { return sys::get_current_thread_id(); }
         [[nodiscard]] static inline auto cwd() noexcept -> std::filesystem::path
         {
             return std::filesystem::current_path();
@@ -138,7 +139,8 @@ namespace codex {
         auto         push_overlay(Layer* overlay) -> void;
 
     protected:
-        EngineProperties          properties_;
+        Box<EngineProject>        project_;
+        EngineProperties&         properties_;
         Box<Window>               window_    = nullptr;
         bool                      running_   = true;
         bool                      minimized_ = false;

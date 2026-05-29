@@ -17,25 +17,25 @@ namespace codex::editor {
         AssetMetadata* selected_asset = AssetManager::registry().asset_metadata(d->selected_asset);
         if (selected_asset) {
             if (selected_asset->type == gfx::Texture2D::ktype_name())
-                render_texture2d_properties(selected_asset);
+                render_texture2d_properties(*selected_asset);
         }
 
         ImGui::End();
     }
 
-    void AssetPropertiesView::render_texture2d_properties(AssetMetadata* meta)
+    void AssetPropertiesView::render_texture2d_properties(AssetMetadata& meta)
     {
         auto d = get_descriptor().lock();
         assert(d);
 
         Asset<gfx::Texture2D> texture_asset;
 
-        if (auto it = texture_cache_.find(meta->path.uuid()); it != texture_cache_.end()) {
+        if (auto it = texture_cache_.find(meta.path.uuid()); it != texture_cache_.end()) {
             texture_asset = it->second;
         } else {
-            texture_asset = AssetManager::load<gfx::Texture2D>(meta->path);
+            texture_asset = AssetManager::load<gfx::Texture2D>(meta.path);
             if (texture_asset)
-                texture_cache_.try_emplace(meta->path.uuid(), texture_asset);
+                texture_cache_.try_emplace(meta.path.uuid(), texture_asset);
         }
 
         // Texture prewview image
@@ -48,7 +48,7 @@ namespace codex::editor {
             ImGui::BeginGroup();
             if (texture_asset) {
                 //  TODO: Have like a default no-texture-loaded image.
-                ImGui::Image(static_cast<ImTextureID>(texture_asset->gl_id()), { 100.0f, 100.0f }, { 0, 1 }, { 1, 0 });
+                ImGui::Image((ImTextureID)(texture_asset->gl_id()), { 100.0f, 100.0f }, { 0, 1 }, { 1, 0 });
             }
 
             static char tex_path_buf[256] = {};
@@ -59,10 +59,10 @@ namespace codex::editor {
                 // TODO: Check if AssetManager::load<T> returned a valid object, or maybe make load throw an
                 // exception?
 
-                assert(meta->import_settings);
+                assert(meta.import_settings);
 
-                AssetManager::registry().repath(meta->path, tex_path_buf);
-                AssetManager::reimport<gfx::Texture2D>(meta->path, *meta->import_settings);
+                AssetManager::registry().repath(meta.path, tex_path_buf);
+                AssetManager::reimport<gfx::Texture2D>(meta.path, *meta.import_settings);
             }
             ImGui::EndGroup();
             ImGui::Columns(1);
@@ -79,18 +79,18 @@ namespace codex::editor {
             static int item_current_idx = 0; // Here we store our
                                              // selection data as an
                                              // index.
-            const char*                      preview_item = nullptr;
-            const opengl::TextureProperties& props =
-                static_cast<const gfx::Texture2D::ImportSettings*>(meta->import_settings.get())->props;
+            const char*                   preview_item = nullptr;
+            const gfx::TextureProperties& props =
+                static_cast<const gfx::Texture2D::ImportSettings*>(meta.import_settings.get())->props;
             switch (props.filter_mode) {
-                case opengl::TextureFilterMode::Linear: preview_item = "Linear"; break;
-                case opengl::TextureFilterMode::Nearest: preview_item = "Nearest"; break;
+                case gfx::TextureFilterMode::Linear: preview_item = "Linear"; break;
+                case gfx::TextureFilterMode::Nearest: preview_item = "Nearest"; break;
             }
             if (ImGui::BeginCombo("##texture_filter_mode", preview_item)) {
-                if (ImGui::Selectable("Nearest", props.filter_mode == opengl::TextureFilterMode::Nearest)) {
-                    if (props.filter_mode != opengl::TextureFilterMode::Nearest) {
+                if (ImGui::Selectable("Nearest", props.filter_mode == gfx::TextureFilterMode::Nearest)) {
+                    if (props.filter_mode != gfx::TextureFilterMode::Nearest) {
                         auto new_props        = props;
-                        new_props.filter_mode = opengl::TextureFilterMode::Nearest;
+                        new_props.filter_mode = gfx::TextureFilterMode::Nearest;
 
                         // TODO: Proper re-import ?
                         auto path = texture_asset.path();
@@ -99,10 +99,10 @@ namespace codex::editor {
                     }
                 }
 
-                if (ImGui::Selectable("Linear", props.filter_mode == opengl::TextureFilterMode::Linear)) {
-                    if (props.filter_mode != opengl::TextureFilterMode::Linear) {
+                if (ImGui::Selectable("Linear", props.filter_mode == gfx::TextureFilterMode::Linear)) {
+                    if (props.filter_mode != gfx::TextureFilterMode::Linear) {
                         auto new_props        = props;
-                        new_props.filter_mode = opengl::TextureFilterMode::Linear;
+                        new_props.filter_mode = gfx::TextureFilterMode::Linear;
 
                         // TODO: Proper re-import ?
                         auto path = texture_asset.path();

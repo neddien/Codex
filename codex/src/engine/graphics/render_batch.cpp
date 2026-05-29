@@ -182,6 +182,7 @@ namespace codex::gfx {
             std::vector<i32> textures(max_texture_slot_count_);
             for (u32 i = 0; i < (u32)textures.size(); ++i)
                 textures[i] = i;
+
             shader_->set_uniform_1i_arr("u_Textures", max_texture_slot_count_, textures.data());
             texture_slots_initialized = false;
         }

@@ -1,9 +1,6 @@
 #pragma once
 
-#include "constants.h"
-
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
+#include <engine/core/public/common_third_party_libs.h>
 
 namespace codex::opengl {
     class CODEX_API Shader

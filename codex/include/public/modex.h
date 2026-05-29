@@ -46,7 +46,6 @@
 #include <engine/reflection/public/reflection.h>
 
 // Graphics
-#include <engine/graphics/public/image2d.h>
 #include <engine/graphics/public/shader.h>
 #include <engine/graphics/public/texture2d.h>
 

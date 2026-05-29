@@ -1,22 +1,28 @@
 #include "public/scene.h"
 
-#include <box2d/box2d.h>
-#include <entt.hpp>
-
 #include <engine/audio/audio_manager.h>
 #include <engine/core/engine.h>
+#include <engine/core/public/common_third_party_libs.h>
 #include <engine/debug/public/profiler.h>
 #include <engine/debug/public/time_scope.h>
 #include <engine/graphics/renderer.h>
 #include <engine/native_behaviour/public/native_behaviour.h>
 #include <engine/scene/component_factory.h>
 #include <engine/scene/editor_camera.h>
+#include <engine/scene/public/components.h>
+#include <engine/scene/public/entity.inl>
+#include <engine/scene/public/prefab.h>
 #include <engine/system/dynamic_library.h>
 #include <engine/utils/box2d_utils.h>
 #include <engine/utils/public/math.h>
 
+#include <box2d/box2d.h>
+
 namespace codex {
-    void B2WorldDeleter::operator()(b2World* world) noexcept { delete world; }
+    void B2WorldDeleter::operator()(b2World* world) noexcept
+    {
+        delete world;
+    }
 
     using EntityMap = std::unordered_map<UUID, entt::entity>;
 
@@ -72,6 +78,7 @@ namespace codex {
 
     void Scene::copy_to(Scene& other) const noexcept
     {
+        /*
         {
             EntityMap entity_map;
 
@@ -91,6 +98,13 @@ namespace codex {
 
         other.name_               = name_;
         other.physics_properties_ = physics_properties_;
+        */
+    }
+
+    void Scene::clone_via_serialization(Scene& other, ISerializationNode& node) const noexcept
+    {
+        serialize(node);
+        other.deserialize(node);
     }
 
     u32 Scene::entity_count() const noexcept
@@ -148,7 +162,61 @@ namespace codex {
         return prefab.instantiate(*this);
     }
 
-    [[nodiscard]] std::vector<Entity> Scene::get_all_entities_with_tag(const std::string_view tag)
+    Scene::BagHandle Scene::create_behaviour_bag(Entity owner) noexcept
+    {
+        /* clang-format: no inline */
+        auto handle = bag_.emplace_back(NBCRecord{
+            .owner = owner,
+        });
+
+        log(Info, "Created bag for: ({}, {})", handle.gen(), handle.index());
+        return handle;
+    }
+
+    void Scene::dispose_behaviour_bag(BagHandle handle) noexcept
+    {
+        /* clang-format: no inline */
+        bag_.erase(handle);
+        log(Info, "Bag disposed for: ({}, {})", handle.gen(), handle.index());
+    }
+
+    NativeBehaviour* Scene::behaviour(NBHandle bhhandle) noexcept
+    {
+        Box<NativeBehaviour>* bh = behaviours_.try_at(bhhandle);
+        return (bh) ? bh->get() : nullptr;
+    }
+
+    std::vector<Scene::NBHandle> Scene::behaviours(BagHandle handle) noexcept
+    {
+        NBCRecord* record = bag_.try_at(handle);
+        return (record) ? std::vector<NBHandle>(record->behaviours.begin(), record->behaviours.end())
+                        : std::vector<NBHandle>{};
+    }
+
+    Scene::NBHandle Scene::create_behaviour(BagHandle handle, const std::string_view type_name)
+    {
+        if (const NBMan::BHRecord* type_rec = NBMan::type_record(type_name); type_rec) {
+            if (NBCRecord* rec = bag_.try_at(handle); rec) {
+                Box<NativeBehaviour> bh = type_rec->factory();
+                bh->set_owner(rec->owner);
+                NativeBehaviour* bhptr  = bh.get();
+                NBHandle         handle = behaviours_.emplace_back(std::move(bh));
+                rec->behaviours.emplace(handle);
+                return handle;
+            }
+        }
+        return NBHandle::invalid_id();
+    }
+
+    void Scene::dispose_behaviour(BagHandle handle, NBHandle bhhandle) noexcept
+    {
+        if (NBCRecord* record = bag_.try_at(handle); record) {
+            record->behaviours.erase(bhhandle);
+            behaviours_.erase(bhhandle);
+        }
+    }
+
+    [[nodiscard]] std::vector<Entity> Scene::entities_with_tag(const std::string_view tag)
     {
         auto                view = registry_->view<TagComponent>();
         std::vector<Entity> entities;
@@ -160,7 +228,7 @@ namespace codex {
         return entities;
     }
 
-    [[nodiscard]] std::vector<Entity> Scene::get_all_entities()
+    [[nodiscard]] std::vector<Entity> Scene::entities()
     {
         std::vector<Entity> entities;
         entities.reserve(entity_count());
@@ -180,10 +248,10 @@ namespace codex {
 
     void Scene::render_sprites()
     {
+        CX_DEBUG_PROFILE_SCOPE("render_sprites")
+
         // Sprites
         {
-            CX_DEBUG_PROFILE_SCOPE("render_sprites")
-
             const auto registry = registry_.lock();
             const auto view     = registry->view<TransformComponent, SpriteRendererComponent>();
             for (auto& e : view) {
@@ -203,8 +271,6 @@ namespace codex {
 
         // Tiles
         {
-            CX_DEBUG_PROFILE_SCOPE("render_tiles")
-
             const auto registry = registry_.lock();
             const auto view     = registry->view<TilemapComponent, TransformComponent>();
             for (const auto& e : view) {
@@ -220,6 +286,21 @@ namespace codex {
                     transform      = glm::translate(transform, tile.pos);
                     transform      = glm::scale(transform, Vector3f{ sprite.size().x, sprite.size().y, 1.0f });
                     gfx::BatchRenderer2D::render_sprite(sprite, transform, static_cast<i32>(e));
+                }
+            }
+        }
+
+        // Tileset Animation
+        {
+            auto registry = registry_.lock();
+            auto view     = registry->view<TilesetAnimationComponent, TransformComponent>();
+            for (auto& e : view) {
+                auto&       tac = view.get<TilesetAnimationComponent>(e);
+                const auto& tc  = view.get<TransformComponent>(e);
+                for (auto& anim : tac.animations) {
+                    // render here
+                    gfx::BatchRenderer2D::render_sprite(tac.sprite, tc.to_matrix(), (i32)e);
+                    anim.current_frame = (anim.current_frame < anim.frame_count) ? ++anim.current_frame : 0;
                 }
             }
         }
@@ -318,7 +399,7 @@ namespace codex {
             }
         }
 
-        // Cirlce collider 2d.
+        // Cirlce collider 2d
         {
             auto registry = registry_.lock();
 
@@ -375,28 +456,28 @@ namespace codex {
 
         construct_physics_bodies();
 
-        // Native behaviour instantiation.
+        // Native behaviour instantiation
+        // TODO: Thread safety
         {
-            // Lock the registry only for one statement because user scripts can also possibly lock the registry
-            // for interactions (such as calls to get_component<T>, has_component<T> etc...) instead of
-            // locking for the entire scope.
-            auto nbc_view = registry_->view<NativeBehaviourComponent>();
-            for (auto& e : nbc_view) {
-                auto& nbc = nbc_view.get<NativeBehaviourComponent>(e);
-                nbc.set_parent(Entity{ e, this });
+            for (Box<NativeBehaviour>& bh : behaviours_) {
+                assert(bh);
 
                 try {
-                    nbc.on_init();
+                    bh->on_init();
                 }
-                catch (const NativeBehaviourException& ex) {
-                    // If NBC fails to initialise all components then most likely one of the Behaviours threw an error
-                    // occured; revert state back to State::Edit and halt physics simulation.
-                    on_runtime_stop();
+                catch (const std::exception& ex) {
+                    log(Error, "A behaviour exception occured: {}", ex.what());
 
-                    // TODO: Review this inner exception thing for later.
-                    auto& exi = ex.inner_exception();
-                    log(Error, "A Behaviour threw an Error: {}", exi.to_string());
-                    return;
+                    // FIXME: This doesn't work as intended!
+                    if (state() == Scene::State::Play) {
+                        // TODO: Edit? What if we're on runtime?
+                        set_state(Scene::State::Edit);
+                        on_runtime_stop();
+                    } else if (state() == Scene::State::Simulate) {
+                        // TODO: Edit? What if we're on runtime?
+                        set_state(Scene::State::Edit);
+                        on_simulation_stop();
+                    }
                 }
             }
         }
@@ -446,28 +527,28 @@ namespace codex {
 
         construct_physics_bodies();
 
-        // Native behaviour instantiation.
+        // Native behaviour instantiation
+        // TODO: Thread safety
         {
-            // Lock the registry only for one statement because user scripts can also possibly lock the registry
-            // for interactions (such as calls to get_component<T>, has_component<T> etc...) instead of
-            // locking for the entire scope.
-            auto nbc_view = registry_->view<NativeBehaviourComponent>();
-            for (auto& e : nbc_view) {
-                auto& nbc = nbc_view.get<NativeBehaviourComponent>(e);
-                nbc.set_parent(Entity{ e, this });
+            for (Box<NativeBehaviour>& bh : behaviours_) {
+                assert(bh);
 
                 try {
-                    nbc.on_init();
+                    bh->on_init();
                 }
-                catch (const NativeBehaviourException& ex) {
-                    // If NBC fails to initialise all components then most likely one of the Behaviours threw an error
-                    // occured; revert state back to State::Edit and halt physics simulation.
-                    on_runtime_stop();
+                catch (const std::exception& ex) {
+                    log(Error, "A behaviour exception occured: {}", ex.what());
 
-                    // TODO: Review this inner exception thing for later.
-                    auto& exi = ex.inner_exception();
-                    log(Error, "A Behaviour threw an Error: {}", exi.to_string());
-                    return;
+                    // FIXME: This doesn't work as intended!
+                    if (state() == Scene::State::Play) {
+                        // TODO: Edit? What if we're on runtime?
+                        set_state(Scene::State::Edit);
+                        on_runtime_stop();
+                    } else if (state() == Scene::State::Simulate) {
+                        // TODO: Edit? What if we're on runtime?
+                        set_state(Scene::State::Edit);
+                        on_simulation_stop();
+                    }
                 }
             }
         }
@@ -497,7 +578,17 @@ namespace codex {
         ax::AudioManager::stop_all();
     }
 
-    void Scene::on_editor_update([[maybe_unused]] const f32 deltaTime, scene::EditorCamera& camera)
+    void Scene::on_editor_update([[maybe_unused]] const f32 dt, scene::EditorCamera& camera, gfx::Shader* end_shader)
+    {
+        // Render
+        {
+            gfx::BatchRenderer2D::begin(camera);
+            render_sprites();
+            gfx::BatchRenderer2D::end(end_shader);
+        }
+    }
+
+    void Scene::on_simulation_update([[maybe_unused]] const f32 dt, scene::EditorCamera& camera)
     {
         // Render
         {
@@ -507,17 +598,7 @@ namespace codex {
         }
     }
 
-    void Scene::on_simulation_update([[maybe_unused]] const f32 deltaTime, scene::EditorCamera& camera)
-    {
-        // Render
-        {
-            gfx::BatchRenderer2D::begin(camera);
-            render_sprites();
-            gfx::BatchRenderer2D::end();
-        }
-    }
-
-    void Scene::on_runtime_update(const f32 deltaTime)
+    void Scene::on_runtime_update(const f32 dt)
     {
         // Render.
         {
@@ -549,26 +630,28 @@ namespace codex {
             }
         }
 
-        // Native scripts.
+        // Native behaviour instantiation
+        // TODO: Thread safety
         {
-            // Lock the registry only for one statement because user scripts can also possibly lock the registry
-            // for interactions (such as calls to get_component<T>, has_component<T> etc...) instead of
-            // locking for the entire scope.
-            auto view = registry_->view<NativeBehaviourComponent>();
-            for (auto& e : view) {
-                auto& nbc = view.get<NativeBehaviourComponent>(e);
-                try {
-                    nbc.on_update(deltaTime);
-                }
-                catch (const NativeBehaviourException& ex) {
-                    // If NBC fails to update all components then most likely one of the Behaviours threw an error
-                    // occured; revert state back to State::Edit and halt physics simulation.
-                    on_runtime_stop();
+            for (Box<NativeBehaviour>& bh : behaviours_) {
+                assert(bh);
 
-                    // TODO: Review this inner exception thing for later.
-                    auto& exi = ex.inner_exception();
-                    log(Error, "A Behaviour threw an Error: {}", exi.to_string());
-                    return;
+                try {
+                    bh->on_update(dt);
+                }
+                catch (const std::exception& ex) {
+                    log(Error, "A behaviour exception occured: {}", ex.what());
+
+                    // FIXME: This doesn't work as intended!
+                    if (state() == Scene::State::Play) {
+                        // TODO: Edit? What if we're on runtime?
+                        set_state(Scene::State::Edit);
+                        on_runtime_stop();
+                    } else if (state() == Scene::State::Simulate) {
+                        // TODO: Edit? What if we're on runtime?
+                        set_state(Scene::State::Edit);
+                        on_simulation_stop();
+                    }
                 }
             }
         }
@@ -594,14 +677,29 @@ namespace codex {
 
             while (lag >= frame_interval) {
                 // Native behaviours.
-                if (self.state_.load() == State::Play) {
-                    // Lock the registry only for one statement because user scripts can also possibly lock the registry
-                    // for interactions (such as calls to get_component<T>, has_component<T> etc...) instead of
-                    // locking for the entire scope.
-                    auto view = (*self.registry_)->view<NativeBehaviourComponent>();
-                    for (auto& e : view) {
-                        auto& nbc = view.get<NativeBehaviourComponent>(e);
-                        nbc.on_fixed_update(frame_interval);
+                if (self.state_.load() == State::Play || self.state_.load() == State::Simulate) {
+                    // Native behaviour instantiation
+                    // TODO: Thread safety
+                    for (Box<NativeBehaviour>& bh : self.behaviours_) {
+                        assert(bh);
+
+                        try {
+                            bh->on_fixed_update(frame_interval);
+                        }
+                        catch (const std::exception& ex) {
+                            self.log(Error, "A behaviour exception occured: {}", ex.what());
+
+                            // FIXME: This doesn't work as intended!
+                            if (self.state() == Scene::State::Play) {
+                                // TODO: Edit? What if we're on runtime?
+                                self.set_state(Scene::State::Edit);
+                                self.on_runtime_stop();
+                            } else if (self.state() == Scene::State::Simulate) {
+                                // TODO: Edit? What if we're on runtime?
+                                self.set_state(Scene::State::Edit);
+                                self.on_simulation_stop();
+                            }
+                        }
                     }
                 }
 
@@ -677,7 +775,7 @@ namespace codex {
                     {
                         std::string type_name;
                         if (jnode.read("type", type_name)) {
-                            ComponentFactory::instance().deserialize_component(type_name, jnode, entity);
+                            ComponentFactory::get().deserialize_component(type_name, jnode, entity);
                         }
                     });
             });

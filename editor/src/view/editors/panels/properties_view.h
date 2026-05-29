@@ -15,6 +15,7 @@ namespace codex::editor {
         void on_imgui_render() override;
 
     private:
-        static void draw_physics_material_2d_control(phys::PhysicsMaterial2D& mat, const f32 columnWidth) noexcept;
+        static void render_physics_material_2d_control(phys::PhysicsMaterial2D& mat, const f32 columnWidth) noexcept;
+        static bool render_asset_path_box(const char* label, std::string_view accepted_type, AssetPath& path) noexcept;
     };
 } // namespace codex::editor

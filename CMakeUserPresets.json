@@ -8,6 +8,7 @@
             "binaryDir": "${sourceDir}/builds/${presetName}",
             "toolchainFile": "${sourceDir}/builds/conan/conan_toolchain.cmake",
             "cacheVariables": {
+                "CMAKE_POLICY_VERSION_MINIMUM": "3.5",
                 "CMAKE_C_COMPILER": "cl.exe",
                 "CMAKE_CXX_COMPILER": "cl.exe",
                 "CMAKE_PRESET_NAME": "${presetName}",
@@ -28,6 +29,7 @@
             "displayName": "vs2022",
             "toolchainFile": "${sourceDir}/builds/conan/conan_toolchain.cmake",
             "cacheVariables": {
+                "CMAKE_POLICY_VERSION_MINIMUM": "3.5",
                 "CMAKE_PRESET_NAME": "${presetName}",
                 "CX_ENABLE_CEDITOR": "on"
             },
@@ -44,6 +46,7 @@
             "binaryDir": "${sourceDir}/builds/${presetName}",
             "toolchainFile": "${sourceDir}/builds/conan/conan_toolchain.cmake",
             "cacheVariables": {
+                "CMAKE_POLICY_VERSION_MINIMUM": "3.5",
                 "CMAKE_C_COMPILER": "clang.exe",
                 "CMAKE_CXX_COMPILER": "clang++.exe",
                 "CMAKE_PRESET_NAME": "${presetName}",
@@ -63,6 +66,7 @@
             "binaryDir": "${sourceDir}/builds/${presetName}",
             "toolchainFile": "${sourceDir}/builds/conan/conan_toolchain.cmake",
             "cacheVariables": {
+                "CMAKE_POLICY_VERSION_MINIMUM": "3.5",
                 "CMAKE_PRESET_NAME": "${presetName}",
                 "CX_ENABLE_CEDITOR": "on"
             },
@@ -79,6 +83,7 @@
             "binaryDir": "${sourceDir}/builds/${presetName}",
             "toolchainFile": "${sourceDir}/builds/conan/conan_toolchain.cmake",
             "cacheVariables": {
+                "CMAKE_POLICY_VERSION_MINIMUM": "3.5",
                 "CMAKE_PRESET_NAME": "${presetName}",
                 "CX_ENABLE_CEDITOR": "on"
             },
@@ -93,10 +98,6 @@
             "displayName": "any Debug",
             "installDir": "${sourceDir}/installs/${presetName}",
             "inherits": "windows-msvc",
-            "architecture": {
-                "value": "x64",
-                "strategy": "external"
-            },
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CX_ENABLE_TESTWORK": "1"
@@ -107,10 +108,6 @@
             "displayName": "any Debug",
             "installDir": "${sourceDir}/installs/${presetName}",
             "inherits": "windows-llvm",
-            "architecture": {
-                "value": "x64",
-                "strategy": "external"
-            },
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
 		            "CX_ENABLE_TESTGAME": "1"
@@ -159,10 +156,6 @@
             "displayName": "any Debug",
             "installDir": "${sourceDir}/installs/${presetName}",
             "inherits": "linux-base",
-            "architecture": {
-                "value": "x64",
-                "strategy": "external"
-            },
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CMAKE_CXX_FLAGS": "-O0 -g",
@@ -195,10 +188,6 @@
             "displayName": "any Debug",
             "installDir": "${sourceDir}/installs/${presetName}",
             "inherits": "osx-base",
-            "architecture": {
-                "value": "x64",
-                "strategy": "external"
-            },
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CX_ENABLE_TESTWORK": "1"

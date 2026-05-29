@@ -8,19 +8,19 @@ set(CX_VER_REV 0)
 # Enable fPIC on all linkable targets
 set(CMAKE_POSITION_INDEPENDENT_CODE on)
 
-# Fetch modules
-FetchContent_Declare(
-  logex
-  GIT_REPOSITORY git@github.com:neddien/Logex
-  GIT_TAG master)
-FetchContent_MakeAvailable(logex)
-
 # SDL2, box2d, nlohmann_json, lz4, imgui come from Conan (see conanfile.py)
 find_package(SDL2 REQUIRED)
 find_package(box2d REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(LZ4 REQUIRED)
 find_package(imgui REQUIRED)
+find_package(fmt REQUIRED)
+find_package(spdlog REQUIRED)
+find_package(EnTT REQUIRED)
+find_package(magic_enum REQUIRED)
+find_package(glm REQUIRED)
+find_package(stb REQUIRED)
+find_package(absl REQUIRED)
 
 set(ENGINE_PLATFORM_DIR "src/platform")
 
@@ -43,9 +43,9 @@ set(CX_ENGINE_ROOT_DIR
 add_library(CodexEngine SHARED ${ENGINE_HEADERS} ${ENGINE_INLINES} ${ENGINE_SOURCES})
 add_library(CodexEngine-static STATIC ${ENGINE_HEADERS} ${ENGINE_SOURCES})
 
-# Set the C++ Standard to 20 for this target.
-set_property(TARGET CodexEngine PROPERTY CXX_STANDARD 20)
-set_property(TARGET CodexEngine-static PROPERTY CXX_STANDARD 20)
+# Set the C++ Standard to 23 for this target.
+set_property(TARGET CodexEngine PROPERTY CXX_STANDARD 23)
+set_property(TARGET CodexEngine-static PROPERTY CXX_STANDARD 23)
 
 # Tell the guy to export the symbols. This is only relevant for Windows really.
 target_compile_definitions(CodexEngine PRIVATE CX_BUILD_SHARED)
@@ -170,11 +170,10 @@ elseif(DEFINED CX_BUILD_TYPE_SHIPPING)
 endif()
 
 # Print the platform information
-message(":: Platform OS: ${CMAKE_SYSTEM_NAME}")
-message(":: Platform Compiler: ${CMAKE_CXX_COMPILER_ID}")
-message(":: CPU word size: ${CMAKE_SIZEOF_VOID_P} bytes")
-message(":: Graphics API: ${CX_GRAPHICS_API}")
-message("")
+message(STATUS "${PROJECT_NAME}: Platform OS: ${CMAKE_SYSTEM_NAME}")
+message(STATUS "${PROJECT_NAME}: Platform Compiler: ${CMAKE_CXX_COMPILER_ID}")
+message(STATUS "${PROJECT_NAME}: CPU word size: ${CMAKE_SIZEOF_VOID_P} bytes")
+message(STATUS "${PROJECT_NAME}: Graphics API: ${CX_GRAPHICS_API}")
 
 if(DEFINED CX_COMPILER_CLANG OR DEFINED CX_COMPILER_GCC)
   # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address
@@ -183,6 +182,7 @@ if(DEFINED CX_COMPILER_CLANG OR DEFINED CX_COMPILER_GCC)
 endif()
 
 # ============= # Graphics API # ============= #
+# FIXME: Why is the Graphics API compile time? It should be dynamic (on-startup).
 if(CX_GRAPHICS_API STREQUAL "OpenGL") 
   # glad
   set(GLAD_INCLUDE_DIR "vendor/glad/include")
@@ -196,10 +196,6 @@ if(CX_GRAPHICS_API STREQUAL "OpenGL")
   target_sources(CodexEngine PRIVATE ${PLATFORM_OPENGL_SOURCES})
   target_sources(CodexEngine-static PRIVATE ${PLATFORM_OPENGL_SOURCES})
 
-  # stb
-  target_include_directories(CodexEngine PUBLIC "vendor/stb")
-  target_include_directories(CodexEngine-static PUBLIC "vendor/stb")
-
   # GCC 15+ fails to compile stb_image's SSE2 SIMD path due to stricter
   # immediate-constant enforcement in _mm_slli_si128/_mm_srli_si128.
   if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
@@ -208,15 +204,6 @@ if(CX_GRAPHICS_API STREQUAL "OpenGL")
       PROPERTIES COMPILE_DEFINITIONS "STBI_NO_SIMD"
     )
   endif()
-
-  # glm
-  add_subdirectory(vendor/glm ${PROJECT_BINARY_DIR}/glm)
-  set(GLM_INCLUDE_DIR "vendor/glm/glm")
-  set(GLM_LIBRARIES glm)
-  target_include_directories(CodexEngine PUBLIC ${GLM_INCLUDE_DIR})
-  target_link_libraries(CodexEngine PRIVATE ${GLM_LIBRARIES})
-  target_include_directories(CodexEngine-static PUBLIC ${GLM_INCLUDE_DIR})
-  target_link_libraries(CodexEngine-static PRIVATE ${GLM_LIBRARIES})
 endif()
 
 # ============= # Libraries   # ============= #
@@ -226,14 +213,22 @@ if(ANDROID)
   target_link_libraries(CodexEngine PUBLIC SDL2::SDL2 SDL2::SDL2main)
   target_link_libraries(CodexEngine-static PUBLIC SDL2::SDL2 SDL2::SDL2main)
 else()
-  target_link_libraries(CodexEngine PUBLIC SDL2::SDL2-static SDL2::SDL2main)
-  target_link_libraries(CodexEngine-static PUBLIC SDL2::SDL2-static SDL2::SDL2main)
+  target_link_libraries(CodexEngine PUBLIC SDL2::SDL2 SDL2::SDL2main)
+  target_link_libraries(CodexEngine-static PUBLIC SDL2::SDL2 SDL2::SDL2main)
 endif()
 
-# Logex
-set(LOGEX_LIBRARIES logex-static)
-target_link_libraries(CodexEngine PUBLIC ${LOGEX_LIBRARIES})
-target_link_libraries(CodexEngine-static PUBLIC ${LOGEX_LIBRARIES})
+# fmt (shared — must be loaded by the engine at startup so dlopen'd plugins
+# can resolve fmt symbols without needing their own copy)
+target_link_libraries(CodexEngine PUBLIC fmt::fmt)
+target_link_libraries(CodexEngine-static PUBLIC fmt::fmt)
+
+# stb
+target_link_libraries(CodexEngine PRIVATE stb::stb)
+target_link_libraries(CodexEngine-static PRIVATE stb::stb)
+
+# spdlog
+target_link_libraries(CodexEngine PUBLIC spdlog::spdlog)
+target_link_libraries(CodexEngine-static PUBLIC spdlog::spdlog)
 
 # nlohmann json
 target_link_libraries(CodexEngine PRIVATE nlohmann_json::nlohmann_json)
@@ -242,8 +237,12 @@ target_link_libraries(CodexEngine-static PRIVATE nlohmann_json::nlohmann_json)
 # ImGui, core from Conan, backends compiled by us because they are
 # thin platform-specific adapters that imgui intentionally excludes from the library.
 # Conan's data cmake sets imgui_PACKAGE_FOLDER_<CONFIG> as a plain path.
-string(TOUPPER "${CMAKE_BUILD_TYPE}" _imgui_cfg)
-set(_imgui_root "${imgui_PACKAGE_FOLDER_${_imgui_cfg}}")
+string(TOUPPER "${CMAKE_BUILD_TYPE}" _cx_cfg)
+set(_imgui_root "${imgui_PACKAGE_FOLDER_${_cx_cfg}}")
+set(_fmt_lib_dir "${fmt_LIB_DIRS_${_cx_cfg}}")
+set(_fmt_bin_dir "${fmt_BIN_DIRS_${_cx_cfg}}")
+set(_sdl_lib_dir "${sdl_LIB_DIRS_${_cx_cfg}}")
+set(_sdl_bin_dir "${sdl_BIN_DIRS_${_cx_cfg}}")
 
 foreach(_cx_tgt CodexEngine CodexEngine-static)
     target_link_libraries(${_cx_tgt} PUBLIC imgui::imgui)
@@ -257,11 +256,8 @@ foreach(_cx_tgt CodexEngine CodexEngine-static)
 endforeach()
 
 # glm
-set(GLM_LIBRARIES glm)
-target_link_libraries(CodexEngine PRIVATE ${GLM_LIBRARIES})
-target_link_libraries(CodexEngine-static PRIVATE ${GLM_LIBRARIES})
-target_include_directories(CodexEngine PUBLIC "vendor/glm")
-target_include_directories(CodexEngine-static PUBLIC "vendor/glm")
+target_link_libraries(CodexEngine PUBLIC glm::glm)
+target_link_libraries(CodexEngine-static PUBLIC glm::glm)
 
 # box2d
 target_link_libraries(CodexEngine PRIVATE box2d::box2d)
@@ -270,6 +266,10 @@ target_link_libraries(CodexEngine-static PRIVATE box2d::box2d)
 # lz4
 target_link_libraries(CodexEngine PUBLIC LZ4::lz4_static)
 target_link_libraries(CodexEngine-static PUBLIC LZ4::lz4_static)
+
+# Abseil
+target_link_libraries(CodexEngine PUBLIC abseil::abseil)
+target_link_libraries(CodexEngine-static PUBLIC abseil::abseil)
 
 # Net Native
 # set(NETNT_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/NetNT/src)
@@ -287,14 +287,12 @@ target_include_directories(CodexEngine-static PUBLIC ${OPENGL_INCLUDE_DIR})
 target_link_libraries(CodexEngine-static PRIVATE ${OPENGL_LIBRARIES})
 
 # entt
-set(ENTT_INCLUDE_DIR vendor/entt)
-target_include_directories(CodexEngine PUBLIC ${ENTT_INCLUDE_DIR})
-target_include_directories(CodexEngine-static PUBLIC ${ENTT_INCLUDE_DIR})
+target_link_libraries(CodexEngine PUBLIC EnTT::EnTT)
+target_link_libraries(CodexEngine-static PUBLIC EnTT::EnTT)
 
 # magic_enum
-set(MAGIC_ENUM_INCLUDE_DIR vendor/magic_enum)
-target_include_directories(CodexEngine PUBLIC ${MAGIC_ENUM_INCLUDE_DIR})
-target_include_directories(CodexEngine-static PUBLIC ${MAGIC_ENUM_INCLUDE_DIR})
+target_link_libraries(CodexEngine PUBLIC magic_enum::magic_enum)
+target_link_libraries(CodexEngine-static PUBLIC magic_enum::magic_enum)
 
 # FMOD Studio API 2.03.13
 if(DEFINED CX_PLATFORM_LINUX)
@@ -402,7 +400,8 @@ find_package(Threads REQUIRED)
 target_link_libraries(CodexEngine PRIVATE Threads::Threads)
 target_link_libraries(CodexEngine-static PRIVATE Threads::Threads)
 
-# ================================= # Configuration specific macros   #
+# ================================= #
+# Configuration specific macros     #
 # ================================= #
 target_compile_definitions(
   CodexEngine
@@ -418,16 +417,20 @@ target_compile_definitions(
 # ======================= # INSTALLATION # ======================= #
 if(DEFINED CX_PLATFORM_WINDOWS)
   install(TARGETS glm CodexEngine DESTINATION bin)
+  install(DIRECTORY "${_fmt_bin_dir}/" DESTINATION bin FILES_MATCHING PATTERN "fmt*.dll")
+  install(DIRECTORY "${_sdl_bin_dir}/" DESTINATION bin FILES_MATCHING PATTERN "SDL2*.dll")
   install(FILES "${FMOD_CORE_DLL_PATH}" "${FMOD_STUDIO_DLL_PATH}" DESTINATION bin)
 
   # Program Files (or same location as the binary) for unmodifiable file data.
   # App Data for modifidable file data.
 elseif(DEFINED CX_PLATFORM_UNIX)
   install(
-    TARGETS glm
-            CodexEngine
+    TARGETS CodexEngine
             CodexEngine-static
     DESTINATION lib)
+
+  install(DIRECTORY "${_fmt_lib_dir}/" DESTINATION lib FILES_MATCHING PATTERN "libfmt*.so*")
+  install(DIRECTORY "${_sdl_lib_dir}/" DESTINATION lib FILES_MATCHING PATTERN "libSDL2*.so*")
 
   # Install FMOD libraries and create SONAME symlinks.
   install(FILES "${FMOD_CORE_LIB_DIR}/${FMOD_CORE_LIB_FILE}" DESTINATION lib)

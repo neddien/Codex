@@ -7,12 +7,14 @@ namespace codex::sys {
         const auto& file_path_str = file_path_.string();
 #if defined(CX_PLATFORM_UNIX)
         handle = dlopen(file_path_str.c_str(), RTLD_LAZY);
-        // printf("Err: %s\n", dlerror());
+        if (!handle)
+            throw DynamicLibraryLoadException("Failed to load '{}'; Internal Error: {}", file_path_str, dlerror());
+
 #elif defined(CX_PLATFORM_WINDOWS)
         handle = LoadLibraryA(file_path_str.c_str());
-#endif
         if (!handle)
             throw DynamicLibraryLoadException("Failed to load '{}'.", file_path_str);
+#endif
     }
 
     DLib::DLib(DLib&& other) noexcept

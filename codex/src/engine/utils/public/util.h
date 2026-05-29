@@ -73,6 +73,16 @@ namespace codex::util {
             return hash;
         }
 
+        [[nodiscard]] constexpr usize fnv1a(const std::string_view str) noexcept
+        {
+            usize hash = 14695981039346656037ull;
+            for (const char c : str) {
+                hash ^= static_cast<usize>(c);
+                hash *= 1099511628211ull;
+            }
+            return hash;
+        }
+
         namespace detail {
             consteval u32 crc32_entry(u32 n) noexcept
             {
@@ -110,24 +120,4 @@ namespace codex::util {
             return crc32_finalize(crc32_update(data, size));
         }
     }; // namespace crypto
-
-    struct U824Id
-    {
-    private:
-        u32 id_ = 0;
-
-    public:
-        inline u32  get_id() { return id_ & 0x00ffffff; }
-        inline u8   get_gen() { return id_ >> 24; }
-        inline void set_id(const u32 id)
-        {
-            id_ &= 0xff000000;
-            id_ |= id;
-        }
-        inline void set_gen(const u8 gen)
-        {
-            id_ &= 0x00ffffff;
-            id_ |= (u32)(gen) << 24;
-        }
-    };
 } // namespace codex::util

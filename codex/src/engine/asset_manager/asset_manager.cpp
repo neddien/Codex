@@ -3,6 +3,7 @@
 #include <engine/core/engine.h>
 #include <engine/filesystem/vfs.h>
 #include <engine/graphics/public/texture2d.h>
+#include <engine/native_behaviour/public/native_behaviour_manager.h>
 
 namespace codex {
     void AssetManager::init(fs::VirtualFilesystem& vfs, std::string_view asset_root) noexcept
@@ -13,6 +14,9 @@ namespace codex {
         self.registry_   = Box<AssetRegistry>::make(*self.vfs_);
 
         register_loader<gfx::Texture2DLoader>({ "png", "jpg", "jpeg", "bmp", "gif" });
+        register_loader<gfx::ShaderLoader>({ "glsl", "hlsl", "slang" });
+        register_loader<NBScriptSourceNullLoader>({ "cpp", "cxx", "cc" });
+        register_loader<NBScriptHeaderNullLoader>({ "h", "hpp", "hh", "hxx" });
 
         self.log(Info, "Initialized with root '{}', {} loaders registered", self.asset_root_, self.loaders_.size());
     }
@@ -39,12 +43,12 @@ namespace codex {
 
         if (extension[0] == '.') {
             const auto nodotext = extension.substr(1);
-            if (auto it = self.loaders_by_ext_.find(std::hash<std::string>{}(nodotext));
+            if (auto it = self.loaders_by_ext_.find(util::crypto::fnv1a(nodotext));
                 it != self.loaders_by_ext_.end())
                 return it->second;
         }
 
-        if (auto it = self.loaders_by_ext_.find(std::hash<std::string>{}(extension)); it != self.loaders_by_ext_.end())
+        if (auto it = self.loaders_by_ext_.find(util::crypto::fnv1a(extension)); it != self.loaders_by_ext_.end())
             return it->second;
         return nullptr;
     }
@@ -54,7 +58,7 @@ namespace codex {
         auto&            self = get();
         std::shared_lock guard{ self.mutex_ };
 
-        if (auto it = self.loaders_by_type_.find(std::hash<std::string>{}(type_name));
+        if (auto it = self.loaders_by_type_.find(util::crypto::fnv1a(type_name));
             it != self.loaders_by_type_.end())
             return it->second;
         return nullptr;
@@ -70,6 +74,10 @@ namespace codex {
     {
         std::scoped_lock guard{ mutex_ };
 
+        // Don't try to load null asset.
+        if (type == typeid(void))
+            return nullptr;
+
         auto fh = vfs_->open(meta.path.path());
         if (!fh)
             return nullptr;
@@ -82,7 +90,7 @@ namespace codex {
             meta.dirty           = true;
         }
 
-        if (auto it = loaders_.find(type); it != loaders_.end())
+        if (auto it = loaders_.find(type.hash_code()); it != loaders_.end())
             return it->second->load_asset(std::move(fh), meta.import_settings.get());
         else
             log(Error, "No loader associated with: {}", meta.path.path());
@@ -92,6 +100,6 @@ namespace codex {
 
     cc::ThreadedExecutor& AssetManager::worker_pool() noexcept
     {
-        return Engine::get_worker_pool();
+        return Engine::worker_pool();
     }
 } // namespace codex

@@ -1,12 +1,12 @@
 #pragma once
 
+#include <engine/algorithm/public/dense_vector.h>
 #include <engine/concurrency/public/mutex.h>
+#include <engine/core/public/common_third_party_libs.h>
 #include <engine/core/public/serializer.h>
+#include <engine/graphics/public/shader.h>
 #include <engine/memory/public/memory.h>
 #include <engine/scene/public/entity.h>
-#include <engine/scene/public/prefab.h>
-
-#include <entt.hpp>
 
 // Forward declarations
 class b2World;
@@ -16,6 +16,10 @@ namespace codex {
     {
         void operator()(b2World* world) noexcept;
     };
+
+    namespace scene {
+        class Prefab;
+    } // namespace scene
 } // namespace codex
 
 namespace codex {
@@ -23,6 +27,7 @@ namespace codex {
     class Window;
     class Entity;
     class NativeBehaviour;
+
     namespace scene {
         class EditorCamera;
     } // namespace scene
@@ -35,6 +40,20 @@ namespace codex {
         friend class scene::Prefab;
 
     public:
+        struct NBCRecord;
+
+    public:
+        using BehaviourList = dense_vector<Box<NativeBehaviour>>;
+        using NBHandle      = BehaviourList::id_type;
+        using BehaviourBag  = dense_vector<NBCRecord>;
+        using BagHandle     = BehaviourBag::id_type;
+
+    public:
+        struct NBCRecord
+        {
+            Entity                                             owner;
+            absl::flat_hash_set<NBHandle, std::hash<NBHandle>> behaviours;
+        };
         struct PhysicsProperties
         {
             i32      tick_rate           = 60;
@@ -68,8 +87,8 @@ namespace codex {
         [[nodiscard]] inline std::string_view name() const noexcept { return name_; }
         [[nodiscard]] u32                     entity_count() const noexcept;
         [[nodiscard]] bool                    is_valid(const Entity entity) const noexcept;
-        [[nodiscard]] std::vector<Entity>     get_all_entities_with_tag(const std::string_view tag);
-        [[nodiscard]] std::vector<Entity>     get_all_entities();
+        [[nodiscard]] std::vector<Entity>     entities_with_tag(const std::string_view tag);
+        [[nodiscard]] std::vector<Entity>     entities();
         [[nodiscard]] Entity                  primary_camera_entity() noexcept;
 
     public:
@@ -77,7 +96,7 @@ namespace codex {
         void        swap(Scene& other) noexcept;
 
         template <typename T>
-        [[nodiscard]] std::vector<Entity> get_all_entities_with_component() noexcept
+        [[nodiscard]] std::vector<Entity> entities_with_component() noexcept
         {
             auto                view = registry_->view<T>();
             std::vector<Entity> entities;
@@ -88,17 +107,25 @@ namespace codex {
         }
 
         void   copy_to(Scene& other) const noexcept;
+        void   clone_via_serialization(Scene& other, ISerializationNode& node) const noexcept;
         Entity create_entity(const std::string_view tag = "default tag", UUID uuid = UUID{}) noexcept;
         void   remove_entity(const Entity entity);
         void   remove_entity(const u32 entity);
         Entity instantiate_prefab(const scene::Prefab& prefab) noexcept;
+
+        [[nodiscard]] BagHandle             create_behaviour_bag(Entity owner) noexcept;
+        void                                dispose_behaviour_bag(BagHandle handle) noexcept;
+        [[nodiscard]] NativeBehaviour*      behaviour(NBHandle bhhandle) noexcept;
+        [[nodiscard]] std::vector<NBHandle> behaviours(BagHandle handle) noexcept;
+        [[nodiscard]] NBHandle              create_behaviour(BagHandle handle, const std::string_view type_name);
+        void                                dispose_behaviour(BagHandle handle, NBHandle bhhandle) noexcept;
 
         void on_editor_init(scene::EditorCamera& camera);
         void on_runtime_start();
         void on_runtime_stop();
         void on_simulation_start();
         void on_simulation_stop();
-        void on_editor_update(const f32 delta_time, scene::EditorCamera& camera);
+        void on_editor_update(const f32 delta_time, scene::EditorCamera& camera, gfx::Shader* end_shader = nullptr);
         void on_runtime_update(const f32 delta_time);
         void on_simulation_update(const f32 delta_time, scene::EditorCamera& camera);
 
@@ -112,6 +139,8 @@ namespace codex {
         static void on_fixed_update(Scene& self) noexcept;
 
     private:
+        BehaviourBag                 bag_;
+        BehaviourList                behaviours_;
         cc::Mutex<entt::registry>    registry_;
         std::string                  name_          = "Default scene";
         Box<b2World, B2WorldDeleter> physics_world_ = nullptr;

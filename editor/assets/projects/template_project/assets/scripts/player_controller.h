@@ -5,7 +5,7 @@
 using namespace codex;
 
 RF_CLASS(Category = "Gameplay", DisplayName = "Player Controller")
-class CODEX_EXPORT PlayerController : public NativeBehaviour
+class CODEX_EXPORT PlayerController : public NativeBehaviour, public Loggable<"PlayerController">
 {
     RF_SERIALIZABLE
 

@@ -8,6 +8,16 @@
 // If you want full Entity class then include Entity.inl
 
 namespace codex {
+    inline const Scene* Entity::scene() const noexcept
+    {
+        return scene_;
+    }
+
+    inline Scene* Entity::scene() noexcept
+    {
+        return const_cast<Scene*>(std::as_const(*this).scene());
+    }
+
     inline Entity::operator bool() const noexcept
     {
         return scene_ && handle != entt::entity{ entt::null } && scene_->is_valid(*this);
@@ -26,8 +36,8 @@ namespace codex {
 
         auto& c     = scene_->registry_->emplace<T>(handle, std::forward<TArgs>(args)...);
         comp->next_ = &c;
+        c.parent_   = *this;
         c.on_init(); // TODO: This being called here is questionable
-        c.parent_ = *this;
         return c;
     }
 
@@ -49,8 +59,8 @@ namespace codex {
 
         auto& c     = scene_->registry_->emplace<T>(handle, std::forward<TArgs>(args)...);
         comp->next_ = &c;
+        c.parent_   = *this;
         c.on_init();
-        c.parent_ = *this;
         return c;
     }
 

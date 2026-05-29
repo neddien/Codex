@@ -10,11 +10,12 @@ find_package(
   COMPONENTS Interpreter
   REQUIRED)
 
-FetchContent_Declare(
-  logex
-  GIT_REPOSITORY git@github.com:neddien/Logex
-  GIT_TAG master)
-FetchContent_MakeAvailable(logex)
+# Libraries
+find_package(fmt REQUIRED)
+find_package(EnTT REQUIRED)
+find_package(glm REQUIRED)
+find_package(magic_enum REQUIRED)
+find_package(absl REQUIRED)
 
 # For LSPs.
 set(CMAKE_EXPORT_COMPILE_COMMANDS on)
@@ -94,7 +95,7 @@ if(DEFINED CX_PLATFORM_WINDOWS)
 
 endif()
 
-set_property(TARGET NBMan PROPERTY CXX_STANDARD 20)
+set_property(TARGET NBMan PROPERTY CXX_STANDARD 23)
 
 # ==================================================== # Export macros that
 # describe the current platform   #
@@ -184,12 +185,13 @@ endforeach()
 
 target_include_directories(NBMan PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/engine/src/pch")
 
-# TODO: Remove logex as a dependency
-target_include_directories(NBMan PUBLIC "${logex_SOURCE_DIR}/Logger/src")
-target_include_directories(NBMan PUBLIC "${logex_SOURCE_DIR}/Logger/vendor/fmt/include")
+# Libraries - Shared libraries will have only their headers included while static libraries will be linked
+target_include_directories(NBMan PUBLIC
+      $<TARGET_PROPERTY:fmt::fmt,INTERFACE_INCLUDE_DIRECTORIES>)
+target_link_libraries(NBMan PUBLIC EnTT::EnTT glm::glm magic_enum::magic_enum abseil::abseil)
 
 # TODO: Fix glad issue
-target_include_directories(NBMan PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/engine/vendor")
+#target_include_directories(NBMan PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/engine/vendor")
 
 # For ease of use.
 target_include_directories(NBMan PUBLIC "engine/src")

@@ -19,6 +19,7 @@
 #include <numeric>
 #include <random>
 #include <regex>
+#include <span>
 #include <sstream>
 #include <type_traits>
 #include <typeindex>
@@ -65,6 +66,7 @@
 #include <pwd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <syslog.h>
 #include <unistd.h>
 
 #elif defined(CX_PLATFORM_WINDOWS)

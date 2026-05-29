@@ -3,6 +3,7 @@
 #include <engine/audio/public/audio.h>
 #include <engine/core/public/uuid.h>
 #include <engine/memory/public/memory.h>
+#include <engine/native_behaviour/public/native_behaviour_manager.h>
 #include <engine/physics/public/physics_material2_d.h>
 
 #include "camera.h"
@@ -18,10 +19,6 @@ public:                                                                         
     [[nodiscard]] std::string_view type_name() const noexcept override                                                 \
     {                                                                                                                  \
         return #type;                                                                                                  \
-    }                                                                                                                  \
-    [[nodiscard]] Box<Component> clone() const noexcept override                                                       \
-    {                                                                                                                  \
-        return Box<type>{ new type{ *this } };                                                                         \
     }
 
 namespace codex {
@@ -45,7 +42,6 @@ namespace codex {
 
     public:
         virtual std::string_view type_name() const noexcept = 0;
-        virtual Box<Component>   clone() const noexcept     = 0;
 
     public:
         void serialize(ISerializationNode& node) const
@@ -53,15 +49,19 @@ namespace codex {
             node.write("type", type_name());
             serialize_impl(node);
         }
-        void deserialize(const ISerializationNode& node) { deserialize_impl(node); }
+        void deserialize(const ISerializationNode& node)
+        {
+            /* clang-format: no inline */
+            deserialize_impl(node);
+        }
 
     protected:
         virtual void serialize_impl(ISerializationNode& node) const {}
         virtual void deserialize_impl(const ISerializationNode& node) {}
 
     protected:
-        Component* next_ = nullptr;
-        Entity     parent_;
+        mutable Component* next_ = nullptr;
+        mutable Entity     parent_;
     };
 
     struct CODEX_API IDComponent : public Component
@@ -153,56 +153,38 @@ namespace codex {
     CX_CUSTOM_EXCEPTION(ScriptException, "An unknown behaviour exception occured.")
     CX_CUSTOM_EXCEPTION(DuplicateBehaviourException, "Cannot have more than one type of behaviour on a single entity.")
 
-    class CODEX_API NativeBehaviourComponent : public Component, public Loggable<"NativeBehaviourComponent">
+    class NativeBehaviourComponent : public Component, public Loggable<"NativeBehaviourComponent">
     {
         CX_COMPONENT(NativeBehaviourComponent)
 
     public:
-        using BehaviourMap  = std::unordered_map<std::string, Box<NativeBehaviour>>;
-        using BehaviourList = std::vector<NativeBehaviour*>;
-
-    public:
-        NativeBehaviourComponent() noexcept = default;
-        explicit NativeBehaviourComponent(const NativeBehaviourComponent& other);
-        NativeBehaviourComponent& operator=(const NativeBehaviourComponent& other);
-        NativeBehaviourComponent(NativeBehaviourComponent&& other) noexcept            = default;
-        NativeBehaviourComponent& operator=(NativeBehaviourComponent&& other) noexcept = default;
+        NativeBehaviourComponent() noexcept;
+        NativeBehaviourComponent(const NativeBehaviourComponent& other) noexcept            = delete;
+        NativeBehaviourComponent& operator=(const NativeBehaviourComponent& other) noexcept = delete;
+        NativeBehaviourComponent(NativeBehaviourComponent&& other) noexcept;
+        NativeBehaviourComponent& operator=(NativeBehaviourComponent&& other) noexcept;
         ~NativeBehaviourComponent() noexcept;
 
     public:
-        inline void swap(NativeBehaviourComponent& other) noexcept { std::swap(behaviours_, other.behaviours_); }
-        [[nodiscard]] inline BehaviourMap&       behaviours() noexcept { return behaviours_; }
-        [[nodiscard]] inline const BehaviourMap& behaviours() const noexcept
-        {
-            return const_cast<NativeBehaviourComponent*>(this)->behaviours();
-        }
-
-    public:
-        void                 on_init() override;
-        void                 attach(Box<NativeBehaviour> bh);
-        Box<NativeBehaviour> detach(const std::string& class_name);
-        void                 instantiate_behaviour(const std::string& class_name);
-        void                 on_update(const f32 delta_time);
-        void                 on_fixed_update(const f32 delta_time);
-        void                 dispose_behaviours();
-        void                 set_parent(const Entity entity) const noexcept;
-        void                 dispose(const std::string& class_name);
-        void                 attach_pending_scripts();
-        void                 save_attached_to_pending();
-
-    public:
-        template <typename T, typename... TArgs>
-        T& make_behaviour(TArgs&&... args)
-            requires(std::is_base_of_v<NativeBehaviour, T>);
+        void                          on_init() override;
+        NativeBehaviour*              attach(const std::string_view type_name) noexcept;
+        void                          detach(const std::string_view type_name) noexcept;
+        void                          dispose_behaviours() noexcept;
+        NativeBehaviour*              behaviour(const std::string_view type_name) noexcept;
+        std::vector<NativeBehaviour*> behaviours() noexcept;
+        void                          dispose() noexcept;
 
     public:
         void serialize_impl(ISerializationNode& node) const override;
         void deserialize_impl(const ISerializationNode& node) override;
 
     private:
-        mutable BehaviourMap     behaviours_;
-        mutable BehaviourList    behaviour_list_; // For iteration.
-        std::vector<std::string> pending_scripts_;
+        [[nodiscard]] Scene* scene() const noexcept { return parent_.scene(); }
+        void                 attach_pending() noexcept;
+
+    private:
+        Scene::BagHandle                         handle_ = Scene::NBHandle::invalid_id();
+        mutable absl::flat_hash_set<std::string> pending_;
     };
 
     struct CODEX_API CameraComponent : public Component
@@ -338,14 +320,17 @@ namespace codex {
     public:
         struct Animation
         {
-            Vector2f starting_tile{ 0.0f, 0.0f };
-            u32      frame_count = 0;
-            f32      frame_rate  = 24.0f;
+            std::string name;
+            Vector2f    starting_tile{ 0.0f, 0.0f };
+            u32         frame_count   = 0;
+            f32         frame_rate    = 24.0f;
+            u32         current_frame = 0;
         };
 
     public:
-        Sprite                                     sprite;
-        std::unordered_map<std::string, Animation> animations;
+        Sprite                 sprite;
+        Vector2f               grid_size{ 32.0f, 32.0f };
+        std::vector<Animation> animations;
 
     public:
         void serialize_impl(ISerializationNode& node) const override;

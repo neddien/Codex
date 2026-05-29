@@ -1,6 +1,6 @@
 #pragma once
 
-#include "constants.h"
+#include "common.h"
 
 namespace codex::opengl {
     // Forward declerations
@@ -20,8 +20,7 @@ namespace codex::opengl {
     public:
         void bind() const;
         void unbind() const;
-        void set_buffer(const u32* data, const usize index_count,
-                        const BufferUsage usage = BufferUsage::STATIC_DRAW);
+        void set_buffer(const u32* data, const usize index_count, const BufferUsage usage = BufferUsage::STATIC_DRAW);
         void set_buffer_sub_data(const u32* data, const usize index_count);
 
     private:

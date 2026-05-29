@@ -18,7 +18,7 @@ namespace codex::editor {
         static ImFont*                            s_xl_icon_font_;
 
     public:
-        [[nodiscard]] static inline scene::EditorCamera& get_viewport_camera() noexcept { return *s_camera_; }
+        [[nodiscard]] static inline scene::EditorCamera& viewport_camera() noexcept { return *s_camera_; }
         [[nodiscard]] static inline ImFont*              get_large_icon_font() noexcept { return s_large_icon_font_; }
         [[nodiscard]] static inline ImFont*              get_xl_icon_font() noexcept { return s_xl_icon_font_; }
 

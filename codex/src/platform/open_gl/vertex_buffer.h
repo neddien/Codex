@@ -18,7 +18,7 @@ namespace codex::opengl {
         void set_buffer(const void* data, const usize size, const BufferUsage usage = BufferUsage::STATIC_DRAW)
         {
             GL_Call(glBindBuffer(GL_ARRAY_BUFFER, renderer_id_));
-            GL_Call(glBufferData(GL_ARRAY_BUFFER, size, data, (GLenum)(usage)));
+            GL_Call(glBufferData(GL_ARRAY_BUFFER, size, data, to_glenum(usage)));
             vertex_count_ = size / sizeof(T);
         }
 

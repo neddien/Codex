@@ -8,11 +8,8 @@
 #include <engine/core/public/system.h>
 #include <engine/core/public/uuid.h>
 #include <engine/filesystem/public/file_handle.h>
-#include <engine/memory/public/memory.h>
-
 #include <engine/graphics/public/texture2d.h>
-
-#include <mutex>
+#include <engine/memory/public/memory.h>
 
 namespace codex {
     namespace fs {
@@ -41,7 +38,7 @@ namespace codex {
                 if (asset) {
                     auto             handle = Asset<TAsset>{ maybe_meta->path, asset };
                     std::scoped_lock guard{ self.mutex_ };
-                    self.cache_.insert_or_assign(maybe_meta->path, handle.shared().template as<IAsset>());
+                    self.cache_.insert_or_assign(maybe_meta->path, handle.as_shared().template as<IAsset>());
                     return handle;
                 }
                 self.log(Error, "Failed to load asset: {}", uuid);
@@ -71,7 +68,7 @@ namespace codex {
                 if (asset) {
                     auto             handle = Asset<TAsset>{ maybe_meta->path, asset };
                     std::scoped_lock guard{ self.mutex_ };
-                    self.cache_.insert_or_assign(maybe_meta->path, handle.shared().template as<IAsset>());
+                    self.cache_.insert_or_assign(maybe_meta->path, handle.as_shared().template as<IAsset>());
                     return handle;
                 }
                 self.log(Error, "Failed to load asset: {}", uuid);
@@ -102,7 +99,7 @@ namespace codex {
                 if (asset) {
                     auto             handle = Asset<TAsset>{ maybe_meta->path, asset };
                     std::scoped_lock guard{ self.mutex_ };
-                    self.cache_.insert_or_assign(maybe_meta->path, handle.shared().template as<IAsset>());
+                    self.cache_.insert_or_assign(maybe_meta->path, handle.as_shared().template as<IAsset>());
                     return handle;
                 }
                 self.log(Error, "Failed to load asset: {}", path);
@@ -128,7 +125,7 @@ namespace codex {
                 if (asset) {
                     auto             handle = Asset<TAsset>{ maybe_meta->path, asset };
                     std::scoped_lock guard{ self.mutex_ };
-                    self.cache_.insert_or_assign(maybe_meta->path, handle.shared().template as<IAsset>());
+                    self.cache_.insert_or_assign(maybe_meta->path, handle.as_shared().template as<IAsset>());
                     return handle;
                 }
                 self.log(Error, "Failed to load asset: {}", path);
@@ -240,15 +237,13 @@ namespace codex {
         [[nodiscard]] static cc::ThreadedExecutor& worker_pool() noexcept;
 
     private:
-        fs::VirtualFilesystem*                                    vfs_ = nullptr;
-        std::string                                               asset_root_;
-        std::unordered_map<std::type_index, Shared<IAssetLoader>> loaders_;
-        std::unordered_map<usize, Shared<IAssetLoader>>           loaders_by_ext_;
-        std::unordered_map<usize, Shared<IAssetLoader>>           loaders_by_type_;
-        std::unordered_map<AssetPath, Ref<IAsset>>                cache_;
-        Box<AssetRegistry>                                        registry_ = nullptr;
-        mutable std::shared_mutex                                 mutex_;
+        fs::VirtualFilesystem*                          vfs_ = nullptr;
+        std::string                                     asset_root_;
+        std::unordered_map<usize, Shared<IAssetLoader>> loaders_;
+        std::unordered_map<usize, Shared<IAssetLoader>> loaders_by_ext_;
+        std::unordered_map<usize, Shared<IAssetLoader>> loaders_by_type_;
+        std::unordered_map<AssetPath, Ref<IAsset>>      cache_;
+        Box<AssetRegistry>                              registry_ = nullptr;
+        mutable std::shared_mutex                       mutex_;
     };
 } // namespace codex
-
-#include <engine/asset_manager/asset_manager.inl>

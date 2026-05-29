@@ -1,11 +1,11 @@
 #ifndef CODEX_CORE_COMMON_DEFINITIONS_H
 #define CODEX_CORE_COMMON_DEFINITIONS_H
 
+// Use GLM experimental functions
+#define GLM_ENABLE_EXPERIMENTAL
+
 #include <cstdint>
 #include <engine/core/public/geometry.h>
-#include <fmt/core.h>
-#include <magic_enum.hpp>
-#include <mutex>
 
 #if defined(CX_PLATFORM_WINDOWS)
 #define NOINLINE     __declspec(noinline)
@@ -123,8 +123,8 @@ namespace codex {
     struct FixedString
     {
         char data[N]{};
-        constexpr FixedString(const char (&str)[N]) { std::copy_n(str, N, data); }
-        constexpr operator std::string_view() const { return { data, N - 1 }; }
+        constexpr FixedString(const char (&str)[N]) noexcept { std::copy_n(str, N, data); }
+        constexpr operator std::string_view() const noexcept { return { data, N - 1 }; }
     };
 } // namespace codex
 

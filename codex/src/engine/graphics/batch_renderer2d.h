@@ -46,14 +46,14 @@ namespace codex::gfx {
         static void dispose();
         static void begin(const scene::Camera& camera, const TransformComponent& camera_transform);
         static void begin(const scene::EditorCamera& camera);
-        static void end();
+        static void end(gfx::Shader* custom_end_shader = nullptr);
         static void render_rect(Texture2D* texture, const Rectf& src_rect, const Matrix4f& mat, const Vector4f& colour,
                                 const i32 z_index = 0, const i32 entity_id = -1);
 
     public:
         static inline void render_sprite(const Sprite& sprite, const Matrix4f& transform, const i32 entity_id = -1)
         {
-            render_rect(sprite.texture().shared().get(), sprite.texture_coords(), transform, sprite.colour(),
+            render_rect(sprite.texture().as_shared().get(), sprite.texture_coords(), transform, sprite.colour(),
                         sprite.z_index(), entity_id);
         }
 

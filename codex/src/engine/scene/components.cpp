@@ -12,12 +12,12 @@ namespace codex {
     using namespace codex::gfx;
 
     TagComponent::TagComponent()
+        : tag{ "default tag" }
     {
-        tag = "default tag";
     }
 
     TagComponent::TagComponent(const std::string_view tag)
-        : tag(std::string(tag))
+        : tag{ tag }
     {
     }
 
@@ -32,9 +32,9 @@ namespace codex {
     }
 
     TransformComponent::TransformComponent(const Vector3f position, const Vector3f rotation, const Vector3f scale)
-        : position(position)
-        , rotation(rotation)
-        , scale(scale)
+        : position{ position }
+        , rotation{ rotation }
+        , scale{ scale }
     {
     }
 
@@ -53,7 +53,7 @@ namespace codex {
     }
 
     SpriteRendererComponent::SpriteRendererComponent(Sprite sprite)
-        : sprite_(std::move(sprite))
+        : sprite_{ std::move(sprite) }
     {
     }
 
@@ -67,39 +67,126 @@ namespace codex {
         sprite_.deserialize(node);
     }
 
+    NativeBehaviourComponent::NativeBehaviourComponent() noexcept = default;
+
+    NativeBehaviourComponent::NativeBehaviourComponent(NativeBehaviourComponent&& other) noexcept
+        : handle_{ std::exchange(other.handle_, Scene::BagHandle::invalid_id()) }
+        , pending_{ std::move(other.pending_) }
+    {
+    }
+
+    NativeBehaviourComponent& NativeBehaviourComponent::operator=(NativeBehaviourComponent&& other) noexcept
+    {
+        if (this != &other) {
+            handle_        = other.handle_;
+            other.handle_  = Scene::BagHandle::invalid_id();
+            other.pending_ = std::move(other.pending_);
+        }
+        return *this;
+    }
+
+    // NativeBehaviourComponent& NativeBehaviourComponent::operator=(
+    //     const NativeBehaviourComponent& other) noexcept = default;
+
     NativeBehaviourComponent::~NativeBehaviourComponent() noexcept
     {
-        dispose_behaviours();
+        // NOTE: Reason why we don't dispose our behaviours here is because NBC's state is entirely owned by
+        // NBMan & Scene, when Scene is disposing it will call the Ctor for NBC which will in turn call into
+        // a dying scene with half-freed state which is bad!
+        // TLDR: This will bite you in the ass later just like it did to me so I'm making the cleanup for the
+        // behaviours explicit with ::dispose().
     }
 
-    NativeBehaviourComponent::NativeBehaviourComponent(const NativeBehaviourComponent& other)
-        : pending_scripts_{ other.pending_scripts_ }
+    void NativeBehaviourComponent::on_init()
     {
-        behaviour_list_.reserve(other.behaviour_list_.capacity());
-        for (const auto& e : other.behaviours_)
-            attach(e.second->clone());
+        assert(parent_.scene());
+        handle_ = scene()->create_behaviour_bag(parent_);
+        attach_pending();
     }
 
-    void NativeBehaviourComponent::on_update(const f32 deltaTime)
+    NativeBehaviour* NativeBehaviourComponent::attach(const std::string_view type_name) noexcept
     {
-        // TODO: This guy should NOT be inline, it throws an exception?
-        for (auto& e : behaviour_list_)
-            e->on_update(deltaTime);
+        if (!NBMan::is_type_registered(type_name)) {
+            pending_.emplace(type_name);
+            log(Warn, "Behaviour {} not found in the reigstry, adding it to the pending list", type_name);
+            return nullptr;
+        }
+
+        auto handle = scene()->create_behaviour(handle_, type_name);
+        assert(handle != Scene::NBHandle::invalid_id());
+        NativeBehaviour* bh = scene()->behaviour(handle);
+        assert(bh);
+        log(Info, "Attached behaviour: {}", type_name);
+        return bh;
     }
 
-    void NativeBehaviourComponent::on_fixed_update(const f32 deltaTime)
+    void NativeBehaviourComponent::detach(const std::string_view type_name) noexcept
     {
-        // TODO: This guy should NOT be inline, it throws an exception?
-        for (auto& e : behaviour_list_)
-            e->on_fixed_update(deltaTime);
+        const auto handles = scene()->behaviours(handle_);
+        for (const auto bhhandle : handles) {
+            NativeBehaviour* bh = scene()->behaviour(bhhandle);
+            assert(bh);
+
+            if (bh->type_info().name() == type_name)
+                scene()->dispose_behaviour(handle_, bhhandle);
+        }
+    }
+
+    void NativeBehaviourComponent::dispose_behaviours() noexcept
+    {
+        const auto handles = scene()->behaviours(handle_);
+        for (const auto handle : handles)
+            scene()->dispose_behaviour(handle_, handle);
+    }
+
+    NativeBehaviour* NativeBehaviourComponent::behaviour(const std::string_view type_name) noexcept
+    {
+        const auto handles = scene()->behaviours(handle_);
+        for (const auto handle : handles) {
+            NativeBehaviour* bh = scene()->behaviour(handle);
+            assert(bh);
+
+            if (bh->type_info().name() == type_name)
+                return bh;
+        }
+        return nullptr;
+    }
+
+    std::vector<NativeBehaviour*> NativeBehaviourComponent::behaviours() noexcept
+    {
+        const auto                    handles = scene()->behaviours(handle_);
+        std::vector<NativeBehaviour*> vec;
+        vec.reserve(handles.size());
+        for (const auto handle : handles) {
+            NativeBehaviour* bh = scene()->behaviour(handle);
+            assert(bh);
+
+            vec.push_back(bh);
+        }
+
+        return vec;
+    }
+
+    void NativeBehaviourComponent::dispose() noexcept
+    {
+        if (handle_ != Scene::BagHandle::invalid_id()) {
+            dispose_behaviours();
+            scene()->dispose_behaviour_bag(handle_);
+        }
     }
 
     void NativeBehaviourComponent::serialize_impl(ISerializationNode& node) const
     {
         auto& scripts = node.begin_array("attached_scripts");
-        for (const auto& [x, y] : behaviours_) {
-            scripts.add_array_element().write("name", x);
+        for (auto handle : scene()->behaviours(handle_)) {
+            const NativeBehaviour* bh = scene()->behaviour(handle);
+            scripts.add_array_element().write("name", bh->type_info().name());
         }
+
+        auto pending = std::exchange(pending_, {});
+        for (auto type_name : pending)
+            scripts.add_array_element().write("name", type_name);
+
         node.end_array();
     }
 
@@ -110,136 +197,27 @@ namespace codex {
             [this](const ISerializationNode& element)
             {
                 std::string name;
-                if (element.read("name", name))
-                    pending_scripts_.push_back(std::move(name));
+                if (element.read("name", name)) {
+                    // By default pend all behaviours, we cannot be sure that NBMan has been loaded yet.
+                    log(Info, "Deser: Pending behaviour: {}", name);
+                    pending_.emplace(name);
+                }
             });
-
-        log(Info, "Pending scripts: {}", pending_scripts_.size());
     }
 
-    NativeBehaviourComponent& NativeBehaviourComponent::operator=(const NativeBehaviourComponent& other)
+    void NativeBehaviourComponent::attach_pending() noexcept
     {
-        NativeBehaviourComponent{ other }.swap(*this);
-        return *this;
-    }
+        log(Info, "Attaching pending behaviours: {}", pending_.size());
+        auto pending = std::exchange(pending_, {});
+        for (const auto& type_name : pending) {
+            if (!NBMan::is_type_registered(type_name)) {
+                // Re-pend this behaviour.
+                pending_.emplace(type_name);
+                log(Warn, "Pending behaviour still hasn't been found: {}", type_name);
+            }
 
-    // TODO: Should be noexcept since we're handling the exceptions here.
-    void NativeBehaviourComponent::on_init()
-    {
-        for (auto& e : behaviour_list_) {
-            try {
-                e->on_init();
-            }
-            catch (CodexException& ex) {
-                // The behaviour threw an exception, wrap it inside a NativeBehaviourException and re-throw it.
-                auto exi             = NativeBehaviourException("NBC failed to initialise Behaviours.");
-                exi.inner_exception_ = std::move(ex);
-                throw std::move(exi);
-            }
+            scene()->create_behaviour(handle_, type_name);
         }
-    }
-
-    void NativeBehaviourComponent::attach(Box<NativeBehaviour> bh)
-    {
-        // TODO: This should happen OnScenePlay().
-        // Optionally, you could have a OnAttach() or OnConstruct() method
-        // that will be called during attachment.
-
-        auto* ptr   = bh.get();
-        bh->parent_ = this->parent_;
-        auto type   = std::string{ bh->type_info().type_name() };
-        if (!behaviours_.contains(type)) {
-            behaviours_[std::move(type)] = std::move(bh);
-            behaviour_list_.push_back(ptr);
-        } else {
-            throw DuplicateBehaviourException("Behaviour {} is already attached to this entity.", type);
-        }
-    }
-
-    Box<NativeBehaviour> NativeBehaviourComponent::detach(const std::string& class_name)
-    {
-        auto it = behaviours_.find(class_name);
-        if (it != behaviours_.end()) {
-            auto ptr = std::move(it->second);
-            behaviours_.erase(it);
-            behaviour_list_.erase(std::remove(behaviour_list_.begin(), behaviour_list_.end(), ptr.get()));
-            return ptr;
-        } else {
-            throw ScriptException("Tried to detach a behaviour ({}) that is not attached "
-                                  "on the first place.",
-                                  class_name);
-        }
-        return nullptr;
-    }
-
-    void NativeBehaviourComponent::instantiate_behaviour(const std::string& class_name)
-    {
-        if (behaviours_.contains(class_name)) {
-            try {
-                behaviours_.at(class_name)->on_init();
-            }
-            catch (CodexException& ex) {
-                // The behaviour threw an exception, wrap it inside a NativeBehaviourException and re-throw it.
-                auto exi             = NativeBehaviourException("NBC failed to initialise Behaviours.");
-                exi.inner_exception_ = std::move(ex);
-                throw std::move(exi);
-            }
-        } else
-            throw ScriptException("Tried to instantiate a non-existent behaviour class {}.", class_name);
-    }
-
-    void NativeBehaviourComponent::dispose_behaviours()
-    {
-        behaviours_.clear();
-    }
-
-    void NativeBehaviourComponent::set_parent(const Entity entity) const noexcept
-    {
-        for (auto* e : behaviour_list_)
-            e->parent_ = entity;
-    }
-
-    void NativeBehaviourComponent::dispose(const std::string& class_name)
-    {
-        auto it = behaviours_.find(class_name);
-        if (it != behaviours_.end()) {
-            auto ptr = std::move(it->second);
-            behaviours_.erase(it, behaviours_.end());
-            behaviour_list_.erase(std::remove(behaviour_list_.begin(), behaviour_list_.end(), ptr.get()));
-        } else {
-            throw ScriptException("Tried to dispose a behaviour ({}) that is not attached "
-                                  "on first place.",
-                                  class_name);
-        }
-    }
-
-    void NativeBehaviourComponent::attach_pending_scripts()
-    {
-        auto it = pending_scripts_.begin();
-        while (it != pending_scripts_.end()) {
-            if (behaviours_.contains(*it)) {
-                it = pending_scripts_.erase(it);
-                continue;
-            }
-
-            auto instance = NBMan::create_instance(*it);
-            if (instance) {
-                attach(std::move(instance));
-                it = pending_scripts_.erase(it);
-            } else {
-                warn("Failed to attach pending script: {}", *it);
-                ++it;
-            }
-        }
-    }
-
-    void NativeBehaviourComponent::save_attached_to_pending()
-    {
-        pending_scripts_.clear();
-        for (const auto& [name, _] : behaviours_)
-            pending_scripts_.push_back(name);
-        dispose_behaviours();
-        behaviour_list_.clear();
     }
 
     void CameraComponent::serialize_impl(ISerializationNode& node) const
@@ -431,13 +409,15 @@ namespace codex {
     {
         auto& spritenode = node.create_child("sprite");
         sprite.serialize(spritenode);
+        node.write("grid_size", grid_size);
 
-        auto& anims_node = node.begin_map("animations");
-        for (const auto& [x, y] : animations) {
-            auto& inode = anims_node.add_map_entry(x);
-            inode.write("starting_tile", y.starting_tile);
-            inode.write("frame_count", y.frame_count);
-            inode.write("frame_rate", y.frame_rate);
+        auto& anims_node = node.begin_array("animations");
+        for (const auto& anim : animations) {
+            auto& inode = anims_node.add_array_element();
+            inode.write("name", anim.name);
+            inode.write("starting_tile", anim.starting_tile);
+            inode.write("frame_count", anim.frame_count);
+            inode.write("frame_rate", anim.frame_rate);
         }
     }
 
@@ -445,19 +425,21 @@ namespace codex {
     {
         auto& spritenode = node.child("sprite");
         sprite.deserialize(spritenode);
+        node.read("grid_size", grid_size);
 
-        auto& anims_node = node.map("animations");
+        auto& anims_node = node.array("animations");
         animations.clear();
 
-        anims_node.for_each_map_entry(
-            [this](const std::string_view key, const auto& inode)
+        anims_node.for_each_array_element(
+            [this](const auto& inode)
             {
                 Animation anim;
+                inode.read("name", anim.name);
                 inode.read("starting_tile", anim.starting_tile);
                 inode.read("frame_count", anim.frame_count);
                 inode.read("frame_rate", anim.frame_rate);
 
-                animations[std::string{ key }] = std::move(anim);
+                animations.push_back(std::move(anim));
             });
     }
 

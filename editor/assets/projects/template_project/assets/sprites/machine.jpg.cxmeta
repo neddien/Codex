@@ -4,10 +4,10 @@
     "type": "Texture2D",
     "checksum": 1784860645,
     "size": 156670,
-    "last_modified": 1778001276,
+    "last_modified": 1778495516,
     "dependencies": [],
     "import_settings": {
-        "filter_mode": "Nearest",
+        "filter_mode": "Linear",
         "mipmap_mode": "None",
         "wrap_mode": "Mirror",
         "format": "None"

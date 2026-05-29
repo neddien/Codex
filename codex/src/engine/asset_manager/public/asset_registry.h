@@ -18,6 +18,7 @@ namespace codex {
         usize                     size;
         Box<IAssetImportSettings> import_settings;
         std::vector<AssetPath>    dependencies;
+        bool                      null_asset;
         mutable bool              dirty;
         mutable std::string       name;
 
@@ -31,6 +32,7 @@ namespace codex {
             , size{ other.size }
             , dependencies{ other.dependencies }
             , dirty{ other.dirty }
+            , null_asset{ other.null_asset }
         {
             if (other.import_settings)
                 import_settings = other.import_settings->clone();
@@ -47,6 +49,7 @@ namespace codex {
             , dependencies{ std::move(other.dependencies) }
             , dirty{ other.dirty }
             , name{ other.name }
+            , null_asset{ other.null_asset }
         {
         }
 
@@ -68,6 +71,7 @@ namespace codex {
             std::swap(dependencies, other.dependencies);
             std::swap(dirty, other.dirty);
             std::swap(name, other.name);
+            std::swap(null_asset, other.null_asset);
         }
 
     public:
@@ -111,6 +115,7 @@ namespace codex {
     private:
         cc::Task<void> metagen(const std::filesystem::path path) noexcept;
         void           write_meta_files() const noexcept;
+        cc::Task<void> write_manifest_async() noexcept;
 
     private:
         std::unordered_map<UUID, AssetMetadata*>  uuid_to_meta_;

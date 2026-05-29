@@ -51,7 +51,7 @@ namespace codex {
 
         {
             mutex_.lock_shared();
-            auto path_it = path_to_meta_.find(std::hash<std::string>{}(path.path()));
+            auto path_it = path_to_meta_.find(util::crypto::fnv1a(path.path()));
             auto uuid_it = uuid_to_meta_.find(path.uuid());
             mutex_.unlock_shared();
             assert(path_it != path_to_meta_.end());
@@ -67,7 +67,7 @@ namespace codex {
             std::scoped_lock guard{ mutex_ };
             meta->path              = AssetPath{ new_path, path.uuid() };
             meta->dirty             = true;
-            auto [pit, pdid_insert] = path_to_meta_.insert_or_assign(std::hash<std::string>{}(meta->path.path()), meta);
+            auto [pit, pdid_insert] = path_to_meta_.insert_or_assign(util::crypto::fnv1a(meta->path.path()), meta);
             auto [uit, udid_insert] = uuid_to_meta_.insert_or_assign(meta->path.uuid(), meta);
             assert(pdid_insert);
             assert(udid_insert);
@@ -132,14 +132,14 @@ namespace codex {
         std::shared_lock guard{ mutex_ };
 
         // TODO: Clone or return a pointer?
-        if (auto it = path_to_meta_.find(std::hash<std::string>{}(path)); it != path_to_meta_.end())
+        if (auto it = path_to_meta_.find(util::crypto::fnv1a(path)); it != path_to_meta_.end())
             return it->second;
         return nullptr;
     }
 
     Task<void> AssetRegistry::metagen(const stdfs::path path) noexcept
     {
-        co_await Engine::get_worker_pool();
+        co_await Engine::worker_pool();
 
         AssetMetadata metadata{};
         metadata.path  = AssetPath{ path.generic_string() };
@@ -174,7 +174,7 @@ namespace codex {
                         std::scoped_lock guard{ mutex_ };
 
                         auto metabox = Box<AssetMetadata>::make(std::move(metadata));
-                        path_to_meta_.try_emplace(std::hash<std::string>{}(metabox->path.path()), metabox.get());
+                        path_to_meta_.try_emplace(util::crypto::fnv1a(metabox->path.path()), metabox.get());
                         uuid_to_meta_.try_emplace(metabox->path.uuid(), metabox.get());
                         log(Debug, "valid meta has been pushed to the registry: {}, {}", metabox->path.path(),
                             metabox->path.uuid());
@@ -226,18 +226,25 @@ namespace codex {
 
             metadata.type = loader->asset_type_name();
 
-            auto handle = vfs_.open(path, { FileMode::Read });
-            if (handle) {
-                metadata.checksum      = checksum_file(*handle);
-                metadata.size          = handle->size();
-                metadata.last_modified = handle->last_modified();
+            if (loader->asset_type_id() != typeid(void)) {
+                auto handle = vfs_.open(path, { FileMode::Read });
+                if (handle) {
+                    metadata.checksum      = checksum_file(*handle);
+                    metadata.size          = handle->size();
+                    metadata.last_modified = handle->last_modified();
+                } else {
+                    log(Error, "handle for file: {} is invalid", path.generic_string());
+                    co_return;
+                }
             } else {
-                log(Error, "handle for file: {} is invalid", path.generic_string());
-                co_return;
+                metadata.null_asset = true;
+                log(Info, "Null asset: {}", path.generic_string());
             }
 
             // Do we have a meta for this guy? Try to find it and if we do update the current meta, just in case.
             for (auto& e : metas_) {
+                assert(e);
+
                 if (e->path.path() == path) {
                     std::scoped_lock guard{ mutex_ };
 
@@ -248,7 +255,6 @@ namespace codex {
                     co_return;
                 }
             }
-
             trace("maybe orphaned meta for asset: {}", path.generic_string());
 
             // If we don't have meta then the meta might be orphaned, basically the asset was either renamed or moved.
@@ -266,8 +272,7 @@ namespace codex {
                         trace("orphaned asset {} has been resolved", path.generic_string());
                         meta->dirty = true;
 
-                        auto r1 =
-                            path_to_meta_.insert_or_assign(std::hash<std::string>{}(meta->path.path()), meta.get());
+                        auto r1 = path_to_meta_.insert_or_assign(util::crypto::fnv1a(meta->path.path()), meta.get());
                         assert(r1.second);
 
                         auto r2 = uuid_to_meta_.insert_or_assign(meta->path.uuid(), meta.get());
@@ -289,7 +294,7 @@ namespace codex {
 
                 auto metabox = Box<AssetMetadata>::make(std::move(metadata));
 
-                auto r1 = path_to_meta_.try_emplace(std::hash<std::string>{}(metabox->path.path()), metabox.get());
+                auto r1 = path_to_meta_.try_emplace(util::crypto::fnv1a(metabox->path.path()), metabox.get());
                 assert(r1.second);
 
                 auto r2 = uuid_to_meta_.try_emplace(metabox->path.uuid(), metabox.get());
@@ -311,7 +316,8 @@ namespace codex {
             auto path = stdfs::path{ e->path.path() };
             path.replace_extension(path.extension().generic_string() + ".cxmeta");
 
-            if (e->dirty) {
+            // We don't write metadatas for null assets on the disk.
+            if (e->dirty && !e->null_asset) {
                 if (auto fh =
                         vfs_.open(path.generic_string(), { FileMode::Create | FileMode::Trunc | FileMode::Write });
                     fh) {
@@ -364,7 +370,10 @@ namespace codex {
             });
 
         if (node.has_key("import_settings")) {
-            import_settings = AssetManager::get_loader_by_type(type)->default_import_settings();
+            auto loader = AssetManager::get_loader_by_type(type);
+            assert(loader);
+
+            import_settings = loader->default_import_settings();
             import_settings->deserialize(node.child("import_settings"));
         }
     }

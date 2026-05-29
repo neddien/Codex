@@ -15,7 +15,7 @@ namespace codex::editor {
         void on_imgui_render() override;
 
     private:
-        void render_texture2d_properties(AssetMetadata* meta);
+        void render_texture2d_properties(AssetMetadata& meta);
 
     private:
         std::unordered_map<UUID, Asset<gfx::Texture2D>> texture_cache_;

@@ -64,8 +64,8 @@ namespace codex::opengl {
                 }
             }
 
-            void attach_colour_texture(const u32 id, const TextureProperties& props, const u32 width,
-                                       const u32 height, const usize index)
+            void attach_colour_texture(const u32 id, const TextureProperties& props, const u32 width, const u32 height,
+                                       const usize index)
             {
                 GL_Call(glTexImage2D(GL_TEXTURE_2D, 0, (GLint)props.format, width, height, 0,
                                      get_format_from_internal_format(props.format),
@@ -82,11 +82,10 @@ namespace codex::opengl {
                 GL_Call(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + index, GL_TEXTURE_2D, id, 0));
             }
 
-            void attach_depth_texture(const u32 id, const TextureProperties& props, const u32 width,
-                                      const u32 height)
+            void attach_depth_texture(const u32 id, const TextureProperties& props, const u32 width, const u32 height)
             {
-                GL_Call(glTexImage2D(GL_TEXTURE_2D, 0, (GLint)props.format, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE,
-                                     nullptr));
+                GL_Call(glTexImage2D(GL_TEXTURE_2D, 0, (GLint)props.format, width, height, 0, GL_DEPTH_STENCIL,
+                                     GL_UNSIGNED_INT_24_8, nullptr));
 
                 // Set the wrap mode
                 GL_Call(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, (GLint)props.wrap_mode));
@@ -130,7 +129,6 @@ namespace codex::opengl {
             GL_Call(glDeleteTextures(1, &depth_attachment_id_));
 
             colour_attachment_ids_.clear();
-            depth_attachment_   = TextureProperties{};
             depth_attachment_id_ = 0;
         }
 
@@ -144,7 +142,7 @@ namespace codex::opengl {
             for (usize i = 0; i < colour_attachment_ids_.size(); ++i) {
                 glBindTexture(GL_TEXTURE_2D, colour_attachment_ids_[i]);
                 internals::attach_colour_texture(colour_attachment_ids_[i], colour_attachments_[i], props_.width,
-                                               props_.height, i);
+                                                 props_.height, i);
             }
         }
 
@@ -155,7 +153,7 @@ namespace codex::opengl {
             switch (depth_attachment_.format) {
                 case TextureFormat::Depth24Stencil8:
                     internals::attach_depth_texture(depth_attachment_id_, depth_attachment_, props_.width,
-                                                  props_.height);
+                                                    props_.height);
                     break;
                 default: break;
             }
@@ -164,9 +162,9 @@ namespace codex::opengl {
         if (!colour_attachments_.empty()) {
             GL_Call(glBindFramebuffer(GL_FRAMEBUFFER, renderer_id_));
             CX_ASSERT(colour_attachments_.size() < MAX_COLOUR_ATTACHMENT_COUNT,
-                       "Cannot have more than " + std::to_string(MAX_COLOUR_ATTACHMENT_COUNT) + " colour attachments.");
+                      "Cannot have more than " + std::to_string(MAX_COLOUR_ATTACHMENT_COUNT) + " colour attachments.");
             CX_ASSERT(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE,
-                       "Error: Framebuffer is not complete.");
+                      "Error: Framebuffer is not complete.");
 
             GLenum buffers[MAX_COLOUR_ATTACHMENT_COUNT];
             for (int i = 0; i < MAX_COLOUR_ATTACHMENT_COUNT; ++i)
@@ -208,7 +206,7 @@ namespace codex::opengl {
     }
 
     void FrameBuffer::set_currently_bound_texture_properties(const TextureWrapMode   wrap_mode,
-                                                         const TextureFilterMode filter_mode)
+                                                             const TextureFilterMode filter_mode)
     {
         switch (wrap_mode) {
             case TextureWrapMode::Mirror:

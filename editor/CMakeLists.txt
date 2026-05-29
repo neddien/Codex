@@ -20,8 +20,8 @@ file(GLOB_RECURSE CEDITOR_MODULE_FILES "src/*.ixx")
 add_executable(CodexEditor ${CEDITOR_HEADER_FILES} ${CEDITOR_SOURCE_FILES}
                            ${CEDITOR_MODULE_FILES})
 
-# Set the C++ Standard to 20 for this target
-set_property(TARGET CodexEditor PROPERTY CXX_STANDARD 20)
+# Set the C++ Standard to 23 for this target
+set_property(TARGET CodexEditor PROPERTY CXX_STANDARD 23)
 
 target_link_libraries(CodexEditor CodexEngine)
 add_dependencies(CodexEditor CodexEngine)
@@ -80,7 +80,7 @@ endif()
 set(ENV{CE_INSTALL_DIR} "${CMAKE_INSTALL_PREFIX}")
 get_target_property(CE_BIN_NAME CodexEditor NAME)
 set(ENV{CE_BIN_NAME} "${CE_BIN_NAME}")
-message(":: CE_INSTALL_DIR: $ENV{CE_INSTALL_DIR}")
+message(STATUS "${PROJECT_NAME}: Install directory: $ENV{CE_INSTALL_DIR}")
 
 # === Dependencies ===
 if(DEFINED CX_PLATFORM_WINDOWS)
@@ -127,7 +127,6 @@ foreach(PROJECT_DIR ${PROJECT_DIRS})
         "src/platform:engine/src/platform:headers"
         "vendor/entt:engine/vendor/entt:headers"
         "vendor/glm:engine/vendor/glm:headers"
-        "vendor/glad:engine/vendor/glad:headers"
         "vendor/magic_enum:engine/vendor/magic_enum"
     )
     string(REPLACE ";" "," CX_ENGINE_COPY_SPECS_PROC "${CX_ENGINE_COPY_SPECS}")
@@ -159,9 +158,6 @@ foreach(PROJECT_DIR ${PROJECT_DIRS})
           "${CMAKE_CURRENT_SOURCE_DIR}/assets/projects/${PROJECT_DIR}/lib/CodexEngine.lib"
         COMMAND
           ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:fmt>"
-          "${CMAKE_CURRENT_SOURCE_DIR}/assets/projects/${PROJECT_DIR}/lib/"
-        COMMAND
-          ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:logex-static>"
           "${CMAKE_CURRENT_SOURCE_DIR}/assets/projects/${PROJECT_DIR}/lib/"
         COMMENT ":: Copying object libraries to ${PROJECT_DIR}/lib/...")
     endif()

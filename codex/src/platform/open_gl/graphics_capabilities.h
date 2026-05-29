@@ -1,6 +1,6 @@
 #pragma once
 
-#include "constants.h"
+#include "common.h"
 
 namespace codex::opengl {
     namespace capabilities {

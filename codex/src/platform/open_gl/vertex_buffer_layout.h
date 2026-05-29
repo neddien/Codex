@@ -1,6 +1,6 @@
 #pragma once
 
-#include "constants.h"
+#include "common.h"
 
 #include <glad/glad.h>
 

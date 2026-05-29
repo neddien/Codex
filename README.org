@@ -40,7 +40,7 @@ The following are required regardless of platform:
 | Python  | 3.8+            | Required for the reflection tool (~python-clang~ / ~libclang~) |
 | Git     | any             | Dependencies fetched via CMake                             |
 
-Most third-party dependencies (SDL2, Box2D, ImGui, nlohmann/json, Logex) are
+Most third-party dependencies (SDL2, Box2D, ImGui, nlohmann/json) are
 fetched automatically by CMake at configure time. No manual installation needed
 for those. FMOD is vendored directly in ~codex_engine/vendor/fmod/~.
 

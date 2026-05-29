@@ -2,8 +2,12 @@
 
 #include "profiler.h"
 
+#ifdef CX_CONFIG_DEBUG
 #define CX_DEBUG_PROFILE_SCOPE(...)                                                                                    \
     const auto __var_to_hold_scope_profile_things = codex::dbg::profile_scope(__VA_ARGS__);
+#else
+#define CX_DEBUG_PROFILE_SCOPE(...)
+#endif
 
 namespace codex::dbg {
     template <typename T>

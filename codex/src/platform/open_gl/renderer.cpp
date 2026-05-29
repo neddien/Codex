@@ -42,7 +42,7 @@ namespace codex::opengl {
     }
 
     void Renderer::render_line(const VertexArray* vertex_array, const IndexBuffer* index_buffer,
-                              const Shader* shader) const
+                               const Shader* shader) const
     {
         vertex_array->bind();
         index_buffer->bind();
@@ -52,11 +52,40 @@ namespace codex::opengl {
 
     void Renderer::clear() const
     {
-        GL_Call(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+        GL_Call(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT));
     }
 
     void Renderer::set_clear_colour(const f32 r, const f32 g, const f32 b, const f32 a) const
     {
         GL_Call(glClearColor(r, g, b, a));
+    }
+
+    void Renderer::stencil_test(const bool enable) noexcept
+    {
+        if (enable) {
+            GL_Call(glEnable(GL_STENCIL_TEST));
+        } else {
+            GL_Call(glDisable(GL_STENCIL_TEST));
+        }
+    }
+
+    void Renderer::stencil_mask(const u32 mask) noexcept
+    {
+        GL_Call(glStencilMask(mask));
+    }
+
+    void Renderer::stencil_op(const Enum sfail, const Enum dpfail, const Enum dppass) noexcept
+    {
+        GL_Call(glStencilOp(to_glenum(sfail), to_glenum(dpfail), to_glenum(dppass)));
+    }
+
+    void Renderer::stencil_fn(const Enum fn, const i32 ref, const u32 mask) noexcept
+    {
+        GL_Call(glStencilFunc(to_glenum(fn), ref, mask));
+    }
+
+    void Renderer::colour_mask(const bool r, const bool g, const bool b, const bool a) noexcept
+    {
+        GL_Call(glColorMask(r, g, b, a));
     }
 } // namespace codex::opengl

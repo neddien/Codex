@@ -1,9 +1,9 @@
 #include "public/prefab.h"
 
+#include <engine/core/public/common_third_party_libs.h>
 #include <engine/scene/component_factory.h>
+#include <engine/scene/public/components.h>
 #include <engine/scene/public/scene.h>
-
-#include <entt.hpp>
 
 namespace codex::scene {
     Entity Prefab::instantiate(Scene& scene, UUID uuid) const noexcept
@@ -16,7 +16,7 @@ namespace codex::scene {
         id_comp.parent_ = cx_entity;
 
         for (auto& c : components_) {
-            ComponentFactory::instance().instantiate_component(*c, cx_entity);
+            ComponentFactory::get().instantiate_component(*c, cx_entity);
         }
 
         return cx_entity;
@@ -24,16 +24,18 @@ namespace codex::scene {
 
     Prefab Prefab::from_entity(const Entity entity) noexcept
     {
-        const Component* comp = &entity.first_component();
+        // Damn this shit is terrible lol
+        // const Component* comp = &entity.first_component();
 
-        Prefab pf{};
+        // Prefab pf{};
 
-        while (comp->next_) {
-            pf.components_.push_back(comp->clone());
-            comp = comp->next_;
-        }
+        // while (comp->next_) {
+        //     pf.components_.push_back(comp->clone());
+        //     comp = comp->next_;
+        // }
 
-        return pf;
+        // return pf;
+        return {};
     }
 
     void Prefab::serialize(ISerializationNode& node) const

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "constants.h"
+#include "common.h"
 #include "texture.h"
 
 namespace codex::opengl {
@@ -40,19 +40,18 @@ namespace codex::opengl {
         [[nodiscard]] inline u32 depth_attachment_id() const { return depth_attachment_id_; }
 
     public:
-        void                 invalidate();
-        void                 bind();
-        void                 unbind();
-        int                  read_pixel(const u32 index, const i32 x, const i32 y);
-        std::vector<u8>      read_all_pixels(const u32 index)
+        void            invalidate();
+        void            bind();
+        void            unbind();
+        int             read_pixel(const u32 index, const i32 x, const i32 y);
+        std::vector<u8> read_all_pixels(const u32 index)
         {
             std::vector<u8> pixel_data(props_.width * props_.height * 4);
             GL_Call(glReadBuffer(GL_COLOR_ATTACHMENT0 + index));
-            GL_Call(glReadPixels(0, 0, props_.width, props_.height, GL_RGBA, GL_UNSIGNED_BYTE,
-                                 pixel_data.data()));
+            GL_Call(glReadPixels(0, 0, props_.width, props_.height, GL_RGBA, GL_UNSIGNED_BYTE, pixel_data.data()));
             return pixel_data;
         }
-        void resize(const u32 width, const u32 height);
+        void        resize(const u32 width, const u32 height);
         inline void set_properties(const FrameBufferProperties new_props)
         {
             props_ = new_props;
@@ -75,7 +74,8 @@ namespace codex::opengl {
         }
 
     private:
-        void   set_currently_bound_texture_properties(const TextureWrapMode wrap_mode, const TextureFilterMode filter_mode);
+        void   set_currently_bound_texture_properties(const TextureWrapMode   wrap_mode,
+                                                      const TextureFilterMode filter_mode);
         GLenum determine_format_type(const TextureFormat format);
 
     private:

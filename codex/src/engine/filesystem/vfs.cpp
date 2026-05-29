@@ -377,31 +377,31 @@ namespace codex::fs {
 
     cc::Task<Shared<FileHandle>> VirtualFilesystem::open_async(std::string path, FileProperties props) noexcept
     {
-        co_await Engine::get_worker_pool();
+        co_await Engine::worker_pool();
         co_return open(path, props);
     }
 
     cc::Task<bool> VirtualFilesystem::exists_async(std::string path) const noexcept
     {
-        co_await Engine::get_worker_pool();
+        co_await Engine::worker_pool();
         co_return exists(path);
     }
 
     cc::Task<bool> VirtualFilesystem::mkdir_async(std::string path, bool recursive) noexcept
     {
-        co_await Engine::get_worker_pool();
+        co_await Engine::worker_pool();
         co_return mkdir(path, recursive);
     }
 
     cc::Task<std::vector<std::string>> VirtualFilesystem::list_async(std::string dir) const noexcept
     {
-        co_await Engine::get_worker_pool();
+        co_await Engine::worker_pool();
         co_return list(dir);
     }
 
     cc::Task<bool> VirtualFilesystem::is_directory_async(std::string path) const noexcept
     {
-        co_await Engine::get_worker_pool();
+        co_await Engine::worker_pool();
         co_return is_directory(path);
     }
 

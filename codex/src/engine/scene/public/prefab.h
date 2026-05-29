@@ -2,7 +2,6 @@
 
 #include <engine/core/public/serializer.h>
 #include <engine/memory/public/memory.h>
-#include <engine/scene/public/components.h>
 #include <engine/scene/public/entity.h>
 
 namespace codex::scene {
