@@ -3,7 +3,7 @@
 #include <engine/algorithm/public/dense_vector.h>
 #include <engine/concurrency/public/mutex.h>
 #include <engine/core/public/common_third_party_libs.h>
-#include <engine/core/public/serializer.h>
+#include <engine/core/public/archive.h>
 #include <engine/graphics/public/shader.h>
 #include <engine/memory/public/memory.h>
 #include <engine/scene/public/entity.h>
@@ -107,7 +107,7 @@ namespace codex {
         }
 
         void   copy_to(Scene& other) const noexcept;
-        void   clone_via_serialization(Scene& other, ISerializationNode& node) const noexcept;
+        void   clone_via_serialization(Scene& other) const noexcept;
         Entity create_entity(const std::string_view tag = "default tag", UUID uuid = UUID{}) noexcept;
         void   remove_entity(const Entity entity);
         void   remove_entity(const u32 entity);
@@ -129,8 +129,7 @@ namespace codex {
         void on_runtime_update(const f32 delta_time);
         void on_simulation_update(const f32 delta_time, scene::EditorCamera& camera);
 
-        void serialize(ISerializationNode& node) const override;
-        void deserialize(const ISerializationNode& node) override;
+        void archive(Archive& archive) override;
 
     private:
         void        render_sprites();

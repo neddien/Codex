@@ -36,7 +36,7 @@ namespace codex {
         self.log(Info, "Disposed");
     }
 
-    Shared<IAssetLoader> AssetManager::get_loader_by_ext(const std::string& extension) noexcept
+    Shared<IAssetLoader> AssetManager::loader_by_ext(const std::string& extension) noexcept
     {
         auto&            self = get();
         std::shared_lock guard{ self.mutex_ };
@@ -53,7 +53,7 @@ namespace codex {
         return nullptr;
     }
 
-    Shared<IAssetLoader> AssetManager::get_loader_by_type(const std::string& type_name) noexcept
+    Shared<IAssetLoader> AssetManager::loader_by_type(const std::string& type_name) noexcept
     {
         auto&            self = get();
         std::shared_lock guard{ self.mutex_ };

@@ -29,8 +29,7 @@ namespace codex::gfx {
 
             std::string version;
 
-            void serialize(ISerializationNode& node) const override;
-            void deserialize(const ISerializationNode& node) override;
+            void archive(Archive& archive) override;
         };
 
     public:

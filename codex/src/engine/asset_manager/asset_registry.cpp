@@ -1,6 +1,7 @@
 #include "public/asset_registry.h"
 
 #include <engine/core/engine.h>
+#include <engine/core/public/binary_archive.h>
 #include <engine/core/public/serialization_manager.h>
 #include <engine/filesystem/vfs.h>
 
@@ -159,7 +160,7 @@ namespace codex {
             fh->read(jastr.data(), jastr.size());
 
             try {
-                SerializationManager::deserialize_from_json(metadata, jastr);
+                SerializationManager::from_json(metadata, jastr);
 
                 if (vfs_.exists(metadata.path.path())) {
                     if (path != path) {
@@ -216,7 +217,7 @@ namespace codex {
             }
         } else {
             // It's a possible asset
-            auto loader = AssetManager::get_loader_by_ext(ext);
+            auto loader = AssetManager::loader_by_ext(ext);
             if (!loader) {
                 log(Error, "no loader associated with extension: {}", ext.generic_string());
                 co_return;
@@ -321,7 +322,7 @@ namespace codex {
                 if (auto fh =
                         vfs_.open(path.generic_string(), { FileMode::Create | FileMode::Trunc | FileMode::Write });
                     fh) {
-                    auto jastr = SerializationManager::serialize_to_json(*e) + '\n';
+                    auto jastr = SerializationManager::to_json(*e) + '\n';
                     fh->write(jastr.data(), jastr.size());
                     e->dirty = false;
                     log(Debug, "Updating meta on disk: {}", path.generic_string());
@@ -334,47 +335,75 @@ namespace codex {
         }
     }
 
-    void AssetMetadata::serialize(ISerializationNode& node) const
+    cc::Task<void> AssetRegistry::write_manifest_async(const std::string vfs_path) const noexcept
     {
-        path.serialize(node);
+        co_await Engine::worker_pool();
 
-        node.write("type", type);
-        node.write("checksum", checksum);
-        node.write("size", size);
-        node.write("last_modified", last_modified);
+        std::shared_lock guard{ mutex_ };
 
-        auto& arr_node = node.begin_array("dependencies");
-        for (const auto& e : dependencies)
-            e.serialize(node);
-        node.end_array();
+        BinaryArchiveBackend binsd;
+        Archive              ar{ binsd };
 
-        if (import_settings)
-            import_settings->serialize(node.create_child("import_settings"));
+        // TODO: Threaded Parallel range based loop
+        // Drop the const here cause we're only serializing.
+        for (Box<AssetMetadata>& e : const_cast<AssetRegistry*>(this)->metas_) {
+            if (!e->null_asset)
+                e->archive(ar);
+        }
+
+        std::vector<u8> buffer = binsd.take_buffer();
+        auto            fh = vfs_.open(vfs_path, { fs::FileMode::Create | fs::FileMode::Write | fs::FileMode::Trunc });
+        if (fh)
+            fh->write(buffer.data(), buffer.size());
+        // TODO: Error handling ?
     }
 
-    void AssetMetadata::deserialize(const ISerializationNode& node)
+    cc::Task<void> AssetRegistry::export_assets_async(const std::string vfs_path) const noexcept
     {
-        path.deserialize(node);
+        co_await Engine::worker_pool();
 
-        node.read("type", type);
-        node.read("checksum", checksum);
-        node.read("size", size);
-        node.read("last_modified", last_modified);
+        std::shared_lock guard{ mutex_ };
 
-        node.for_each_array_element(
-            [this](const ISerializationNode& node)
-            {
-                AssetPath path;
-                path.deserialize(node);
-                dependencies.push_back(std::move(path));
-            });
+        if (!vfs_.exists(vfs_path)) {
+            if (!vfs_.mkdir(vfs_path)) {
+                log(Error, "{}: failed to create directory", vfs_path);
+                co_return;
+            }
+        } else {
+            if (!vfs_.is_directory(vfs_path)) {
+                log(Error, "{}: is a file, not a directory", vfs_path);
+                co_return;
+            }
+        }
 
-        if (node.has_key("import_settings")) {
-            auto loader = AssetManager::get_loader_by_type(type);
-            assert(loader);
+        for (const Box<AssetMetadata>& e : metas_) {
+            if (vfs_.cp)
+        }
+    }
 
-            import_settings = loader->default_import_settings();
-            import_settings->deserialize(node.child("import_settings"));
+    void AssetMetadata::archive(Archive& ar)
+    {
+        path.archive(ar);
+
+        ar("type", type);
+        ar("checksum", checksum);
+        ar("size", size);
+        ar("last_modified", last_modified);
+        ar("dependencies", dependencies);
+
+        // import_settings is polymorphic, so it is presence-gated and dispatched by asset type.
+        const bool present = ar.backend().optional("import_settings", ar.saving() && import_settings != nullptr);
+        if (present) {
+            if (ar.loading()) {
+                auto loader = AssetManager::loader_by_type(type);
+                assert(loader);
+                import_settings = loader->default_import_settings();
+            }
+            if (import_settings) {
+                ar.backend().begin_object("import_settings");
+                import_settings->archive(ar);
+                ar.backend().end_object();
+            }
         }
     }
 } // namespace codex

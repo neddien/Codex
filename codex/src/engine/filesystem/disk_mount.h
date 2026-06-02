@@ -13,11 +13,15 @@ namespace codex::fs {
         [[nodiscard]] Shared<FileHandle> open(const std::string& path, FileProperties props = {}) noexcept override;
         [[nodiscard]] i32                priority() const noexcept override;
 
-        bool                                   mkdir(const std::string& rel_path) noexcept override;
-        bool                                   rm(const std::string& rel_path) noexcept override;
+        bool mkdir(const std::string& rel_path) noexcept override;
+        bool rm(const std::string& rel_path) noexcept override;
+        bool cp(const std::string& src_rel_path, const std::string& dst_rel_path,
+                const bool recursive = false) noexcept override;
+        bool mv(const std::string& src_rel_path, const std::string& dst_rel_path) noexcept override;
         [[nodiscard]] std::vector<std::string> list(const std::string& rel_path,
                                                     ListOptions opts = ListOptions::None) const noexcept override;
         [[nodiscard]] bool                     is_directory(const std::string& rel_path) const noexcept override;
+        [[nodiscard]] std::string              mount_src() const noexcept override;
 
     private:
         [[nodiscard]] std::filesystem::path abs(const std::string& rel_path) const noexcept;

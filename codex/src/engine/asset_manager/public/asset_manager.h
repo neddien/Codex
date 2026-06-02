@@ -225,8 +225,8 @@ namespace codex {
         template <AssetLoader TLoader>
         static void register_loader(std::initializer_list<std::string_view> extensions) noexcept;
 
-        [[nodiscard]] static Shared<IAssetLoader> get_loader_by_ext(const std::string& extension) noexcept;
-        [[nodiscard]] static Shared<IAssetLoader> get_loader_by_type(const std::string& type_name) noexcept;
+        [[nodiscard]] static Shared<IAssetLoader> loader_by_ext(const std::string& extension) noexcept;
+        [[nodiscard]] static Shared<IAssetLoader> loader_by_type(const std::string& type_name) noexcept;
         [[nodiscard]] static AssetRegistry&       registry() noexcept;
         [[nodiscard]] static bool                 valid() noexcept { return get().registry_; }
         [[nodiscard]] static std::string          root_dir() noexcept { return get().asset_root_; };

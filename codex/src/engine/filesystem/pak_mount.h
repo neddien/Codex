@@ -11,7 +11,7 @@ namespace codex::fs {
 
     public:
         [[nodiscard]] bool                     exists(const std::string& path) const noexcept override;
-        [[nodiscard]] Shared<FileHandle>  open(const std::string&   path,
+        [[nodiscard]] Shared<FileHandle>       open(const std::string&   path,
                                                     const FileProperties props = {}) noexcept override;
         [[nodiscard]] i32                      priority() const noexcept override;
         bool                                   mkdir(const std::string& rel_path) noexcept override;
@@ -19,6 +19,7 @@ namespace codex::fs {
                                                     const ListOptions opts = ListOptions::None) const noexcept override;
         [[nodiscard]] bool                     is_directory(const std::string& rel_path) const noexcept override;
         [[nodiscard]] u64                      chunk_size() const noexcept;
+        [[nodiscard]] std::string              mount_src() const noexcept override;
 
         // Reads every entry, recomputes its CRC, and returns paths that fail.
         // Returns an empty vector immediately if the PAK carries PakFlags::Insecure.
@@ -26,9 +27,9 @@ namespace codex::fs {
 
     private:
         mutable Shared<FileHandle> handle_;
-        PakHeader               header_;
-        std::vector<PakEntry>   entries_; // sorted by path_hash for O(log N) lookup
-        std::vector<std::string> dirs_;   // sorted for O(log N) is_directory / exists
-        i32                     priority_;
+        PakHeader                  header_;
+        std::vector<PakEntry>      entries_; // sorted by path_hash for O(log N) lookup
+        std::vector<std::string>   dirs_;    // sorted for O(log N) is_directory / exists
+        i32                        priority_;
     };
 } // namespace codex::fs

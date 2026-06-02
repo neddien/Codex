@@ -35,6 +35,8 @@ namespace codex::fs {
         [[nodiscard]] usize              get_size(const std::string& path) const noexcept;
         bool                             mkdir(const std::string& path, const bool recursive = false) noexcept;
         bool                             rm(const std::string& path, const bool recursive = false) noexcept;
+        bool                             cp(const std::string& src_path, const std::string& dst_path) noexcept;
+        bool                             mv(const std::string& src_path, const std::string& dst_path) noexcept;
 
         // Directory operations
         [[nodiscard]] std::vector<std::string> list(const std::string& dir,
@@ -57,6 +59,8 @@ namespace codex::fs {
         Node* walk_to(const std::string& path, Node** const previous_node = nullptr) noexcept;
         bool  mkdir_nolock(const std::string& path, const bool recursive) noexcept;
         bool  rm_nolock(const std::string& path, const bool recursive) noexcept;
+        bool  cp_nolock(const std::string& src_path, const std::string& dst_path) noexcept;
+        bool  mv_nolock(const std::string& src_path, const std::string& dst_path) noexcept;
 
         [[nodiscard]] std::vector<std::string> list_nolock(const std::string& dir) const noexcept;
         [[nodiscard]] bool                     is_directory_nolock(const std::string& path) const noexcept;

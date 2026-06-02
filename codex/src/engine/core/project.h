@@ -28,6 +28,19 @@ namespace codex {
             {
                 return fmt::format("{}.{}.{}+{}", maj, min, rev, build);
             }
+            [[nodiscard]] constexpr operator u64() const noexcept
+            {
+                return (u64)maj << (64 - 8) | (u64)min << (64 - 8 * 2) | (u64)rev << (64 - 8 * 3) |
+                       (u64)build << (64 - 8 * 4);
+            }
+            [[nodiscard]] constexpr void from_u64(const u64 ver) noexcept
+            {
+                maj   = (u8)(maj >> (64 - 8));
+                min   = (u8)(min >> (64 - 8 * 2));
+                rev   = (u8)(rev >> (64 - 8 * 3));
+                build = (u16)(rev >> (64 - 8 * 4));
+            }
+
         } engine_ver;
 
         // Editor: Editor only
@@ -39,29 +52,26 @@ namespace codex {
 
         // Runtime: Engine properties
         EngineProperties engine_properties;
-        f32              fixed_tick_rate = 60.0f;
 
         // Runtime: NBMan shared libraries to load
         std::vector<std::string> native_modules;
 
         // Runtime: Additional mounts (DLCs and stuff)
-        std::vector<fs::PakMount> mounts;
+        // std::vector<fs::PakMount> mounts;
 
         // Editor: Cook settings
         // CookSettings cook_settings;
 
     public:
-        void serialize(ISerializationNode& node) const override;
-        void deserialize(const ISerializationNode& node) override;
+        void archive(Archive& archive) override;
 
     public:
-        void save_to_disk(const std::filesystem::path& proj_path);
-        void save_to_vfs(fs::VirtualFilesystem& vfs, const std::filesystem::path& proj_path);
+        void save_to_disk(const std::filesystem::path& proj_path) const;
+        void save_to_vfs(fs::VirtualFilesystem& vfs, const std::filesystem::path& proj_path) const;
 
     public:
         [[nodiscard]] static Box<EngineProject> load_from_disk(const std::filesystem::path& proj_path);
-        [[nodiscard]] static Box<EngineProject> load_from_vfs(fs::VirtualFilesystem&       vfs,
-                                                              const std::filesystem::path& proj_path);
+        [[nodiscard]] static Box<EngineProject> load_from_vfs(fs::VirtualFilesystem& vfs, const std::string& proj_path);
     };
 
     // Applicable to the Editor only (.cxproj.user)
@@ -71,7 +81,6 @@ namespace codex {
         std::string last_asset_path;
 
     public:
-        void serialize(ISerializationNode& node) const override;
-        void deserialize(const ISerializationNode& node) override;
+        void archive(Archive& archive) override;
     };
 } // namespace codex

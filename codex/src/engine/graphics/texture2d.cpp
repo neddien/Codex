@@ -155,27 +155,11 @@ namespace codex::gfx {
         return Shared<Texture2D>::make(buf.data(), buf.size(), params);
     }
 
-    void Texture2D::ImportSettings::serialize(ISerializationNode& node) const
+    void Texture2D::ImportSettings::archive(Archive& ar)
     {
-        node.write("filter_mode", enum_name(props.filter_mode));
-        node.write("mipmap_mode", enum_name(props.mipmap_mode));
-        node.write("wrap_mode", enum_name(props.wrap_mode));
-        node.write("format", enum_name(props.format));
-    }
-
-    void Texture2D::ImportSettings::deserialize(const ISerializationNode& node)
-    {
-        if (std::string str; node.read("filter_mode", str))
-            if (auto v = enum_from<TextureFilterMode>(str))
-                props.filter_mode = *v;
-        if (std::string str; node.read("mipmap_mode", str))
-            if (auto v = enum_from<TextureMipmapMode>(str))
-                props.mipmap_mode = *v;
-        if (std::string str; node.read("wrap_mode", str))
-            if (auto v = enum_from<TextureWrapMode>(str))
-                props.wrap_mode = *v;
-        if (std::string str; node.read("format", str))
-            if (auto v = enum_from<TextureFormat>(str))
-                props.format = *v;
+        ar("filter_mode", props.filter_mode);
+        ar("mipmap_mode", props.mipmap_mode);
+        ar("wrap_mode", props.wrap_mode);
+        ar("format", props.format);
     }
 } // namespace codex::gfx

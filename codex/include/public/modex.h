@@ -9,7 +9,7 @@
 #include <engine/core/public/geometry.h>
 #include <engine/core/public/input.h>
 #include <engine/core/public/serialization_manager.h>
-#include <engine/core/public/serializer.h>
+#include <engine/core/public/archive.h>
 
 // Asset Manager
 #include <engine/asset_manager/public/asset_manager.h>

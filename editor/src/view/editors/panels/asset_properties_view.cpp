@@ -13,11 +13,13 @@ namespace codex::editor {
 
         ImGui::Begin("Asset Properties");
 
-        // TODO: .asset_registry() call on each frame is quite expesnive, just check if UUID is valid or not.
-        AssetMetadata* selected_asset = AssetManager::registry().asset_metadata(d->selected_asset);
-        if (selected_asset) {
-            if (selected_asset->type == gfx::Texture2D::ktype_name())
-                render_texture2d_properties(*selected_asset);
+        if (d->registry_state == AssetRegistryState::Succeeded) {
+            // TODO: .asset_registry() call on each frame is quite expesnive, just check if UUID is valid or not.
+            AssetMetadata* selected_asset = AssetManager::registry().asset_metadata(d->selected_asset);
+            if (selected_asset) {
+                if (selected_asset->type == gfx::Texture2D::ktype_name())
+                    render_texture2d_properties(*selected_asset);
+            }
         }
 
         ImGui::End();

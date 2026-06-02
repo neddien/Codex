@@ -5,13 +5,13 @@
             "components": [
                 {
                     "type": "IDComponent",
-                    "uuid": "f8b8-9d62-45647360"
+                    "uuid": "8867-287d-cdf36525"
                 },
                 {
                     "type": "TransformComponent",
                     "position": {
-                        "x": 0.0,
-                        "y": 0.0,
+                        "x": 277.9999694824219,
+                        "y": 352.0000305175781,
                         "z": 0.0
                     },
                     "rotation": {
@@ -30,36 +30,6 @@
                     "tag": "Player"
                 },
                 {
-                    "type": "SpriteRendererComponent",
-                    "asset": {
-                        "path": "/editor/project/assets/sprites/dun_tileset.png",
-                        "uuid": "056c-c521-f89651d4"
-                    },
-                    "texture_coords": {
-                        "x": 1136.0,
-                        "y": 352.0,
-                        "w": 16.0,
-                        "h": 16.0
-                    },
-                    "size": {
-                        "x": 32.0,
-                        "y": 32.0
-                    },
-                    "colour": {
-                        "x": 1.0,
-                        "y": 1.0,
-                        "z": 1.0,
-                        "w": 1.0
-                    },
-                    "z_index": 0
-                },
-                {
-                    "type": "NativeBehaviourComponent",
-                    "attached_scripts": [
-                        "PlayerController"
-                    ]
-                },
-                {
                     "type": "RigidBody2DComponent",
                     "body_type": "Dynamic",
                     "fixed_rotation": false,
@@ -76,8 +46,8 @@
                         "y": 0.0
                     },
                     "size": {
-                        "x": 16.0,
-                        "y": 16.0
+                        "x": 32.0,
+                        "y": 32.0
                     },
                     "physics_material": {
                         "density": 1.0,
@@ -87,7 +57,36 @@
                     }
                 },
                 {
-                    "type": "AudioListenerComponent"
+                    "type": "NativeBehaviourComponent",
+                    "attached_scripts": [
+                        {
+                            "name": "PlayerController"
+                        }
+                    ]
+                },
+                {
+                    "type": "SpriteRendererComponent",
+                    "asset": {
+                        "path": "/editor/project/assets/sprites/dun_tileset.png",
+                        "uuid": "056c-c521-f89651d4"
+                    },
+                    "texture_coords": {
+                        "x": 368.0,
+                        "y": 32.0,
+                        "w": 16.0,
+                        "h": 16.0
+                    },
+                    "size": {
+                        "x": 64.0,
+                        "y": 64.0
+                    },
+                    "colour": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0,
+                        "w": 1.0
+                    },
+                    "z_index": 0
                 }
             ]
         },
@@ -95,13 +94,13 @@
             "components": [
                 {
                     "type": "IDComponent",
-                    "uuid": "eb01-d9d3-09068661"
+                    "uuid": "5611-7e4f-7a55c01b"
                 },
                 {
                     "type": "TransformComponent",
                     "position": {
-                        "x": 97.99998474121094,
-                        "y": -43.999996185302734,
+                        "x": 353.05035400390625,
+                        "y": 232.00025939941406,
                         "z": 0.0
                     },
                     "rotation": {
@@ -120,6 +119,29 @@
                     "tag": "Phonograph"
                 },
                 {
+                    "type": "AudioSourceComponent",
+                    "event_path": "event:/Phonograph-music-1",
+                    "sound_path": "",
+                    "volume": 1.0,
+                    "pitch": 1.0,
+                    "loop": false,
+                    "play_on_start": true,
+                    "is_3d": true,
+                    "min_distance": 116.30000305175781,
+                    "max_distance": 974.0,
+                    "parameters": {
+                        "reverb-size": {
+                            "value": 0.0
+                        },
+                        "reverb-drywet": {
+                            "value": 0.0
+                        },
+                        "bandpass-filter-drywet": {
+                            "value": 0.0
+                        }
+                    }
+                },
+                {
                     "type": "SpriteRendererComponent",
                     "asset": {
                         "path": "/editor/project/assets/sprites/phonograph.png",
@@ -132,8 +154,8 @@
                         "h": 32.0
                     },
                     "size": {
-                        "x": 32.0,
-                        "y": 32.0
+                        "x": 64.0,
+                        "y": 64.0
                     },
                     "colour": {
                         "x": 1.0,
@@ -142,19 +164,6 @@
                         "w": 1.0
                     },
                     "z_index": 0
-                },
-                {
-                    "type": "AudioSourceComponent",
-                    "event_path": "event:/Phonograph-music-2",
-                    "sound_path": "",
-                    "volume": 1.0,
-                    "pitch": 1.0,
-                    "loop": false,
-                    "play_on_start": true,
-                    "is_3d": true,
-                    "min_distance": 1.0,
-                    "max_distance": 100.0,
-                    "parameters": {}
                 }
             ]
         },
@@ -162,7 +171,7 @@
             "components": [
                 {
                     "type": "IDComponent",
-                    "uuid": "728f-e758-2656c53e"
+                    "uuid": "65c9-a679-51f42781"
                 },
                 {
                     "type": "TransformComponent",
@@ -188,6 +197,39 @@
                 },
                 {
                     "type": "CameraComponent"
+                },
+                {
+                    "type": "AudioListenerComponent"
+                }
+            ]
+        },
+        {
+            "components": [
+                {
+                    "type": "IDComponent",
+                    "uuid": "ee7a-9b7d-0c89a576"
+                },
+                {
+                    "type": "TransformComponent",
+                    "position": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": 0.0
+                    },
+                    "rotation": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": 0.0
+                    },
+                    "scale": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    }
+                },
+                {
+                    "type": "TagComponent",
+                    "tag": "Entity 4"
                 }
             ]
         }

@@ -12,8 +12,7 @@ public:                                                                         
     }                                                                                                                  \
                                                                                                                        \
 private:                                                                                                               \
-    void                       serialize(ISerializationNode& node) const override;                                     \
-    void                       deserialize(const ISerializationNode& node) override;                                   \
+    void                       archive(codex::Archive& archive) override;                                              \
     const codex::rf::TypeInfo& type_info() const override;
 
 namespace codex::rf {

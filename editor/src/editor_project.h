@@ -9,7 +9,6 @@ namespace codex::editor {
         AssetPath   last_open_scene;
         std::string vfs_root = "/editor";
 
-        void serialize(ISerializationNode& node) const override;
-        void deserialize(const ISerializationNode& node) override;
+        void archive(Archive& archive) override;
     };
 } // namespace codex::editor

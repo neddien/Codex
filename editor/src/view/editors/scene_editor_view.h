@@ -56,25 +56,25 @@ namespace codex::editor {
 
     struct SceneEditorDescriptor
     {
-        Ref<Scene>                    active_scene;
-        Shared<Scene>                 editor_scene;
-        Shared<Scene>                 runtime_scene;
-        std::filesystem::path         script_module_path;
-        SelectedEntityDescriptor      selected_entity;
-        f32                           column_width = 140.0f;
-        Vector4f                      select_colour{ 0.9f, 0.5f, 0.07f, 1.0f };
-        std::filesystem::path         current_project_path;
-        std::atomic<CompilationState> compilation_state{ CompilationState::Idle };
-        std::atomic<bool>             pending_nb_load{ false };
-        f64                           compilation_finish_time = 0.0;
-        Shared<fs::VirtualFilesystem> vfs                     = Shared<fs::VirtualFilesystem>::make();
-        AssetRegistryState            registry_state{ AssetRegistryState::Idle };
-        std::mutex                    registry_state_mutex;
-        std::condition_variable       registry_state_cv;
-        bool                          registry_state_ready{ false };
-        UUID                          selected_asset{};
-        Box<gfx::Shader>              outline_shader{};
-        f32                           outline_border_size = .05f;
+        Ref<Scene>                      active_scene;
+        Shared<Scene>                   editor_scene;
+        Shared<Scene>                   runtime_scene;
+        std::filesystem::path           script_module_path;
+        SelectedEntityDescriptor        selected_entity;
+        f32                             column_width = 140.0f;
+        Vector4f                        select_colour{ 0.9f, 0.5f, 0.07f, 1.0f };
+        std::filesystem::path           current_project_path;
+        std::atomic<CompilationState>   compilation_state{ CompilationState::Idle };
+        std::atomic<bool>               pending_nb_load{ false };
+        f64                             compilation_finish_time = 0.0;
+        Shared<fs::VirtualFilesystem>   vfs                     = Shared<fs::VirtualFilesystem>::make();
+        std::atomic<AssetRegistryState> registry_state{ AssetRegistryState::Idle };
+        std::mutex                      registry_state_mutex;
+        std::condition_variable         registry_state_cv;
+        bool                            registry_state_ready{ false };
+        UUID                            selected_asset{};
+        Box<gfx::Shader>                outline_shader{};
+        f32                             outline_border_size = .05f;
 
     public:
         void reset() noexcept
@@ -109,7 +109,12 @@ namespace codex::editor {
             std::swap(select_colour, other.select_colour);
             std::swap(current_project_path, other.current_project_path);
             std::swap(compilation_finish_time, other.compilation_finish_time);
-            std::swap(registry_state, other.registry_state);
+            {
+                auto tmp = registry_state.load(std::memory_order_acquire);
+                registry_state.exchange(other.registry_state.load(std::memory_order_acquire),
+                                        std::memory_order_acq_rel);
+                other.registry_state.exchange(tmp, std::memory_order_acq_rel);
+            }
             std::swap(registry_state_ready, other.registry_state_ready);
             std::swap(selected_asset, other.selected_asset);
             std::swap(outline_shader, other.outline_shader);

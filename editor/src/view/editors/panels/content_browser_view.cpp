@@ -121,17 +121,23 @@ namespace codex::editor {
 
     void ContentBrowserView::refresh_nolock(const std::string& path)
     {
-        cache_.clear();
-        AssetManager::registry().for_each(
-            [this](const AssetMetadata& meta)
-            {
-                const stdfs::path path = meta.path.path();
-                if (path.parent_path() == current_path_)
-                    cache_.push_back(meta);
-                log(Verbose, "path.parent_path(): {} == current_path: {}", path.parent_path().generic_string(),
-                    current_path_);
-            });
-        dirty_ = false;
+        auto desc_ref = get_descriptor();
+        assert(!desc_ref.expired());
+        auto desc = desc_ref.lock();
+
+        if (desc->registry_state == AssetRegistryState::Succeeded) {
+            cache_.clear();
+            AssetManager::registry().for_each(
+                [this](const AssetMetadata& meta)
+                {
+                    const stdfs::path path = meta.path.path();
+                    if (path.parent_path() == current_path_)
+                        cache_.push_back(meta);
+                    log(Verbose, "path.parent_path(): {} == current_path: {}", path.parent_path().generic_string(),
+                        current_path_);
+                });
+            dirty_ = false;
+        }
     }
 
     void ContentBrowserView::refresh(const std::string& path)

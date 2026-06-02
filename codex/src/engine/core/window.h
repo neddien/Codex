@@ -25,7 +25,7 @@ namespace codex {
     CX_CUSTOM_EXCEPTION(SDLException, "SDL failed to initialize.")
     CX_CUSTOM_EXCEPTION(GLADException, "GLAD failed to initialize.")
 
-    enum class WindowFlags : u32
+    enum class WindowFlags : u16
     {
         Visible        = bit(0),
         Hidden         = bit(1),
@@ -60,7 +60,7 @@ namespace codex {
 
     struct WindowProperties
     {
-        const char* title      = "Codex - Window";
+        std::string title      = "Codex - Window";
         i32         width      = 1280;
         i32         height     = 720;
         i32         pos_x      = 0;
@@ -70,6 +70,8 @@ namespace codex {
         bool        vsync      = true;
         bool        borderless = false;
     };
+
+    void serialize(Archive& ar, WindowProperties& properties);
 
     class CODEX_API Window : public Loggable<"Window">
     {

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <engine/core/public/exception.h>
-#include <engine/core/public/serializer.h>
+#include <engine/core/public/archive.h>
 #include <engine/native_behaviour/public/native_behaviour.h>
 #include <engine/scene/public/components.h>
 #include <engine/scene/public/entity.h>
@@ -12,17 +12,17 @@ namespace codex {
     class ComponentFactory : public System<ComponentFactory>
     {
     public:
-        using DeserializerFn = std::function<void(const ISerializationNode&, Entity)>;
+        using DeserializerFn = std::function<void(Archive&, Entity)>;
         using InstantiateFn  = std::function<void(const Component&, Entity)>;
 
     public:
         template <typename T>
         void register_component(const std::string_view type_name) noexcept
         {
-            deser_factories_[std::string{ type_name }] = [](const ISerializationNode& node, Entity entity)
+            deser_factories_[std::string{ type_name }] = [](Archive& ar, Entity entity)
             {
                 T component;
-                component.deserialize(node);
+                component.archive(ar);
                 entity.add_or_replace_component<T>(std::move(component));
             };
 
@@ -30,11 +30,11 @@ namespace codex {
             //{ entity.add_or_replace_component<T>(component); };
         }
 
-        void deserialize_component(const std::string& type_name, const ISerializationNode& node, const Entity entity)
+        void deserialize_component(const std::string& type_name, Archive& ar, const Entity entity)
         {
             auto it = deser_factories_.find(type_name);
             if (it != deser_factories_.end()) {
-                it->second(node, entity);
+                it->second(ar, entity);
             } else {
                 throw DeserializationException(
                     "Component {} has not been registered therefore could not be deserialized.", type_name);

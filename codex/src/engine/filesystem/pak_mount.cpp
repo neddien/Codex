@@ -269,6 +269,11 @@ namespace codex::fs {
         return header_.chunk_size;
     }
 
+    std::string PakMount::mount_src() const noexcept
+    {
+        return (handle_) ? handle_->path() : "";
+    }
+
     std::vector<std::string> PakMount::verify_integrity() const
     {
         if (header_.flags & PakFlags::Insecure)

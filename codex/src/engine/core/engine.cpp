@@ -223,4 +223,25 @@ namespace codex {
         layer_stack_.push_overlay(overlay);
         overlay->on_attach();
     }
+
+    void serialize(Archive& ar, EngineProperties& properties)
+    {
+        ar("name", properties.name);
+        if (ar.saving()) {
+            std::string cwd = properties.cwd.generic_string();
+            ar("cwd", cwd);
+
+            u8 flags = (u8)properties.flags;
+            ar("flags", flags);
+        } else {
+            std::string cwd;
+            ar("cwd", cwd);
+            properties.cwd = cwd;
+
+            u8 flags;
+            ar("flags", flags);
+            properties.flags = (EngineFlags)flags;
+        }
+        ar("window_properties", properties.window_properties);
+    }
 } // namespace codex

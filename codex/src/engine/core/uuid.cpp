@@ -1,15 +1,11 @@
 #include "public/uuid.h"
 
 namespace codex {
-    void UUID::serialize(ISerializationNode& node) const
+    void UUID::archive(Archive& ar)
     {
-        node.write("uuid", to_string());
-    }
-
-    void UUID::deserialize(const ISerializationNode& node)
-    {
-        std::string str;
-        if (node.read("uuid", str))
+        std::string str = ar.saving() ? to_string() : std::string{};
+        ar("uuid", str);
+        if (ar.loading())
             *this = from_string(str);
     }
 

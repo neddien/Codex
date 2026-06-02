@@ -2,7 +2,7 @@
 
 #include <engine/asset_manager/public/asset_manager.h>
 #include <engine/core/public/geometry.h>
-#include <engine/core/public/serializer.h>
+#include <engine/core/public/archive.h>
 #include <engine/graphics/public/texture2d.h>
 
 namespace codex {
@@ -64,29 +64,19 @@ namespace codex {
         [[nodiscard]] inline operator bool() const noexcept { return texture_.valid(); }
 
     public:
-        void serialize(ISerializationNode& node) const override
+        void archive(Archive& ar) override
         {
-            texture_.path().serialize(node.create_child("asset"));
-            node.write("texture_coords", texture_coords_);
-            node.write("size", size_);
-            node.write("colour", colour_);
-            node.write("z_index", z_index_);
-        }
-        void deserialize(const ISerializationNode& node) override
-        {
-            if (texture_)
-                texture_.reset();
-
-            AssetPath path;
-            auto&     asset_child = node.child("asset");
-            path.deserialize(asset_child);
-
-            texture_ = AssetManager::load<gfx::Texture2D>(path.uuid());
-
-            node.read("texture_coords", texture_coords_);
-            node.read("size", size_);
-            node.read("colour", colour_);
-            node.read("z_index", z_index_);
+            AssetPath path = ar.saving() ? texture_.path() : AssetPath{};
+            ar("asset", path);
+            if (ar.loading()) {
+                if (texture_)
+                    texture_.reset();
+                texture_ = AssetManager::load<gfx::Texture2D>(path.uuid());
+            }
+            ar("texture_coords", texture_coords_);
+            ar("size", size_);
+            ar("colour", colour_);
+            ar("z_index", z_index_);
         }
 
     private:

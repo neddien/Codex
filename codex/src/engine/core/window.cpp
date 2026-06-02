@@ -314,6 +314,26 @@ namespace codex {
         return sdl_flags;
     }
 
+    void serialize(Archive& ar, WindowProperties& properties)
+    {
+        ar("title", properties.title);
+        ar("width", properties.width);
+        ar("height", properties.height);
+        ar("pos_x", properties.pos_x);
+        ar("pos_y", properties.pos_y);
+        ar("frame_cap", properties.frame_cap);
+        ar("vsync", properties.vsync);
+        if (ar.saving()) {
+            u16 flags = (u16)properties.flags;
+            ar("flags", flags);
+        } else {
+            u16 flags;
+            ar("flags", flags);
+            properties.flags = (WindowFlags)flags;
+        }
+        ar("borderless", properties.borderless);
+    }
+
     Window::Window()
     {
     }
@@ -569,5 +589,4 @@ namespace codex {
         }
         return cursor_ptr;
     }
-
 } // namespace codex

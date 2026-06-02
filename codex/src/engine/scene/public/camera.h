@@ -1,6 +1,6 @@
 #pragma once
 
-#include <engine/core/public/serializer.h>
+#include <engine/core/public/archive.h>
 
 namespace codex::scene {
     class CODEX_API Camera : public ISerializable
@@ -89,8 +89,7 @@ namespace codex::scene {
                                                                   const Vector3f& camera_position) noexcept;
 
     public:
-        void serialize(ISerializationNode& node) const override;
-        void deserialize(const ISerializationNode& node) override;
+        void archive(Archive& archive) override;
 
     private:
         i32            width_;

@@ -14,11 +14,7 @@ namespace codex {
         return ax::AudioManager::load_event(event_path);
     }
 
-    void NativeBehaviour::serialize(ISerializationNode& node) const
-    {
-    }
-
-    void NativeBehaviour::deserialize(const ISerializationNode& node)
+    void NativeBehaviour::archive(Archive& ar)
     {
     }
 } // namespace codex

@@ -449,6 +449,19 @@ namespace codex::editor {
                         proc->on_err_data_received = redirector;
                         proc->launch();
                     }
+                    if (ImGui::MenuItem("Package & Export Project", "Ctrl+Shift+E")) {
+                        if (d->registry_state == AssetRegistryState::Succeeded) {
+                            if (!d->vfs->is_directory("/editor/project/assets/package")) {
+                                if (d->vfs->exists("/editor/project/assets/pacakge"))
+                                    d->vfs->rm("/editor/project/assets/package");
+                                d->vfs->mkdir("/editor/project/assets/package");
+                            }
+                            AssetManager::registry().write_manifest_async(
+                                "/editor/project/assets/package/__registry.manifest.bin");
+                            Engine::project().save_to_vfs(*d->vfs,
+                                                          "/editor/project/assets/package/__engine.project.bin");
+                        }
+                    }
                     if (ImGui::MenuItem("Save", "Ctrl+S")) {
                         // Handle the "Save" action
                         static std::string save_path;
@@ -460,11 +473,13 @@ namespace codex::editor {
                                 NFD_FreePathU8(outPath);
                                 // TODO: project->Save(path);
                                 d->selected_entity.deselect();
-                                SerializationManager::save_to_file(*d->active_scene.lock(), save_path.c_str());
+                                SerializationManager::save_to_file(*d->active_scene.lock(), save_path.c_str(),
+                                                                   SerializationManager::Format::Json);
                             }
                         } else {
                             d->selected_entity.deselect();
-                            SerializationManager::save_to_file(*d->active_scene.lock(), save_path.c_str());
+                            SerializationManager::save_to_file(*d->active_scene.lock(), save_path.c_str(),
+                                                               SerializationManager::Format::Json);
                         }
                     }
                     if (ImGui::MenuItem("Exit", "Alt+F4")) {
@@ -825,9 +840,7 @@ namespace codex::editor {
         auto& d = descriptor_;
         d->selected_entity.deselect();
         d->runtime_scene = Shared<Scene>::make();
-        nlohmann::ordered_json json;
-        JsonSerializationNode  node{ json };
-        d->editor_scene->clone_via_serialization(*d->runtime_scene, node);
+        d->editor_scene->clone_via_serialization(*d->runtime_scene);
         // d->editor_scene->copy_to(*d->runtime_scene);
 
         d->active_scene   = d->runtime_scene;
@@ -843,9 +856,7 @@ namespace codex::editor {
         auto& d = descriptor_;
         d->selected_entity.deselect();
         d->runtime_scene = Shared<Scene>::make();
-        nlohmann::ordered_json json;
-        JsonSerializationNode  node{ json };
-        d->editor_scene->clone_via_serialization(*d->runtime_scene, node);
+        d->editor_scene->clone_via_serialization(*d->runtime_scene);
         // d->editor_scene->copy_to(*d->runtime_scene);
 
         d->active_scene   = d->runtime_scene;
@@ -975,7 +986,7 @@ namespace codex::editor {
             }
         }
 
-        SerializationManager::load_from_file(*d->editor_scene, cxproj);
+        SerializationManager::load_from_file(*d->editor_scene, cxproj, SerializationManager::Format::Json);
 
         // Kick off async compilation; NBMan will be loaded on the main thread
         // once the build succeeds (via pendingNBLoad flag checked in on_update).

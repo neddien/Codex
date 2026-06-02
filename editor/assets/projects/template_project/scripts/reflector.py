@@ -651,12 +651,8 @@ class CXRGenerator:
         output.append(self._generate_type_registration())
         output.append("")
 
-        # Serialize method
-        output.append(self._generate_serialize_method())
-        output.append("")
-
-        # Deserialize method
-        output.append(self._generate_deserialize_method())
+        # Archive method (single bidirectional save/load)
+        output.append(self._generate_archive_method())
         output.append("")
 
         # GetTypeInfo method
@@ -715,64 +711,24 @@ static bool s_{self.class_info.name}_Registered = []() {{
     return true;
 }}();"""
 
-    def _generate_serialize_method(self) -> str:
+    def _generate_archive_method(self) -> str:
+        # One bidirectional method: ar("key", field) saves or loads depending on the
+        # backend. Containers (e.g. std::vector) are handled automatically by the Archive
+        # dispatch, so no per-array codegen is needed.
         lines = [
-            f"void {self.class_info.name}::serialize(ISerializationNode& node) const {{"
+            f"void {self.class_info.name}::archive(codex::Archive& ar) {{"
         ]
 
-        # Don't call base class serialize if it's NativeBehaviour because it's an interface without its own reflected properties
-        # and it might not have a serialize() implementation itself (it's virtual override).
+        # Don't chain into NativeBehaviour: it is an interface with no reflected properties.
         if self.class_info.base_class and "NativeBehaviour" not in self.class_info.base_class:
-            lines.append(f"    {self.class_info.base_class}::serialize(node);")
+            lines.append(f"    {self.class_info.base_class}::archive(ar);")
             lines.append("")
 
         for prop in self.class_info.properties:
-            # Use original property name as key
-            if prop.is_array:
-                lines.extend(self._generate_array_serialization(prop, prop.name))
-            else:
-                lines.append(f'    node.write("{prop.name}", {prop.name});')
+            lines.append(f'    ar("{prop.name}", {prop.name});')
 
         lines.append("}")
         return "\n".join(lines)
-
-    def _generate_deserialize_method(self) -> str:
-        lines = [
-            f"void {self.class_info.name}::deserialize(const ISerializationNode& node) {{"
-        ]
-
-        if self.class_info.base_class and "NativeBehaviour" not in self.class_info.base_class:
-            lines.append(f"    {self.class_info.base_class}::deserialize(node);")
-            lines.append("")
-
-        for prop in self.class_info.properties:
-            # Use original property name as key
-            if prop.is_array:
-                lines.extend(self._generate_array_deserialization(prop, prop.name))
-            else:
-                lines.append(f'    node.read("{prop.name}", {prop.name});')
-
-        lines.append("}")
-        return "\n".join(lines)
-
-    def _generate_array_serialization(self, prop: PropertyInfo, key_name: str) -> List[str]:
-        return [
-            f'    auto& {prop.name}_arr = node.begin_array("{key_name}");',
-            f'    for (size_t i = 0; i < {prop.name}.size(); ++i) {{',
-            f'        {prop.name}_arr.add_array_element().write("{key_name}", {prop.name}[i]);',
-            f'    }}',
-            f'    {prop.name}_arr.end_array();'
-        ]
-
-    def _generate_array_deserialization(self, prop: PropertyInfo, key_name: str) -> List[str]:
-        return [
-            f'    auto& {prop.name}_arr = node.array("{key_name}");',
-            f'    size_t {prop.name}_count = {prop.name}_arr.array_size();',
-            f'    {prop.name}.resize({prop.name}_count);',
-            f'    for (size_t i = 0; i < {prop.name}_count; ++i) {{',
-            f'        {prop.name}_arr.array_element(i).read("{key_name}", {prop.name}[i]);',
-            f'    }}',
-        ]
 
     def _generate_type_info_method(self) -> str:
         lines = [

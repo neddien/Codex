@@ -4,6 +4,28 @@
 #include "public/filesystem.h"
 
 namespace codex::fs {
+    namespace {
+        // Path helpers operating on already-normalized paths (no leading/trailing slashes).
+        [[nodiscard]] std::string filename_of(const std::string& p) noexcept
+        {
+            const auto pos = p.find_last_of('/');
+            return pos == std::string::npos ? p : p.substr(pos + 1);
+        }
+        [[nodiscard]] std::string parent_of(const std::string& p) noexcept
+        {
+            const auto pos = p.find_last_of('/');
+            return pos == std::string::npos ? std::string{} : p.substr(0, pos);
+        }
+        [[nodiscard]] std::string join_path(const std::string& a, const std::string& b) noexcept
+        {
+            if (a.empty())
+                return b;
+            if (b.empty())
+                return a;
+            return a + '/' + b;
+        }
+    } // namespace
+
     class MemoryFileHandle : public FileHandle
     {
     public:
@@ -141,8 +163,8 @@ namespace codex::fs {
     {
         std::shared_lock lock{ mutex_ };
 
-        const auto npath = normalize(path);
-        return files_.contains(npath) || dirs_.contains(npath);
+        const auto hash = util::crypto::fnv1a(normalize(path));
+        return files_.contains(hash) || dirs_.contains(hash);
     }
 
     Shared<FileHandle> MemoryMount::open(const std::string& path, const FileProperties props) noexcept
@@ -210,7 +232,7 @@ namespace codex::fs {
 
         const auto npath = normalize(rel_path);
         if (npath.empty())
-            return true;
+            return false;
 
         if (auto it = files_.find(npath); it != files_.end()) {
             files_.erase(it);
@@ -218,6 +240,140 @@ namespace codex::fs {
         } else if (auto it = dirs_.find(npath); it != dirs_.end()) {
             dirs_.erase(it);
             return true;
+        }
+
+        return false;
+    }
+
+    bool MemoryMount::cp(const std::string& src_rel_path, const std::string& dst_rel_path,
+                         const bool recursive) noexcept
+    {
+        std::scoped_lock lock{ mutex_ };
+
+        const stdfs::path nspath = normalize(src_rel_path);
+        const stdfs::path ndpath = normalize(dst_rel_path);
+
+        if (nspath.empty() || ndpath.empty())
+            return false;
+
+        if (!exists(ndpath.parent_path().generic_string()) && !exists(nspath.generic_string()))
+            return false;
+
+        // /a/file.t /b/
+        // /a/file.t /a/file2.t (also includes replace)
+        // /a/       /b/
+        // /a/       /b/c
+
+        if (auto sit = files_.find(nspath); sit != files_.end()) {
+            // f : f (replace)
+            if (auto dit = files_.find(ndpath); dit != files_.end()) {
+                dit->second.buffer     = sit->second.buffer;
+                dit->second.last_modif = util::chron::unix_epoch_now();
+                return true;
+            }
+            // f : d
+            else if (auto dit = dirs_.find(ndpath); dit != dirs_.end()) {
+                files_.emplace((ndpath / nspath.filename()).generic_string(),
+                               FileEntry{
+                                   .buffer     = sit->second.buffer,
+                                   .last_modif = util::chron::unix_epoch_now(),
+                               });
+                return true;
+            }
+            // f : f (new)
+            else {
+                files_.emplace(ndpath.generic_string(), FileEntry{
+                                                            .buffer     = sit->second.buffer,
+                                                            .last_modif = util::chron::unix_epoch_now(),
+                                                        });
+                return true;
+            }
+        } else if (auto sit = dirs_.find(nspath); sit != dirs_.end()) {
+            // d : f (replace) (no)
+            if (auto dit = files_.find(ndpath); dit != files_.end()) {
+                return false;
+            }
+            // d : d (new) or d : d
+            else {
+                absl::flat_hash_map<std::string, FileEntry> files2cp;
+                for (const auto& [dpath, entry] : files_) {
+                    stdfs::path path = dpath;
+                    if (path.parent_path() == ndpath && recursive) {
+                        files2cp.emplace((ndpath / path.filename()).generic_string(),
+                                         FileEntry{
+                                             .buffer     = entry.buffer,
+                                             .last_modif = entry.last_modif,
+                                         });
+                    } else
+                        return false;
+                }
+
+                if (auto dit = dirs_.find(ndpath); dit == dirs_.end())
+                    dirs_.emplace(ndpath);
+
+                if (!files2cp.empty())
+                    files_.merge(files2cp);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    bool MemoryMount::mv(const std::string& src_rel_path, const std::string& dst_rel_path) noexcept
+    {
+        std::scoped_lock lock{ mutex_ };
+
+        const stdfs::path nspath = normalize(src_rel_path);
+        const stdfs::path ndpath = normalize(dst_rel_path);
+        const usize       nshash = util::crypto::fnv1a(nspath.generic_string());
+        const usize       ndhash = util::crypto::fnv1a(ndpath.generic_string());
+
+        if (nspath.empty() || ndpath.empty())
+            return false;
+
+        if (!exists(ndpath.parent_path().generic_string()) && !exists(nspath.generic_string()))
+            return false;
+
+        // /a/file.t /b/
+        // /a/file.t /a/file2.t (also includes replace)
+        // /a/       /b/
+        // /a/       /b/c
+
+        if (auto sit = files_.find(nshash); sit != files_.end()) {
+            // f : f (replace)
+            if (auto dit = files_.find(ndhash); dit != files_.end()) {
+                dit->second.buffer     = std::move(sit->second.buffer);
+                dit->second.last_modif = util::chron::unix_epoch_now();
+                dit->second.read_only  = false;
+                return true;
+            }
+            // f : d/f
+            else if (auto dit = dirs_.find(ndhash); dit != dirs_.end()) {
+                return true;
+            }
+            // f : f (new)
+            else {
+                files_.emplace(util::crypto::fnv1a(ndpath.generic_string()),
+                               FileEntry{
+                                   .buffer = std::move(sit->second.buffer),
+                                   .path   = std::move(sit->second.path),
+                               });
+            }
+
+            files_.erase(sit);
+            return true;
+        } else if (auto sit = dirs_.find(nshash); sit != dirs_.end()) {
+            // d : d/d
+            if (auto dit = dirs_.find(ndhash); dit != dirs_.end()) {
+            }
+            // d : f (no)
+            else if (auto dit = files_.find(ndhash); dit != files_.end()) {
+                return false;
+            }
+            // d : d (new)
+            else {
+            }
         }
 
         return false;

@@ -44,20 +44,19 @@ namespace codex {
         virtual std::string_view type_name() const noexcept = 0;
 
     public:
-        void serialize(ISerializationNode& node) const
+        void archive(Archive& ar) override
         {
-            node.write("type", type_name());
-            serialize_impl(node);
-        }
-        void deserialize(const ISerializationNode& node)
-        {
-            /* clang-format: no inline */
-            deserialize_impl(node);
+            // The type tag is written on save and consumed by the Scene/factory on load,
+            // so it is only emitted here (the load side has already read it to dispatch).
+            if (ar.saving()) {
+                std::string type{ type_name() };
+                ar("type", type);
+            }
+            archive_impl(ar);
         }
 
     protected:
-        virtual void serialize_impl(ISerializationNode& node) const {}
-        virtual void deserialize_impl(const ISerializationNode& node) {}
+        virtual void archive_impl(Archive& ar) {}
 
     protected:
         mutable Component* next_ = nullptr;
@@ -79,8 +78,7 @@ namespace codex {
         }
 
     public:
-        void serialize_impl(ISerializationNode& node) const override;
-        void deserialize_impl(const ISerializationNode& node) override;
+        void archive_impl(Archive& ar) override;
     };
 
     struct CODEX_API TagComponent : public Component
@@ -95,8 +93,7 @@ namespace codex {
         explicit TagComponent(const std::string_view tag);
 
     public:
-        void serialize_impl(ISerializationNode& node) const override;
-        void deserialize_impl(const ISerializationNode& node) override;
+        void archive_impl(Archive& ar) override;
     };
 
     struct CODEX_API TransformComponent : public Component
@@ -125,8 +122,7 @@ namespace codex {
         }
 
     public:
-        void serialize_impl(ISerializationNode& node) const override;
-        void deserialize_impl(const ISerializationNode& node) override;
+        void archive_impl(Archive& ar) override;
     };
 
     class CODEX_API SpriteRendererComponent : public Component
@@ -143,8 +139,7 @@ namespace codex {
         [[nodiscard]] inline const Sprite& sprite() const noexcept { return sprite_; }
 
     public:
-        void serialize_impl(ISerializationNode& node) const override;
-        void deserialize_impl(const ISerializationNode& node) override;
+        void archive_impl(Archive& ar) override;
 
     private:
         Sprite sprite_;
@@ -175,8 +170,7 @@ namespace codex {
         void                          dispose() noexcept;
 
     public:
-        void serialize_impl(ISerializationNode& node) const override;
-        void deserialize_impl(const ISerializationNode& node) override;
+        void archive_impl(Archive& ar) override;
 
     private:
         [[nodiscard]] Scene* scene() const noexcept { return parent_.scene(); }
@@ -197,8 +191,7 @@ namespace codex {
         Vector3f      focal_point{ 0.0f };
 
     public:
-        void serialize_impl(ISerializationNode& node) const override;
-        void deserialize_impl(const ISerializationNode& node) override;
+        void archive_impl(Archive& ar) override;
     };
 
     struct CODEX_API RigidBody2DComponent : public Component
@@ -230,8 +223,7 @@ namespace codex {
         void apply_angular_impulse(const f32 torque);
 
     public:
-        void serialize_impl(ISerializationNode& node) const override;
-        void deserialize_impl(const ISerializationNode& node) override;
+        void archive_impl(Archive& ar) override;
     };
 
     struct CODEX_API BoxCollider2DComponent : public Component
@@ -245,8 +237,7 @@ namespace codex {
         void*                   runtime_fixture = nullptr;
 
     public:
-        void serialize_impl(ISerializationNode& node) const override;
-        void deserialize_impl(const ISerializationNode& node) override;
+        void archive_impl(Archive& ar) override;
     };
 
     struct CODEX_API CircleCollider2DComponent : public Component
@@ -260,8 +251,7 @@ namespace codex {
         void*                   runtime_fixture = nullptr;
 
     public:
-        void serialize_impl(ISerializationNode& node) const override;
-        void deserialize_impl(const ISerializationNode& node) override;
+        void archive_impl(Archive& ar) override;
     };
 
     struct CODEX_API GridRendererComponent : public Component
@@ -273,8 +263,7 @@ namespace codex {
         Vector4f colour{ 1.0f, 1.0f, 1.0f, 0.3f };
 
     public:
-        void serialize_impl(ISerializationNode& node) const override;
-        void deserialize_impl(const ISerializationNode& node) override;
+        void archive_impl(Archive& ar) override;
     };
 
     struct CODEX_API TilemapComponent : public Component
@@ -292,6 +281,13 @@ namespace codex {
             Vector3f pos{ 0.0f, 0.0f, 0.0f };
             Vector2f atlas{ 0.0f, 0.0f };
             i32      layer = 0;
+
+            void archive(Archive& ar)
+            {
+                ar("pos", pos);
+                ar("atlas", atlas);
+                ar("layer", layer);
+            }
         };
 
     public:
@@ -309,8 +305,7 @@ namespace codex {
         void remove_tile(const Vector3f pos);
 
     public:
-        void serialize_impl(ISerializationNode& node) const override;
-        void deserialize_impl(const ISerializationNode& node) override;
+        void archive_impl(Archive& ar) override;
     };
 
     struct CODEX_API TilesetAnimationComponent : public Component
@@ -325,6 +320,14 @@ namespace codex {
             u32         frame_count   = 0;
             f32         frame_rate    = 24.0f;
             u32         current_frame = 0;
+
+            void archive(Archive& ar)
+            {
+                ar("name", name);
+                ar("starting_tile", starting_tile);
+                ar("frame_count", frame_count);
+                ar("frame_rate", frame_rate);
+            }
         };
 
     public:
@@ -333,8 +336,7 @@ namespace codex {
         std::vector<Animation> animations;
 
     public:
-        void serialize_impl(ISerializationNode& node) const override;
-        void deserialize_impl(const ISerializationNode& node) override;
+        void archive_impl(Archive& ar) override;
     };
 
     struct CODEX_API AudioSourceComponent : public Component
@@ -355,8 +357,7 @@ namespace codex {
         Shared<ax::EventHandle>              handle;
 
     public:
-        void serialize_impl(ISerializationNode& node) const override;
-        void deserialize_impl(const ISerializationNode& node) override;
+        void archive_impl(Archive& ar) override;
     };
 
     struct AudioListenerComponent : public Component

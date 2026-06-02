@@ -3,6 +3,7 @@
 #include <engine/audio/audio_manager.h>
 #include <engine/core/engine.h>
 #include <engine/core/public/common_third_party_libs.h>
+#include <engine/core/public/serialization_manager.h>
 #include <engine/debug/public/profiler.h>
 #include <engine/debug/public/time_scope.h>
 #include <engine/graphics/renderer.h>
@@ -101,10 +102,10 @@ namespace codex {
         */
     }
 
-    void Scene::clone_via_serialization(Scene& other, ISerializationNode& node) const noexcept
+    void Scene::clone_via_serialization(Scene& other) const noexcept
     {
-        serialize(node);
-        other.deserialize(node);
+        const std::vector<u8> bytes = SerializationManager::to_binary(*this);
+        SerializationManager::from_binary(other, bytes);
     }
 
     u32 Scene::entity_count() const noexcept
@@ -731,53 +732,68 @@ namespace codex {
         }
     }
 
-    void Scene::serialize(ISerializationNode& node) const
+    void Scene::archive(Archive& ar)
     {
-        node.write("name", name_);
-        auto& entities = node.begin_array("entities");
+        ar("name", name_);
 
-        for (auto entities_view = registry_->view<entt::entity>(); const auto e : entities_view) {
-            const auto entity = Entity(e, const_cast<Scene*>(this));
-            if (!entity)
-                break;
+        // Polymorphic component dispatch needs explicit control over the array/type-tag
+        // traversal, so this talks to the backend directly rather than through ar(key, vec).
+        IArchiveBackend& b = ar.backend();
 
-            auto&            node   = entities.add_array_element();
-            auto&            idcomp = entity.get_component<IDComponent>();
-            const Component* comp   = &idcomp;
-
-            auto& components = node.begin_array("components");
-
-            while (comp) {
-                auto& node = components.add_array_element();
-                comp->serialize(node);
-                comp = comp->next_;
+        if (ar.saving()) {
+            // The array length must precede its elements (binary), so count first.
+            usize entity_total = 0;
+            for (auto view = registry_->view<entt::entity>(); const auto e : view) {
+                if (!Entity(e, this))
+                    break;
+                ++entity_total;
             }
 
-            components.end_array();
-        }
+            b.begin_array("entities", entity_total);
+            for (auto view = registry_->view<entt::entity>(); const auto e : view) {
+                auto entity = Entity(e, this);
+                if (!entity)
+                    break;
 
-        entities.end_array();
-    }
+                b.begin_object({});
 
-    void Scene::deserialize(const ISerializationNode& node)
-    {
-        node.read("name", name_);
+                Component* head  = &entity.get_component<IDComponent>();
+                usize      count = 0;
+                for (const Component* c = head; c; c = c->next_)
+                    ++count;
 
-        auto& entities = node.array("entities");
-        entities.for_each_array_element(
-            [this](const ISerializationNode& inode)
-            {
+                b.begin_array("components", count);
+                for (Component* c = head; c; c = c->next_) {
+                    b.begin_object({});
+                    c->archive(ar); // writes "type" + fields
+                    b.end_object();
+                }
+                b.end_array();
+
+                b.end_object();
+            }
+            b.end_array();
+        } else {
+            usize entity_total = 0;
+            b.begin_array("entities", entity_total);
+            for (usize i = 0; i < entity_total; ++i) {
+                b.begin_object({});
                 auto entity = create_entity();
 
-                auto& components = inode.array("components");
-                components.for_each_array_element(
-                    [&entity](const ISerializationNode& jnode)
-                    {
-                        std::string type_name;
-                        if (jnode.read("type", type_name)) {
-                            ComponentFactory::get().deserialize_component(type_name, jnode, entity);
-                        }
-                    });
-            });
+                usize count = 0;
+                b.begin_array("components", count);
+                for (usize c = 0; c < count; ++c) {
+                    b.begin_object({});
+                    std::string type_name;
+                    ar("type", type_name); // consume the tag, then dispatch the rest
+                    if (!type_name.empty())
+                        ComponentFactory::get().deserialize_component(type_name, ar, entity);
+                    b.end_object();
+                }
+                b.end_array();
+                b.end_object();
+            }
+            b.end_array();
+        }
     }
 } // namespace codex

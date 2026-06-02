@@ -1,6 +1,6 @@
 #pragma once
 
-#include <engine/core/public/serializer.h>
+#include <engine/core/public/archive.h>
 #include <engine/filesystem/public/file_handle.h>
 #include <engine/memory/public/memory.h>
 
@@ -147,15 +147,12 @@ namespace codex {
         }
 
     public:
-        void serialize(ISerializationNode& node) const noexcept final override
+        void archive(Archive& ar) final
         {
-            node.write("path", path_);
-            uuid_.serialize(node);
-        }
-        void deserialize(const ISerializationNode& node) noexcept final override
-        {
-            node.read("path", path_);
-            uuid_.deserialize(node);
+            ar("path", path_);
+            uuid_.archive(ar);
+            if (ar.loading())
+                hash_ = util::crypto::fnv1a(path_);
         }
 
     private:

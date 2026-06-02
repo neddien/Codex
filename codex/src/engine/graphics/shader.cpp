@@ -87,13 +87,9 @@ namespace codex::gfx {
         return raw_shader_->compile_shader(compile_definitions);
     }
 
-    void Shader::ImportSettings::serialize(ISerializationNode& node) const
+    void Shader::ImportSettings::archive(Archive& ar)
     {
-        node.write("version", version);
-    }
-    void Shader::ImportSettings::deserialize(const ISerializationNode& node)
-    {
-        node.read("version", version);
+        ar("version", version);
     }
 
     [[nodiscard]] Shared<Shader> ShaderLoader::load(Shared<fs::FileHandle>        fh,

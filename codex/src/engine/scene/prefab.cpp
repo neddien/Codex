@@ -38,11 +38,7 @@ namespace codex::scene {
         return {};
     }
 
-    void Prefab::serialize(ISerializationNode& node) const
-    {
-    }
-
-    void Prefab::deserialize(const ISerializationNode& node)
+    void Prefab::archive(Archive& ar)
     {
     }
 } // namespace codex::scene

@@ -30,8 +30,7 @@ namespace codex::gfx {
             }
 
         public:
-            void serialize(ISerializationNode& node) const override;
-            void deserialize(const ISerializationNode& node) override;
+            void archive(Archive& archive) override;
         };
 
     public:

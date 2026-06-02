@@ -53,7 +53,7 @@ namespace codex {
         }
     };
 
-    enum class EngineFlags
+    enum class EngineFlags : u8
     {
         Video   = bit(0),
         Audio   = bit(1),
@@ -71,6 +71,8 @@ namespace codex {
         EngineFlags           flags = EngineFlags::InitAll;
         WindowProperties      window_properties;
     };
+
+    void serialize(Archive& ar, EngineProperties& properties);
 
     class CODEX_API Engine : public Loggable<"Engine">
     {

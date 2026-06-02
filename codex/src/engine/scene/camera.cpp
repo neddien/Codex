@@ -8,27 +8,14 @@ namespace codex::scene {
         return Vector3f{ screen_coord * camera.pan(), 0.0f } + camera_position - camera_dim / 2.0f;
     }
 
-    void Camera::serialize(ISerializationNode& node) const
+    void Camera::archive(Archive& ar)
     {
-        node.write("width", width_);
-        node.write("height", height_);
-        node.write("fov", fov_);
-        node.write("near_clip", near_clip_);
-        node.write("far_clip", far_clip_);
-        node.write("projection_type", enum_name(projection_type_));
-        node.write("pan", pan_);
-    }
-
-    void Camera::deserialize(const ISerializationNode& node)
-    {
-        node.read("width", width_);
-        node.read("height", height_);
-        node.read("fov", fov_);
-        node.read("near_clip", near_clip_);
-        node.read("far_clip", far_clip_);
-        if (std::string str; node.read("projection_type", str))
-            if (auto val = enum_from<ProjectionType>(str))
-                projection_type_ = *val;
-        node.read("pan", pan_);
+        ar("width", width_);
+        ar("height", height_);
+        ar("fov", fov_);
+        ar("near_clip", near_clip_);
+        ar("far_clip", far_clip_);
+        ar("projection_type", projection_type_);
+        ar("pan", pan_);
     }
 } // namespace codex::scene

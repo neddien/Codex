@@ -224,6 +224,37 @@ namespace codex::fs {
         return true;
     }
 
+    bool VirtualFilesystem::cp_nolock(const std::string& src_path, const std::string& dst_path) noexcept
+    {
+        const auto npath      = normalize(src_path);
+        auto       components = util::str::split(npath, '/');
+        auto*      cur        = root_.get();
+
+        Node* mount_node  = cur->mounts.empty() ? nullptr : cur;
+        usize mount_depth = 0;
+        usize depth       = 0;
+
+        for (auto it = components.begin(); it != components.end(); ++it, ++depth) {
+            const auto& c = *it;
+
+            if (auto dir_it = cur->children.find(c); dir_it != cur->children.end()) {
+                cur = dir_it->second.get();
+
+                if (!cur->mounts.empty()) {
+                    mount_node  = cur;
+                    mount_depth = depth + 1;
+                }
+            } else
+                break;
+        }
+        return true;
+    }
+
+    bool VirtualFilesystem::mv_nolock(const std::string& src_path, const std::string& dst_path) noexcept
+    {
+        return true;
+    }
+
     bool VirtualFilesystem::mkdir(const std::string& path, const bool recursive) noexcept
     {
         std::scoped_lock lock{ mutex_ };
@@ -234,6 +265,18 @@ namespace codex::fs {
     {
         std::scoped_lock lock{ mutex_ };
         return rm_nolock(path, recursive);
+    }
+
+    bool VirtualFilesystem::cp(const std::string& src_path, const std::string& dst_path) noexcept
+    {
+        std::scoped_lock lock{ mutex_ };
+        return cp_nolock(src_path, dst_path);
+    }
+
+    bool VirtualFilesystem::mv(const std::string& src_path, const std::string& dst_path) noexcept
+    {
+        std::scoped_lock lock{ mutex_ };
+        return mv_nolock(src_path, dst_path);
     }
 
     std::vector<std::string> VirtualFilesystem::list_nolock(const std::string& dir) const noexcept

@@ -1,8 +1,8 @@
 #pragma once
 
 #include <engine/asset_manager/public/asset_common.h>
+#include <engine/core/public/archive.h>
 #include <engine/core/public/log.h>
-#include <engine/core/public/serializer.h>
 
 namespace codex {
     namespace fs {
@@ -75,8 +75,7 @@ namespace codex {
         }
 
     public:
-        void serialize(ISerializationNode& node) const;
-        void deserialize(const ISerializationNode& node);
+        void archive(Archive& archive);
     };
 
     class AssetRegistry : public Loggable<"AssetRegistry">
@@ -111,11 +110,12 @@ namespace codex {
             for (const Box<AssetMetadata>& e : metas_)
                 fn(*e);
         }
+        cc::Task<void> write_manifest_async(const std::string vfs_path) const noexcept;
+        cc::Task<void> export_assets_async(const std::string vfs_path) const noexcept;
 
     private:
         cc::Task<void> metagen(const std::filesystem::path path) noexcept;
         void           write_meta_files() const noexcept;
-        cc::Task<void> write_manifest_async() noexcept;
 
     private:
         std::unordered_map<UUID, AssetMetadata*>  uuid_to_meta_;

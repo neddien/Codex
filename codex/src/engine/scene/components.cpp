@@ -21,14 +21,9 @@ namespace codex {
     {
     }
 
-    void TagComponent::serialize_impl(ISerializationNode& node) const
+    void TagComponent::archive_impl(Archive& ar)
     {
-        node.write("tag", tag);
-    }
-
-    void TagComponent::deserialize_impl(const ISerializationNode& node)
-    {
-        node.read("tag", tag);
+        ar("tag", tag);
     }
 
     TransformComponent::TransformComponent(const Vector3f position, const Vector3f rotation, const Vector3f scale)
@@ -38,18 +33,11 @@ namespace codex {
     {
     }
 
-    void TransformComponent::serialize_impl(ISerializationNode& node) const
+    void TransformComponent::archive_impl(Archive& ar)
     {
-        node.write("position", position);
-        node.write("rotation", rotation);
-        node.write("scale", scale);
-    }
-
-    void TransformComponent::deserialize_impl(const ISerializationNode& node)
-    {
-        node.read("position", position);
-        node.read("rotation", rotation);
-        node.read("scale", scale);
+        ar("position", position);
+        ar("rotation", rotation);
+        ar("scale", scale);
     }
 
     SpriteRendererComponent::SpriteRendererComponent(Sprite sprite)
@@ -57,14 +45,9 @@ namespace codex {
     {
     }
 
-    void SpriteRendererComponent::serialize_impl(ISerializationNode& node) const
+    void SpriteRendererComponent::archive_impl(Archive& ar)
     {
-        sprite_.serialize(node);
-    }
-
-    void SpriteRendererComponent::deserialize_impl(const ISerializationNode& node)
-    {
-        sprite_.deserialize(node);
+        sprite_.archive(ar);
     }
 
     NativeBehaviourComponent::NativeBehaviourComponent() noexcept = default;
@@ -175,34 +158,24 @@ namespace codex {
         }
     }
 
-    void NativeBehaviourComponent::serialize_impl(ISerializationNode& node) const
+    void NativeBehaviourComponent::archive_impl(Archive& ar)
     {
-        auto& scripts = node.begin_array("attached_scripts");
-        for (auto handle : scene()->behaviours(handle_)) {
-            const NativeBehaviour* bh = scene()->behaviour(handle);
-            scripts.add_array_element().write("name", bh->type_info().name());
+        if (ar.saving()) {
+            std::vector<std::string> names;
+            for (auto handle : scene()->behaviours(handle_))
+                names.emplace_back(scene()->behaviour(handle)->type_info().name());
+            for (auto& type_name : std::exchange(pending_, {}))
+                names.emplace_back(type_name);
+            ar("attached_scripts", names);
+        } else {
+            std::vector<std::string> names;
+            ar("attached_scripts", names);
+            for (auto& name : names) {
+                // By default pend all behaviours, we cannot be sure that NBMan has been loaded yet.
+                log(Info, "Deser: Pending behaviour: {}", name);
+                pending_.emplace(name);
+            }
         }
-
-        auto pending = std::exchange(pending_, {});
-        for (auto type_name : pending)
-            scripts.add_array_element().write("name", type_name);
-
-        node.end_array();
-    }
-
-    void NativeBehaviourComponent::deserialize_impl(const ISerializationNode& node)
-    {
-        auto& scripts = node.array("attached_scripts");
-        scripts.for_each_array_element(
-            [this](const ISerializationNode& element)
-            {
-                std::string name;
-                if (element.read("name", name)) {
-                    // By default pend all behaviours, we cannot be sure that NBMan has been loaded yet.
-                    log(Info, "Deser: Pending behaviour: {}", name);
-                    pending_.emplace(name);
-                }
-            });
     }
 
     void NativeBehaviourComponent::attach_pending() noexcept
@@ -220,11 +193,7 @@ namespace codex {
         }
     }
 
-    void CameraComponent::serialize_impl(ISerializationNode& node) const
-    {
-    }
-
-    void CameraComponent::deserialize_impl(const ISerializationNode& node)
+    void CameraComponent::archive_impl(Archive& ar)
     {
     }
 
@@ -234,28 +203,15 @@ namespace codex {
         body->ApplyForce(util::to_b2_vec2(force), (point) ? util::to_b2_vec2(*point) : body->GetWorldCenter(), true);
     }
 
-    void RigidBody2DComponent::serialize_impl(ISerializationNode& node) const
+    void RigidBody2DComponent::archive_impl(Archive& ar)
     {
-        node.write("body_type", enum_name(body_type));
-        node.write("fixed_rotation", fixed_rotation);
-        node.write("linear_damping", linear_damping);
-        node.write("angular_damping", angular_damping);
-        node.write("high_velocity", high_velocity);
-        node.write("enabled", enabled);
-        node.write("gravity_scale", gravity_scale);
-    }
-
-    void RigidBody2DComponent::deserialize_impl(const ISerializationNode& node)
-    {
-        if (std::string str; node.read("body_type", str))
-            if (auto val = enum_from<BodyType>(str))
-                body_type = *val;
-        node.read("fixed_rotation", fixed_rotation);
-        node.read("linear_damping", linear_damping);
-        node.read("angular_damping", angular_damping);
-        node.read("high_velocity", high_velocity);
-        node.read("enabled", enabled);
-        node.read("gravity_scale", gravity_scale);
+        ar("body_type", body_type);
+        ar("fixed_rotation", fixed_rotation);
+        ar("linear_damping", linear_damping);
+        ar("angular_damping", angular_damping);
+        ar("high_velocity", high_velocity);
+        ar("enabled", enabled);
+        ar("gravity_scale", gravity_scale);
     }
 
     void RigidBody2DComponent::apply_torque(const f32 torque) noexcept
@@ -301,195 +257,65 @@ namespace codex {
         }
     }
 
-    void TilemapComponent::serialize_impl(ISerializationNode& node) const
+    void TilemapComponent::archive_impl(Archive& ar)
     {
-        auto& sprite_node = node.create_child("sprite");
-        sprite.serialize(sprite_node);
-
-        auto& tile_arr_node = node.begin_array("tiles");
-        for (const auto& e : tiles) {
-            auto& node = tile_arr_node.add_array_element();
-            node.write("pos", e.pos);
-            node.write("atlas", e.atlas);
-            node.write("layer", e.layer);
-        }
-        node.end_array();
-
-        node.write("grid_size", grid_size);
-        node.write("tile_size", tile_size);
-        node.write("current_tile", current_tile);
-        node.write("current_state", enum_name(current_state));
-        node.write("current_layer", current_layer);
+        ar("sprite", sprite);
+        ar("tiles", tiles);
+        ar("grid_size", grid_size);
+        ar("tile_size", tile_size);
+        ar("current_tile", current_tile);
+        ar("current_state", current_state);
+        ar("current_layer", current_layer);
     }
 
-    void TilemapComponent::deserialize_impl(const ISerializationNode& node)
+    void IDComponent::archive_impl(Archive& ar)
     {
-        auto& sprite_node = node.child("sprite");
-        sprite.deserialize(sprite_node);
-
-        auto& tile_arr_node = node.array("tiles");
-        tile_arr_node.for_each_array_element(
-            [this](const auto& inode)
-            {
-                Tile tile;
-                inode.read("pos", tile.pos);
-                inode.read("atlas", tile.atlas);
-                inode.read("layer", tile.layer);
-                tiles.push_back(std::move(tile));
-            });
-
-        node.read("grid_size", grid_size);
-        node.read("tile_size", tile_size);
-        node.read("current_tile", current_tile);
-        if (std::string str; node.read("current_state", str))
-            if (auto val = enum_from<State>(str))
-                current_state = *val;
-        node.read("current_layer", current_layer);
+        uuid.archive(ar);
     }
 
-    void IDComponent::serialize_impl(ISerializationNode& node) const
+    void BoxCollider2DComponent::archive_impl(Archive& ar)
     {
-        uuid.serialize(node);
+        ar("offset", offset);
+        ar("size", size);
+        ar("physics_material", physics_material);
     }
 
-    void IDComponent::deserialize_impl(const ISerializationNode& node)
+    void CircleCollider2DComponent::archive_impl(Archive& ar)
     {
-        uuid.deserialize(node);
+        ar("offset", offset);
+        ar("radius", radius);
+        ar("physics_material", physics_material);
     }
 
-    void BoxCollider2DComponent::serialize_impl(ISerializationNode& node) const
+    void GridRendererComponent::archive_impl(Archive& ar)
     {
-        node.write("offset", offset);
-        node.write("size", size);
-
-        auto& physmat = node.create_child("physics_material");
-        physics_material.serialize(physmat);
+        ar("cell_size", cell_size);
+        ar("colour", colour);
     }
 
-    void BoxCollider2DComponent::deserialize_impl(const ISerializationNode& node)
+    void TilesetAnimationComponent::archive_impl(Archive& ar)
     {
-        node.read("offset", offset);
-        node.read("size", size);
-
-        auto& physmat = node.child("physics_material");
-        physics_material.deserialize(physmat);
+        ar("sprite", sprite);
+        ar("grid_size", grid_size);
+        ar("animations", animations);
     }
 
-    void CircleCollider2DComponent::serialize_impl(ISerializationNode& node) const
+    void AudioSourceComponent::archive_impl(Archive& ar)
     {
-        node.write("offset", offset);
-        node.write("radius", radius);
+        ar("event_path", event_path);
 
-        auto& physmat = node.create_child("physics_material");
-        physics_material.serialize(physmat);
-    }
-
-    void CircleCollider2DComponent::deserialize_impl(const ISerializationNode& node)
-    {
-        node.read("offset", offset);
-        node.read("radius", radius);
-
-        auto& physmat = node.child("physics_material");
-        physics_material.deserialize(physmat);
-    }
-
-    void GridRendererComponent::serialize_impl(ISerializationNode& node) const
-    {
-        node.write("cell_size", cell_size);
-        node.write("colour", colour);
-    }
-
-    void GridRendererComponent::deserialize_impl(const ISerializationNode& node)
-    {
-        node.read("cell_size", cell_size);
-        node.read("colour", colour);
-    }
-
-    void TilesetAnimationComponent::serialize_impl(ISerializationNode& node) const
-    {
-        auto& spritenode = node.create_child("sprite");
-        sprite.serialize(spritenode);
-        node.write("grid_size", grid_size);
-
-        auto& anims_node = node.begin_array("animations");
-        for (const auto& anim : animations) {
-            auto& inode = anims_node.add_array_element();
-            inode.write("name", anim.name);
-            inode.write("starting_tile", anim.starting_tile);
-            inode.write("frame_count", anim.frame_count);
-            inode.write("frame_rate", anim.frame_rate);
-        }
-    }
-
-    void TilesetAnimationComponent::deserialize_impl(const ISerializationNode& node)
-    {
-        auto& spritenode = node.child("sprite");
-        sprite.deserialize(spritenode);
-        node.read("grid_size", grid_size);
-
-        auto& anims_node = node.array("animations");
-        animations.clear();
-
-        anims_node.for_each_array_element(
-            [this](const auto& inode)
-            {
-                Animation anim;
-                inode.read("name", anim.name);
-                inode.read("starting_tile", anim.starting_tile);
-                inode.read("frame_count", anim.frame_count);
-                inode.read("frame_rate", anim.frame_rate);
-
-                animations.push_back(std::move(anim));
-            });
-    }
-
-    void AudioSourceComponent::serialize_impl(ISerializationNode& node) const
-    {
-        node.write("event_path", event_path);
-        node.write("sound_path", sound_path.string());
-        node.write("volume", volume);
-        node.write("pitch", pitch);
-        node.write("loop", loop);
-        node.write("play_on_start", play_on_start);
-        node.write("is_3d", is_3d);
-        node.write("min_distance", min_distance);
-        node.write("max_distance", max_distance);
-
-        if (!parameters.empty()) {
-            auto& params_node = node.begin_map("parameters");
-            for (const auto& [name, value] : parameters) {
-                auto& entry = params_node.add_map_entry(name);
-                entry.write("value", value);
-            }
-        }
-    }
-
-    void AudioSourceComponent::deserialize_impl(const ISerializationNode& node)
-    {
-        node.read("event_path", event_path);
-        std::string sound_path_str;
-        if (node.read("sound_path", sound_path_str))
+        std::string sound_path_str = ar.saving() ? sound_path.string() : std::string{};
+        ar("sound_path", sound_path_str);
+        if (ar.loading())
             sound_path = sound_path_str;
-        node.read("volume", volume);
-        node.read("pitch", pitch);
-        node.read("loop", loop);
-        node.read("play_on_start", play_on_start);
-        node.read("is_3d", is_3d);
-        node.read("min_distance", min_distance);
-        node.read("max_distance", max_distance);
 
-        try {
-            auto& params_node = node.map("parameters");
-            params_node.for_each_map_entry(
-                [this](const std::string_view key, const auto& entry)
-                {
-                    f32 value = 0.0f;
-                    entry.read("value", value);
-                    parameters[std::string{ key }] = value;
-                });
-        }
-        catch (...) {
-            // No parameters section — that's fine.
-        }
+        ar("volume", volume);
+        ar("pitch", pitch);
+        ar("loop", loop);
+        ar("play_on_start", play_on_start);
+        ar("is_3d", is_3d);
+        ar("min_distance", min_distance);
+        ar("max_distance", max_distance);
+        ar.optional("parameters", parameters);
     }
 } // namespace codex

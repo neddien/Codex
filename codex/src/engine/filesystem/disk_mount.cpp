@@ -46,6 +46,21 @@ namespace codex::fs {
         return !ec;
     }
 
+    bool DiskMount::cp(const std::string& src_rel_path, const std::string& dst_rel_path, const bool recursive) noexcept
+    {
+        std::error_code               ec;
+        std::filesystem::copy_options opts = (recursive) ? std::filesystem::copy_options::recursive;
+        std::filesystem::copy(abs(src_rel_path), abs(dst_rel_path), opts, ec);
+        return !ec;
+    }
+
+    bool DiskMount::mv(const std::string& src_rel_path, const std::string& dst_rel_path) noexcept
+    {
+        std::error_code ec;
+        std::filesystem::rename(abs(src_rel_path), abs(dst_rel_path), ec);
+        return !ec;
+    }
+
     std::vector<std::string> DiskMount::list(const std::string& rel_path, const ListOptions opts) const noexcept
     {
         std::vector<std::string> result;
@@ -76,6 +91,11 @@ namespace codex::fs {
     bool DiskMount::is_directory(const std::string& rel_path) const noexcept
     {
         return std::filesystem::is_directory(abs(rel_path));
+    }
+
+    std::string DiskMount::mount_src() const noexcept
+    {
+        return root_.generic_string();
     }
 
     Shared<FileHandle> DiskMount::open(const std::string& path, const FileProperties props) noexcept

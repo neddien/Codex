@@ -2,7 +2,7 @@
 
 #include <engine/audio/public/audio.h>
 #include <engine/core/public/log.h>
-#include <engine/core/public/serializer.h>
+#include <engine/core/public/archive.h>
 #include <engine/reflection/public/reflection.h>
 #include <engine/scene/public/scene.h>
 
@@ -85,8 +85,7 @@ namespace codex {
         ax::EventHandle get_audio_event(const std::string_view event_path);
 
     public:
-        void serialize(ISerializationNode& node) const override;
-        void deserialize(const ISerializationNode& node) override;
+        void archive(Archive& archive) override;
 
     private:
         inline void set_owner(const Entity entity) noexcept { parent_ = entity; }
