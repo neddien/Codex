@@ -1,13 +1,13 @@
 {
-    "path": "/editor/project/assets/sprites/machine.png",
-    "uuid": "5270-5326-daeda705",
+    "path": "sprites/machine.png",
+    "uuid": "7f7b-ce77-34b6367d",
     "type": "Texture2D",
     "checksum": 2320820923,
     "size": 8745,
-    "last_modified": 1778350058,
+    "last_modified": 1782284729,
     "dependencies": [],
     "import_settings": {
-        "filter_mode": "Nearest",
+        "filter_mode": "Linear",
         "mipmap_mode": "None",
         "wrap_mode": "Mirror",
         "format": "None"

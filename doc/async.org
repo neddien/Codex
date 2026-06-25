@@ -1,14 +1,14 @@
-#+title: ~cc::Task<T>~ specification
+#+title: ~cc::task<T>~ specification
 #+author: Neddiendrohu
 
 * TODO
-+ Add ~cc::Task<T>::when_all~ for waiting all sub-tasks to finish:
++ Add ~cc::task<T>::when_all~ for waiting all sub-tasks to finish:
   #+begin_src cpp
-  cc::Tasl<std::tuple<Ts...>> when_all(cc::Task<Ts>... tasks) {
+  cc::Tasl<std::tuple<Ts...>> when_all(cc::task<Ts>... tasks) {
       // ...
   }
 
-  cc::Task<void> do_stuff_parallel(fs::VirtualFilesystem& vfs, const std::string& path) {
+  cc::task<void> do_stuff_parallel(fs::VirtualFilesystem& vfs, const std::string& path) {
       using namespace codex::cc;
       using namespace codex::fs;
       

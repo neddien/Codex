@@ -145,6 +145,7 @@ namespace codex {
         {
             return uuid_ == other.uuid_ && hash_ == other.hash_;
         }
+        [[nodiscard]] operator bool() const noexcept { return (u64)uuid_ != 0; }
 
     public:
         void archive(Archive& ar) final

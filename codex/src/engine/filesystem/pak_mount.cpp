@@ -3,6 +3,19 @@
 #include <lz4.h>
 
 namespace codex::fs {
+    namespace {
+        [[nodiscard]] bool is_under(std::string_view path, std::string_view root) noexcept
+        {
+            if (path == root)
+                return true;
+
+            if (path.size() <= root.size())
+                return false;
+
+            return path.starts_with(root) && path[root.size()] == '/';
+        }
+    } // namespace
+
     class PakFileHandle : public FileHandle
     {
     public:
@@ -218,7 +231,7 @@ namespace codex::fs {
         const bool files_only = opts & ListOptions::FilesOnly;
         const bool dirs_only  = opts & ListOptions::DirsOnly;
 
-        std::unordered_set<std::string> result;
+        absl::flat_hash_set<std::string> result;
 
         for (const auto& entry : entries_) {
             const std::string_view ep{ entry.path };
@@ -255,13 +268,36 @@ namespace codex::fs {
         return { result.begin(), result.end() };
     }
 
-    bool PakMount::is_directory(const std::string& rel_path) const noexcept
+    bool PakMount::directory(const std::string& rel_path) const noexcept
     {
         const auto npath = normalize(rel_path);
         if (npath.empty())
             return true;
         auto it = std::lower_bound(dirs_.begin(), dirs_.end(), npath);
         return it != dirs_.end() && *it == npath;
+    }
+
+    bool PakMount::empty(const std::string& rel_path) const noexcept
+    {
+        const auto  npath      = normalize(rel_path);
+        const usize npath_hash = util::crypto::fnv1a(npath);
+        if (std::binary_search(dirs_.begin(), dirs_.end(), rel_path)) {
+            for (const std::string& dir : dirs_) {
+                if (is_under(dir, npath))
+                    return false;
+            }
+            for (const PakEntry& entry : entries_) {
+                if (is_under(entry.path, npath))
+                    return false;
+            }
+            return true;
+        } else if (auto it = std::lower_bound(entries_.begin(), entries_.end(), npath_hash,
+                                              [](const auto& e, usize hash) { return e.path_hash < hash; });
+                   it != entries_.end() && it->path_hash == npath_hash) {
+            return it->uncompressed_size == 0;
+        }
+
+        return true;
     }
 
     u64 PakMount::chunk_size() const noexcept

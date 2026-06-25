@@ -21,9 +21,9 @@ namespace codex::editor {
         auto&              io            = ImGui::GetIO();
         static std::string ini_file_path = (EditorApplication::get_var_app_data_path() / "imgui.ini").string();
         static std::string font_file_path =
-            (EditorApplication::get_app_data_path() / "Fonts/roboto/Roboto-Regular.ttf").string();
+            (EditorApplication::get_app_data_path() / "fonts/roboto/Roboto-Regular.ttf").string();
         static std::string icon_font_path =
-            (EditorApplication::get_app_data_path() / "Fonts/tabler-icons.ttf").string();
+            (EditorApplication::get_app_data_path() / "fonts/tabler-icons.ttf").string();
 
         if (!stdfs::exists(ini_file_path)) {
             try {
@@ -58,8 +58,7 @@ namespace codex::editor {
         // Load XL Icon Font for content browser grid (rasterized at 64px for crisp rendering)
         ImFontConfig xl_config;
         xl_config.PixelSnapH = true;
-        s_xl_icon_font_ =
-            io.Fonts->AddFontFromFileTTF(icon_font_path.c_str(), 64.0f, &xl_config, icon_ranges);
+        s_xl_icon_font_      = io.Fonts->AddFontFromFileTTF(icon_font_path.c_str(), 64.0f, &xl_config, icon_ranges);
 
         io.Fonts->Build();
 

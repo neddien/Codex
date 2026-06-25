@@ -14,8 +14,8 @@ namespace codex {
         [[nodiscard]] bool               operator==(const UUID& other) const noexcept { return uuid_ == other.uuid_; }
 
     public:
-        [[nodiscard]] std::string  to_string() const noexcept;
-        [[nodiscard]] static UUID  from_string(std::string_view str) noexcept;
+        [[nodiscard]] std::string to_string() const noexcept;
+        [[nodiscard]] static UUID from_string(std::string_view str) noexcept;
 
         void archive(Archive& archive) override;
 
@@ -44,7 +44,7 @@ namespace fmt {
     {
         auto format(const codex::UUID& uuid, format_context& ctx) const
         {
-            return format_to(ctx.out(), "{}", static_cast<codex::u64>(uuid));
+            return format_to(ctx.out(), "{}", uuid.to_string());
         }
     };
 } // namespace fmt

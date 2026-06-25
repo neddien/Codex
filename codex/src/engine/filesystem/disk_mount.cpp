@@ -49,7 +49,8 @@ namespace codex::fs {
     bool DiskMount::cp(const std::string& src_rel_path, const std::string& dst_rel_path, const bool recursive) noexcept
     {
         std::error_code               ec;
-        std::filesystem::copy_options opts = (recursive) ? std::filesystem::copy_options::recursive;
+        std::filesystem::copy_options opts =
+            (recursive) ? std::filesystem::copy_options::recursive : std::filesystem::copy_options{};
         std::filesystem::copy(abs(src_rel_path), abs(dst_rel_path), opts, ec);
         return !ec;
     }
@@ -88,9 +89,14 @@ namespace codex::fs {
         return result;
     }
 
-    bool DiskMount::is_directory(const std::string& rel_path) const noexcept
+    bool DiskMount::directory(const std::string& rel_path) const noexcept
     {
         return std::filesystem::is_directory(abs(rel_path));
+    }
+
+    bool DiskMount::empty(const std::string& rel_path) const noexcept
+    {
+        return std::filesystem::is_empty(abs(rel_path));
     }
 
     std::string DiskMount::mount_src() const noexcept

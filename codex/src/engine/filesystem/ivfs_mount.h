@@ -37,7 +37,8 @@ namespace codex::fs {
         {
             return {};
         }
-        [[nodiscard]] virtual bool        is_directory(const std::string& rel_path) const noexcept { return false; }
+        [[nodiscard]] virtual bool        directory(const std::string& rel_path) const noexcept { return false; }
+        [[nodiscard]] virtual bool        empty(const std::string& rel_path) const noexcept { return false; }
         [[nodiscard]] virtual std::string mount_src() const noexcept
         {
             return "";
@@ -45,11 +46,11 @@ namespace codex::fs {
 
         // Async wrappers, non-virtual, dispatch through the virtual sync methods.
         // Override the sync methods for custom behaviour; override these for native async (e.g. io_uring).
-        [[nodiscard]] cc::Task<Shared<FileHandle>> open_async(std::string path, FileProperties props = {}) noexcept;
-        [[nodiscard]] cc::Task<bool>               exists_async(std::string path) const noexcept;
-        [[nodiscard]] cc::Task<bool>               mkdir_async(std::string path) noexcept;
-        [[nodiscard]] cc::Task<bool>               rm_async(std::string path) noexcept;
-        [[nodiscard]] cc::Task<std::vector<std::string>> list_async(std::string path) const noexcept;
-        [[nodiscard]] cc::Task<bool>                     is_directory_async(std::string path) const noexcept;
+        [[nodiscard]] cc::task<Shared<FileHandle>> open_async(std::string path, FileProperties props = {}) noexcept;
+        [[nodiscard]] cc::task<bool>               exists_async(std::string path) const noexcept;
+        [[nodiscard]] cc::task<bool>               mkdir_async(std::string path) noexcept;
+        [[nodiscard]] cc::task<bool>               rm_async(std::string path) noexcept;
+        [[nodiscard]] cc::task<std::vector<std::string>> list_async(std::string path) const noexcept;
+        [[nodiscard]] cc::task<bool>                     directory_async(std::string path) const noexcept;
     };
 } // namespace codex::fs

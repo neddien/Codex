@@ -1,13 +1,13 @@
 {
-    "path": "/editor/project/assets/sprites/dun_tileset.png",
-    "uuid": "056c-c521-f89651d4",
+    "path": "sprites/dun_tileset.png",
+    "uuid": "2792-434e-e3d9cb37",
     "type": "Texture2D",
     "checksum": 1622483018,
     "size": 15587,
-    "last_modified": 1778350067,
+    "last_modified": 1782284729,
     "dependencies": [],
     "import_settings": {
-        "filter_mode": "Nearest",
+        "filter_mode": "Linear",
         "mipmap_mode": "None",
         "wrap_mode": "Mirror",
         "format": "None"

@@ -34,9 +34,10 @@ namespace codex::fs {
         [[nodiscard]] bool               exists(const std::string& path) const noexcept;
         [[nodiscard]] usize              get_size(const std::string& path) const noexcept;
         bool                             mkdir(const std::string& path, const bool recursive = false) noexcept;
-        bool                             rm(const std::string& path, const bool recursive = false) noexcept;
-        bool                             cp(const std::string& src_path, const std::string& dst_path) noexcept;
-        bool                             mv(const std::string& src_path, const std::string& dst_path) noexcept;
+        bool ensure_mount_point(const std::string& path, const bool recursive = false) noexcept;
+        bool rm(const std::string& path, const bool recursive = false) noexcept;
+        bool cp(const std::string& src_path, const std::string& dst_path, const bool recursive = false) noexcept;
+        bool mv(const std::string& src_path, const std::string& dst_path) noexcept;
 
         // Directory operations
         [[nodiscard]] std::vector<std::string> list(const std::string& dir,
@@ -44,11 +45,11 @@ namespace codex::fs {
         [[nodiscard]] bool                     is_directory(const std::string& path) const noexcept;
 
         // Async file operations
-        [[nodiscard]] cc::Task<Shared<FileHandle>> open_async(std::string path, FileProperties props = {}) noexcept;
-        [[nodiscard]] cc::Task<bool>               exists_async(std::string path) const noexcept;
-        [[nodiscard]] cc::Task<bool>               mkdir_async(std::string path, bool recursive = false) noexcept;
-        [[nodiscard]] cc::Task<std::vector<std::string>> list_async(std::string dir) const noexcept;
-        [[nodiscard]] cc::Task<bool>                     is_directory_async(std::string path) const noexcept;
+        [[nodiscard]] cc::task<Shared<FileHandle>> open_async(std::string path, FileProperties props = {}) noexcept;
+        [[nodiscard]] cc::task<bool>               exists_async(std::string path) const noexcept;
+        [[nodiscard]] cc::task<bool>               mkdir_async(std::string path, bool recursive = false) noexcept;
+        [[nodiscard]] cc::task<std::vector<std::string>> list_async(std::string dir) const noexcept;
+        [[nodiscard]] cc::task<bool>                     is_directory_async(std::string path) const noexcept;
         bool export_to_pak(Shared<FileHandle> out, const PakProperties props = {}) noexcept;
 
         // Debugging
@@ -58,9 +59,10 @@ namespace codex::fs {
     private:
         Node* walk_to(const std::string& path, Node** const previous_node = nullptr) noexcept;
         bool  mkdir_nolock(const std::string& path, const bool recursive) noexcept;
+        bool  ensure_mount_point_nolock(const std::string& path, const bool recursive = false) noexcept;
         bool  rm_nolock(const std::string& path, const bool recursive) noexcept;
-        bool  cp_nolock(const std::string& src_path, const std::string& dst_path) noexcept;
-        bool  mv_nolock(const std::string& src_path, const std::string& dst_path) noexcept;
+        bool cp_nolock(const std::string& src_path, const std::string& dst_path, const bool recursive = false) noexcept;
+        bool mv_nolock(const std::string& src_path, const std::string& dst_path) noexcept;
 
         [[nodiscard]] std::vector<std::string> list_nolock(const std::string& dir) const noexcept;
         [[nodiscard]] bool                     is_directory_nolock(const std::string& path) const noexcept;

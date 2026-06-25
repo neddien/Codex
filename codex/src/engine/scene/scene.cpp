@@ -2,6 +2,8 @@
 
 #include <engine/audio/audio_manager.h>
 #include <engine/core/engine.h>
+#include <engine/core/json_archive.h>
+#include <engine/core/public/binary_archive.h>
 #include <engine/core/public/common_third_party_libs.h>
 #include <engine/core/public/serialization_manager.h>
 #include <engine/debug/public/profiler.h>
@@ -23,6 +25,11 @@ namespace codex {
     void B2WorldDeleter::operator()(b2World* world) noexcept
     {
         delete world;
+    }
+
+    void Scene::ImportSettings::archive(Archive& ar)
+    {
+        ar("serdes_type", ar_type_);
     }
 
     using EntityMap = std::unordered_map<UUID, entt::entity>;

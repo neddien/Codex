@@ -1,0 +1,41 @@
+{
+    "engine": {
+        "uuid": {
+            "uuid": "8057-aaac-877aae4a"
+        },
+        "name": "Untitled",
+        "author": "Codex Editor",
+        "description": "",
+        "format_ver": 1,
+        "engine_ver": 0,
+        "assets_root": "assets/",
+        "config_root": "config/",
+        "boot_scene": {
+            "path": "",
+            "uuid": "0000-0000-00000000"
+        },
+        "engine_properties": {
+            "name": "Codex Application",
+            "cwd": "",
+            "flags": 255,
+            "window_properties": {
+                "title": "Codex Application",
+                "width": 1920,
+                "height": 1080,
+                "pos_x": 0,
+                "pos_y": 0,
+                "frame_cap": 300,
+                "vsync": true,
+                "flags": 5,
+                "borderless": false
+            }
+        },
+        "native_modules": []
+    },
+    "vfs_root": "/editor",
+    "last_asset_path": "",
+    "last_open_scene": {
+        "path": "scenes/scene0.cxscene",
+        "uuid": "5028-4a0b-5ea6da67"
+    }
+}

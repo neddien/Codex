@@ -12,44 +12,43 @@ namespace codex {
     struct AssetMetadata : public ISerializable
     {
         AssetPath                 path;
+        std::string               storage_path;
         std::string               type;
-        u32                       checksum;
-        u64                       last_modified;
-        usize                     size;
+        u32                       checksum{ 0 };
+        u64                       last_modified{ 0 };
+        usize                     size{ 0 };
         Box<IAssetImportSettings> import_settings;
         std::vector<AssetPath>    dependencies;
-        bool                      null_asset;
-        mutable bool              dirty;
-        mutable std::string       name;
+        bool                      null_asset{ false };
+        mutable bool              dirty{ false };
 
     public:
         AssetMetadata() noexcept = default;
         AssetMetadata(const AssetMetadata& other) noexcept
             : path{ other.path }
+            , storage_path{ other.storage_path }
             , type{ other.type }
             , checksum{ other.checksum }
             , last_modified{ other.last_modified }
             , size{ other.size }
             , dependencies{ other.dependencies }
-            , dirty{ other.dirty }
             , null_asset{ other.null_asset }
+            , dirty{ other.dirty }
         {
             if (other.import_settings)
                 import_settings = other.import_settings->clone();
-
-            name = std::filesystem::path{ path.path() }.filename();
         }
         AssetMetadata(AssetMetadata&& other) noexcept
             : path{ std::move(other.path) }
+            , storage_path(std::move(other.storage_path))
             , type{ std::move(other.type) }
             , checksum{ other.checksum }
             , last_modified{ other.last_modified }
             , size{ other.size }
             , import_settings{ std::move(other.import_settings) }
             , dependencies{ std::move(other.dependencies) }
-            , dirty{ other.dirty }
-            , name{ other.name }
             , null_asset{ other.null_asset }
+            , dirty{ other.dirty }
         {
         }
 
@@ -64,14 +63,16 @@ namespace codex {
         AssetMetadata& swap(AssetMetadata& other) noexcept
         {
             std::swap(path, other.path);
+            std::swap(storage_path, other.storage_path);
             std::swap(type, other.type);
             std::swap(last_modified, other.last_modified);
+            std::swap(checksum, other.checksum);
             std::swap(size, other.size);
             import_settings.swap(other.import_settings);
             std::swap(dependencies, other.dependencies);
-            std::swap(dirty, other.dirty);
-            std::swap(name, other.name);
             std::swap(null_asset, other.null_asset);
+            std::swap(dirty, other.dirty);
+            return *this;
         }
 
     public:
@@ -83,7 +84,7 @@ namespace codex {
         using MetadataCallback = std::function<void(const AssetMetadata&)>;
 
     public:
-        AssetRegistry(fs::VirtualFilesystem& vfs) noexcept;
+        AssetRegistry(fs::VirtualFilesystem& vfs, std::string_view root_path) noexcept;
         ~AssetRegistry() noexcept;
 
     public:
@@ -101,7 +102,7 @@ namespace codex {
     public:
         void           move_asset(const AssetPath& path, const std::string& new_path);
         void           repath(const AssetPath& path, const std::string& new_path);
-        cc::Task<void> scan_async(const std::string path);
+        cc::task<void> scan_async(const std::string path);
         AssetMetadata* asset_metadata(const UUID uuid) noexcept;
         AssetMetadata* asset_metadata(const std::string& path) noexcept;
         void           for_each(MetadataCallback fn) const
@@ -110,19 +111,25 @@ namespace codex {
             for (const Box<AssetMetadata>& e : metas_)
                 fn(*e);
         }
-        cc::Task<void> write_manifest_async(const std::string vfs_path) const noexcept;
-        cc::Task<void> export_assets_async(const std::string vfs_path) const noexcept;
+        cc::task<void> write_manifest_async(const std::string vfs_path) const noexcept;
+        cc::task<void> export_assets_async(const std::string vfs_path) const noexcept;
 
     private:
-        cc::Task<void> metagen(const std::filesystem::path path) noexcept;
+        cc::task<void> resolve_meta(const std::filesystem::path path) noexcept;
+        cc::task<void> resolve_asset(const std::filesystem::path path) noexcept;
         void           write_meta_files() const noexcept;
+        AssetMetadata* append_meta_nolock(AssetMetadata meta) noexcept;
+        AssetMetadata* append_meta(AssetMetadata meta) noexcept;
 
     private:
+        // TODO: Use absl::flat_hash_map
         std::unordered_map<UUID, AssetMetadata*>  uuid_to_meta_;
         std::unordered_map<usize, AssetMetadata*> path_to_meta_;
         std::vector<Box<AssetMetadata>>           metas_;
-        std::vector<Box<AssetMetadata>>           orphan_metas_;
-        mutable std::shared_mutex                 mutex_;
-        fs::VirtualFilesystem&                    vfs_;
+        // FIXME: This doesn't have to be wrapped in a Box btw
+        std::vector<Box<AssetMetadata>> orphan_metas_;
+        fs::VirtualFilesystem&          vfs_;
+        std::string                     root_path_;
+        mutable std::shared_mutex       mutex_;
     };
 } // namespace codex

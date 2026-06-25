@@ -8,6 +8,33 @@
 #include <lz4.h>
 
 namespace codex::fs {
+    namespace stdfs = std::filesystem;
+
+    namespace {
+        bool stream_file(Shared<FileHandle> src, Shared<FileHandle> dst)
+        {
+            if (not(src && dst))
+                return false;
+
+            constexpr auto          buf_len = 1024 * 1024; // 1MiB
+            std::array<u8, buf_len> buf;
+
+            src->seek(0);
+            dst->seek(0);
+            while (true) {
+                const usize n = src->read(buf.data(), buf.size());
+                if (n == 0)
+                    break;
+
+                if (dst->write(buf.data(), n) != n)
+                    return false;
+            }
+
+            dst->flush();
+            return true;
+        }
+    } // namespace
+
     VirtualFilesystem::VirtualFilesystem(Shared<IVFSMount> default_mount) noexcept
     {
         root_         = Box<Node>::make();
@@ -32,7 +59,7 @@ namespace codex::fs {
 
         if (!node) {
             if (mk) {
-                mkdir_nolock(npath, true);
+                ensure_mount_point_nolock(npath, true);
                 node = walk_to(npath);
             } else {
                 return false;
@@ -163,14 +190,6 @@ namespace codex::fs {
                     mount_node  = cur;
                     mount_depth = depth + 1;
                 }
-            } else {
-                if (std::prev(components.end()) == it || recursive) {
-                    Node node{ .path = c, .mounts = {}, .children = {}, .dir = true };
-                    auto [ins, _] = cur->children.emplace(c, Box<Node>::make(std::move(node)));
-                    cur           = ins->second.get();
-                } else {
-                    return false;
-                }
             }
         }
 
@@ -179,8 +198,32 @@ namespace codex::fs {
             if (!rel_path.empty()) {
                 for (auto& m : mount_node->mounts) {
                     if (m->mkdir(rel_path))
-                        break;
+                        return true;
                 }
+            }
+        }
+
+        return false;
+    }
+
+    bool VirtualFilesystem::ensure_mount_point_nolock(const std::string& path, const bool recursive) noexcept
+    {
+        const auto npath      = normalize(path);
+        auto       components = util::str::split(npath, '/');
+        auto*      cur        = root_.get();
+
+        for (auto it = components.begin(); it != components.end(); ++it) {
+            const auto& c = *it;
+
+            if (auto dir_it = cur->children.find(c); dir_it != cur->children.end()) {
+                cur = dir_it->second.get();
+            } else {
+                if (std::prev(components.end()) == it || recursive) {
+                    Node node{ .path = c, .mounts = {}, .children = {}, .dir = true };
+                    auto [ins, _] = cur->children.emplace(c, Box<Node>::make(std::move(node)));
+                    cur           = ins->second.get();
+                } else
+                    return false;
             }
         }
 
@@ -224,30 +267,127 @@ namespace codex::fs {
         return true;
     }
 
-    bool VirtualFilesystem::cp_nolock(const std::string& src_path, const std::string& dst_path) noexcept
+    bool VirtualFilesystem::cp_nolock(const std::string& src_path, const std::string& dst_path,
+                                      const bool recursive) noexcept
     {
-        const auto npath      = normalize(src_path);
-        auto       components = util::str::split(npath, '/');
-        auto*      cur        = root_.get();
+        const auto src_npath      = normalize(src_path);
+        const auto dst_npath      = normalize(dst_path);
+        auto       src_components = util::str::split(src_npath, '/');
+        auto       dst_components = util::str::split(dst_npath, '/');
+        auto*      cur            = root_.get();
 
-        Node* mount_node  = cur->mounts.empty() ? nullptr : cur;
-        usize mount_depth = 0;
-        usize depth       = 0;
+        Node* src_mount_node  = cur->mounts.empty() ? nullptr : cur;
+        usize src_mount_depth = 0;
+        usize depth           = 0;
 
-        for (auto it = components.begin(); it != components.end(); ++it, ++depth) {
+        for (auto it = src_components.begin(); it != src_components.end(); ++it, ++depth) {
             const auto& c = *it;
 
             if (auto dir_it = cur->children.find(c); dir_it != cur->children.end()) {
                 cur = dir_it->second.get();
 
                 if (!cur->mounts.empty()) {
-                    mount_node  = cur;
-                    mount_depth = depth + 1;
+                    src_mount_node  = cur;
+                    src_mount_depth = depth + 1;
                 }
             } else
                 break;
         }
-        return true;
+
+        Node* dst_mount_node  = cur->mounts.empty() ? nullptr : cur;
+        depth                 = 0;
+        usize dst_mount_depth = 0;
+        cur                   = root_.get();
+
+        for (auto it = dst_components.begin(); it != dst_components.end(); ++it, ++depth) {
+            const auto& c = *it;
+
+            if (auto dir_it = cur->children.find(c); dir_it != cur->children.end()) {
+                cur = dir_it->second.get();
+
+                if (!cur->mounts.empty()) {
+                    dst_mount_node  = cur;
+                    dst_mount_depth = depth + 1;
+                }
+            } else
+                break;
+        }
+
+        IVFSMount* src_mnt{};
+        IVFSMount* dst_mnt{};
+
+        if (src_mount_node) {
+            for (Shared<IVFSMount>& mnt : src_mount_node->mounts) {
+                if (mnt)
+                    src_mnt = mnt.get();
+            }
+        }
+        if (dst_mount_node) {
+            for (Shared<IVFSMount>& mnt : dst_mount_node->mounts) {
+                if (mnt)
+                    dst_mnt = mnt.get();
+            }
+        }
+
+        if (!dst_mnt || !src_mnt)
+            return false;
+
+        const auto rel_src_path = util::str::join(src_components.begin() + src_mount_depth, src_components.end(), '/');
+        const auto rel_dst_path = util::str::join(dst_components.begin() + dst_mount_depth, dst_components.end(), '/');
+
+        if (src_mnt == dst_mnt) {
+            src_mnt->cp(rel_src_path, rel_dst_path, recursive);
+            return true;
+        }
+
+        // Dir
+        if (src_mnt->directory(rel_src_path)) {
+            // check if dir empty and recursive == false, then we good
+            // otherwise we bad unless recursive == true
+            if (src_mnt->empty(rel_src_path)) {
+                // dont care about recursive copy anyways
+                dst_mnt->mkdir(dst_components.back());
+                return true;
+            } else if (recursive) {
+                std::vector<std::string> dirs =
+                    src_mnt->list(rel_src_path, ListOptions::DirsOnly | ListOptions::Recursive);
+                std::vector<std::string> files =
+                    src_mnt->list(rel_src_path, ListOptions::FilesOnly | ListOptions::Recursive);
+
+                std::sort(dirs.begin(), dirs.end(), [](const std::string& a, const std::string& b)
+                          { return std::ranges::count(a, '/') < std::ranges::count(b, '/'); });
+
+                for (const std::string& dir : dirs)
+                    dst_mnt->mkdir(dir);
+
+                for (const std::string& file : files) {
+                    Shared<FileHandle> sfh = src_mnt->open(file, { FileMode::Read });
+                    Shared<FileHandle> dfh =
+                        dst_mnt->open(file, { FileMode::Create | FileMode::Trunc | FileMode::Write });
+                    if (not stream_file(std::move(sfh), std::move(dfh)))
+                        return false;
+                }
+
+                return true;
+            }
+        }
+        // File
+        else {
+            // f : d
+            Shared<FileHandle> sfh = src_mnt->open(rel_src_path, { FileMode::Read });
+            Shared<FileHandle> dfh;
+            if (dst_mnt->directory(rel_dst_path)) {
+                dfh = dst_mnt->open(rel_dst_path + "/" + src_components.back(),
+                                    { FileMode::Create | FileMode::Trunc | FileMode::Write });
+            }
+            // f : f (replace or create both cases here)
+            else {
+                dfh = dst_mnt->open(rel_dst_path, { FileMode::Create | FileMode::Trunc | FileMode::Write });
+            }
+            return stream_file(std::move(sfh), std::move(dfh));
+        }
+
+        return false;
     }
 
     bool VirtualFilesystem::mv_nolock(const std::string& src_path, const std::string& dst_path) noexcept
@@ -261,16 +401,22 @@ namespace codex::fs {
         return mkdir_nolock(path, recursive);
     }
 
+    bool VirtualFilesystem::ensure_mount_point(const std::string& path, const bool recursive) noexcept
+    {
+        std::scoped_lock guard{ mutex_ };
+        return ensure_mount_point_nolock(path, recursive);
+    }
+
     bool VirtualFilesystem::rm(const std::string& path, const bool recursive) noexcept
     {
         std::scoped_lock lock{ mutex_ };
         return rm_nolock(path, recursive);
     }
 
-    bool VirtualFilesystem::cp(const std::string& src_path, const std::string& dst_path) noexcept
+    bool VirtualFilesystem::cp(const std::string& src_path, const std::string& dst_path, const bool recursive) noexcept
     {
         std::scoped_lock lock{ mutex_ };
-        return cp_nolock(src_path, dst_path);
+        return cp_nolock(src_path, dst_path, recursive);
     }
 
     bool VirtualFilesystem::mv(const std::string& src_path, const std::string& dst_path) noexcept
@@ -346,7 +492,7 @@ namespace codex::fs {
 
         const auto local_path = util::str::join(components.begin() + mount_depth, components.end(), '/');
         for (auto& m : mount_node->mounts) {
-            if (m->is_directory(local_path))
+            if (m->directory(local_path))
                 return true;
         }
 
@@ -418,31 +564,31 @@ namespace codex::fs {
         return is_directory_nolock(path);
     }
 
-    cc::Task<Shared<FileHandle>> VirtualFilesystem::open_async(std::string path, FileProperties props) noexcept
+    cc::task<Shared<FileHandle>> VirtualFilesystem::open_async(std::string path, FileProperties props) noexcept
     {
         co_await Engine::worker_pool();
         co_return open(path, props);
     }
 
-    cc::Task<bool> VirtualFilesystem::exists_async(std::string path) const noexcept
+    cc::task<bool> VirtualFilesystem::exists_async(std::string path) const noexcept
     {
         co_await Engine::worker_pool();
         co_return exists(path);
     }
 
-    cc::Task<bool> VirtualFilesystem::mkdir_async(std::string path, bool recursive) noexcept
+    cc::task<bool> VirtualFilesystem::mkdir_async(std::string path, bool recursive) noexcept
     {
         co_await Engine::worker_pool();
         co_return mkdir(path, recursive);
     }
 
-    cc::Task<std::vector<std::string>> VirtualFilesystem::list_async(std::string dir) const noexcept
+    cc::task<std::vector<std::string>> VirtualFilesystem::list_async(std::string dir) const noexcept
     {
         co_await Engine::worker_pool();
         co_return list(dir);
     }
 
-    cc::Task<bool> VirtualFilesystem::is_directory_async(std::string path) const noexcept
+    cc::task<bool> VirtualFilesystem::is_directory_async(std::string path) const noexcept
     {
         co_await Engine::worker_pool();
         co_return is_directory(path);

@@ -34,7 +34,16 @@ namespace codex {
                             return Asset<TAsset>{ maybe_meta->path, std::move(cached) };
                 }
 
-                auto asset = self.load_impl(typeid(TAsset), *maybe_meta).template as<TAsset>();
+                Shared<TAsset> asset;
+                {
+                    self.mutex_.lock_shared();
+                    AssetMetadata meta_cpy = *maybe_meta;
+                    self.mutex_.unlock_shared();
+                    asset = self.load_impl(typeid(TAsset), meta_cpy).template as<TAsset>();
+
+                    std::scoped_lock guard{ self.mutex_ };
+                    *maybe_meta = meta_cpy;
+                }
                 if (asset) {
                     auto             handle = Asset<TAsset>{ maybe_meta->path, asset };
                     std::scoped_lock guard{ self.mutex_ };
@@ -64,7 +73,16 @@ namespace codex {
                             return Asset<TAsset>{ maybe_meta->path, std::move(cached) };
                 }
 
-                auto asset = self.load_impl(typeid(TAsset), *maybe_meta, &param).template as<TAsset>();
+                Shared<TAsset> asset;
+                {
+                    self.mutex_.lock_shared();
+                    AssetMetadata meta_cpy = *maybe_meta;
+                    self.mutex_.unlock_shared();
+                    asset = self.load_impl(typeid(TAsset), meta_cpy, &param).template as<TAsset>();
+
+                    std::scoped_lock guard{ self.mutex_ };
+                    *maybe_meta = meta_cpy;
+                }
                 if (asset) {
                     auto             handle = Asset<TAsset>{ maybe_meta->path, asset };
                     std::scoped_lock guard{ self.mutex_ };
@@ -85,9 +103,9 @@ namespace codex {
         template <AssetType TAsset>
         [[nodiscard]] static Asset<TAsset> load(const std::string& path) noexcept
         {
-            auto&      self     = get();
-            const auto abs_path = self.asset_root_ + "/" + path;
-            if (auto maybe_meta = self.registry_->asset_metadata(abs_path); maybe_meta) {
+            auto&             self         = get();
+            const std::string logical_path = std::filesystem::path{ path }.lexically_normal().generic_string();
+            if (auto maybe_meta = self.registry_->asset_metadata(logical_path); maybe_meta) {
                 {
                     std::scoped_lock guard{ self.mutex_ };
                     if (auto it = self.cache_.find(maybe_meta->path); it != self.cache_.end())
@@ -95,7 +113,16 @@ namespace codex {
                             return Asset<TAsset>{ maybe_meta->path, std::move(cached) };
                 }
 
-                auto asset = self.load_impl(typeid(TAsset), *maybe_meta).template as<TAsset>();
+                Shared<TAsset> asset;
+                {
+                    self.mutex_.lock_shared();
+                    AssetMetadata meta_cpy = *maybe_meta;
+                    self.mutex_.unlock_shared();
+                    asset = self.load_impl(typeid(TAsset), meta_cpy).template as<TAsset>();
+
+                    std::scoped_lock guard{ self.mutex_ };
+                    *maybe_meta = meta_cpy;
+                }
                 if (asset) {
                     auto             handle = Asset<TAsset>{ maybe_meta->path, asset };
                     std::scoped_lock guard{ self.mutex_ };
@@ -111,9 +138,9 @@ namespace codex {
         template <AssetType TAsset, Serializable TParam>
         [[nodiscard]] static Asset<TAsset> load(const std::string& path, const TParam& param) noexcept
         {
-            auto&      self     = get();
-            const auto abs_path = self.asset_root_ + "/" + path;
-            if (auto maybe_meta = self.registry_->asset_metadata(abs_path); maybe_meta) {
+            auto&             self         = get();
+            const std::string logical_path = std::filesystem::path{ path }.lexically_normal().generic_string();
+            if (auto maybe_meta = self.registry_->asset_metadata(logical_path); maybe_meta) {
                 {
                     std::scoped_lock guard{ self.mutex_ };
                     if (auto it = self.cache_.find(maybe_meta->path); it != self.cache_.end())
@@ -121,7 +148,16 @@ namespace codex {
                             return Asset<TAsset>{ maybe_meta->path, std::move(cached) };
                 }
 
-                auto asset = self.load_impl(typeid(TAsset), *maybe_meta, &param).template as<TAsset>();
+                Shared<TAsset> asset;
+                {
+                    self.mutex_.lock_shared();
+                    AssetMetadata meta_cpy = *maybe_meta;
+                    self.mutex_.unlock_shared();
+                    asset = self.load_impl(typeid(TAsset), meta_cpy, &param).template as<TAsset>();
+
+                    std::scoped_lock guard{ self.mutex_ };
+                    *maybe_meta = meta_cpy;
+                }
                 if (asset) {
                     auto             handle = Asset<TAsset>{ maybe_meta->path, asset };
                     std::scoped_lock guard{ self.mutex_ };
@@ -137,9 +173,9 @@ namespace codex {
         template <AssetType TAsset>
         static void unload(const std::string& path) noexcept
         {
-            auto&      self     = get();
-            const auto abs_path = self.asset_root_ + "/" + path;
-            if (auto maybe_meta = self.registry_->asset_metadata(abs_path); maybe_meta) {
+            auto&             self         = get();
+            const std::string logical_path = std::filesystem::path{ path }.lexically_normal().generic_string();
+            if (auto maybe_meta = self.registry_->asset_metadata(logical_path); maybe_meta) {
                 std::scoped_lock guard{ self.mutex_ };
                 if (auto it = self.cache_.find(maybe_meta->path); it != self.cache_.end())
                     self.cache_.erase(it);
@@ -185,16 +221,21 @@ namespace codex {
         template <AssetType TAsset, ImportSettingsType TParam>
         static void reimport(const std::string& path, const TParam& params) noexcept
         {
-            auto& self = get();
-            if (auto maybe_meta = self.registry_->asset_metadata(path); maybe_meta) {
+            auto&             self         = get();
+            const std::string logical_path = std::filesystem::path{ path }.lexically_normal().generic_string();
+            if (auto maybe_meta = self.registry_->asset_metadata(logical_path); maybe_meta) {
                 Ref<IAsset> asset_ref;
                 {
                     std::scoped_lock guard{ self.mutex_ };
                     if (auto it = self.cache_.find(maybe_meta->path); it != self.cache_.end())
                         asset_ref = it->second;
                 }
+
                 if (auto asset = asset_ref.lock().template as<TAsset>(); asset) {
-                    auto asset_new = self.load_impl(typeid(TAsset), *maybe_meta, &params).template as<TAsset>();
+                    self.mutex_.lock_shared();
+                    AssetMetadata meta_cpy = *maybe_meta;
+                    self.mutex_.unlock_shared();
+                    auto asset_new = self.load_impl(typeid(TAsset), meta_cpy, &params).template as<TAsset>();
                     *asset         = std::move(*asset_new);
                 }
                 // TODO: Ignore if it isn't cached or isn't valid?
@@ -204,23 +245,23 @@ namespace codex {
         }
 
         template <AssetType TAsset>
-        [[nodiscard]] static cc::Task<Asset<TAsset>> load_async(UUID uuid) noexcept;
+        [[nodiscard]] static cc::task<Asset<TAsset>> load_async(UUID uuid) noexcept;
         template <AssetType TAsset>
-        [[nodiscard]] static cc::Task<Asset<TAsset>> load_async(AssetPath path) noexcept;
+        [[nodiscard]] static cc::task<Asset<TAsset>> load_async(AssetPath path) noexcept;
         template <AssetType TAsset>
-        [[nodiscard]] static cc::Task<Asset<TAsset>> load_async(std::string path) noexcept;
+        [[nodiscard]] static cc::task<Asset<TAsset>> load_async(std::string path) noexcept;
         template <AssetType TAsset, Serializable TParam>
-        [[nodiscard]] static cc::Task<Asset<TAsset>> load_async(UUID uuid, TParam param) noexcept;
+        [[nodiscard]] static cc::task<Asset<TAsset>> load_async(UUID uuid, TParam param) noexcept;
         template <AssetType TAsset, Serializable TParam>
-        [[nodiscard]] static cc::Task<Asset<TAsset>> load_async(AssetPath path, TParam param) noexcept;
+        [[nodiscard]] static cc::task<Asset<TAsset>> load_async(AssetPath path, TParam param) noexcept;
         template <AssetType TAsset, Serializable TParam>
-        [[nodiscard]] static cc::Task<Asset<TAsset>> load_async(std::string path, TParam param) noexcept;
+        [[nodiscard]] static cc::task<Asset<TAsset>> load_async(std::string path, TParam param) noexcept;
         template <AssetType TAsset, ImportSettingsType TParam>
-        [[nodiscard]] static cc::Task<void> reimport_async(UUID uuid, TParam params) noexcept;
+        [[nodiscard]] static cc::task<void> reimport_async(UUID uuid, TParam params) noexcept;
         template <AssetType TAsset, ImportSettingsType TParam>
-        [[nodiscard]] static cc::Task<void> reimport_async(AssetPath path, TParam params) noexcept;
+        [[nodiscard]] static cc::task<void> reimport_async(AssetPath path, TParam params) noexcept;
         template <AssetType TAsset, ImportSettingsType TParam>
-        [[nodiscard]] static cc::Task<void> reimport_async(std::string path, TParam params) noexcept;
+        [[nodiscard]] static cc::task<void> reimport_async(std::string path, TParam params) noexcept;
 
         template <AssetLoader TLoader>
         static void register_loader(std::initializer_list<std::string_view> extensions) noexcept;
@@ -229,7 +270,7 @@ namespace codex {
         [[nodiscard]] static Shared<IAssetLoader> loader_by_type(const std::string& type_name) noexcept;
         [[nodiscard]] static AssetRegistry&       registry() noexcept;
         [[nodiscard]] static bool                 valid() noexcept { return get().registry_; }
-        [[nodiscard]] static std::string          root_dir() noexcept { return get().asset_root_; };
+        [[nodiscard]] static std::string          root_dir() noexcept { return get().root_path_; };
 
     private:
         [[nodiscard]] Shared<void>                 load_impl(const std::type_index type, AssetMetadata& meta,
@@ -238,7 +279,7 @@ namespace codex {
 
     private:
         fs::VirtualFilesystem*                          vfs_ = nullptr;
-        std::string                                     asset_root_;
+        std::string                                     root_path_;
         std::unordered_map<usize, Shared<IAssetLoader>> loaders_;
         std::unordered_map<usize, Shared<IAssetLoader>> loaders_by_ext_;
         std::unordered_map<usize, Shared<IAssetLoader>> loaders_by_type_;

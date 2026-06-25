@@ -16,7 +16,7 @@ namespace codex::cc {
         ~ThreadPool() noexcept;
 
     public:
-        [[nodiscard]] u32 available_concurrency() const noexcept { return threads_.size(); }
+        [[nodiscard]] u32 available_concurrency() const noexcept { return threads_.size() - jobs_.size(); }
 
     public:
         void enqueue(const Job& job) noexcept;

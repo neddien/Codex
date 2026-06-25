@@ -3,6 +3,7 @@
 #include <console_man.h>
 #include <editor.h>
 #include <editor_application.h>
+#include <editor_project.h>
 #include <nfd.h>
 
 #include "panels/asset_properties_view.h"
@@ -16,12 +17,48 @@
 #include <imgui_internal.h>
 
 namespace codex::editor {
+    namespace stdfs = std::filesystem;
+
+    namespace {
+        constexpr std::string_view project_assets_vfs_root = "/editor/project/assets";
+
+        std::optional<stdfs::path> project_asset_vfs_path(const stdfs::path& host_path, const stdfs::path& project_path)
+        {
+            std::error_code ec;
+            const auto      assets_root = stdfs::weakly_canonical(project_path / "assets", ec);
+            if (ec)
+                return std::nullopt;
+
+            auto selected_path = host_path;
+            if (selected_path.extension().empty())
+                selected_path.replace_extension(".cxscene");
+            selected_path = stdfs::weakly_canonical(selected_path, ec);
+            if (ec)
+                return std::nullopt;
+
+            const auto relative_path = stdfs::relative(selected_path, assets_root, ec);
+            if (ec || relative_path.empty() || relative_path.is_absolute() || *relative_path.begin() == "..")
+                return std::nullopt;
+
+            return stdfs::path{ project_assets_vfs_root } / relative_path;
+        }
+
+        bool save_scene_to_vfs(fs::VirtualFilesystem& vfs, const Scene& scene, const stdfs::path& vfs_path)
+        {
+            auto handle = vfs.open(vfs_path.generic_string(),
+                                   { fs::FileMode::Create | fs::FileMode::Trunc | fs::FileMode::Write });
+            if (!handle)
+                return false;
+
+            const std::string json = SerializationManager::to_json(scene) + '\n';
+            return handle->write(json.data(), json.size()) == json.size();
+        }
+    } // namespace
+
     void EditorPanelDeleter::operator()(EditorPanel* panel) noexcept
     {
         delete panel;
     }
-
-    namespace stdfs = std::filesystem;
 
     void SceneEditorView::on_attach()
     {
@@ -165,7 +202,7 @@ namespace codex::editor {
         // glDepthFunc(GL_LESS);
 
         // TODO: Remove this hardcoded path
-        load_project("/home/endrohu/dev/Codex.nb/editor/assets/projects/template_project/default.cxproj");
+        load_project("/home/stigranyan/dev/codex.n/editor/assets/projects/template_project/template.cxproj");
     }
 
     void SceneEditorView::on_detach()
@@ -460,9 +497,41 @@ namespace codex::editor {
                                 "/editor/project/assets/package/__registry.manifest.bin");
                             Engine::project().save_to_vfs(*d->vfs,
                                                           "/editor/project/assets/package/__engine.project.bin");
+                            AssetManager::registry().export_assets_async("/editor/project/assets/package/data");
+                        }
+                    }
+                    if (ImGui::MenuItem("Save Scene", "Ctrl+Shift+S")) {
+                        if (d->registry_state == AssetRegistryState::Succeeded) {
+                            if (d->current_scene_path.empty()) {
+                                nfdu8char_t*      outPath      = nullptr;
+                                nfdu8filteritem_t filters[]    = { { "Codex Scene", "cxscene,cxsc" } };
+                                const std::string default_path = (d->current_project_path / "assets").generic_string();
+                                const nfdresult_t result =
+                                    NFD_SaveDialogU8(&outPath, filters, 1, default_path.c_str(), "scene0.cxscene");
+                                if (result == NFD_OKAY) {
+                                    const auto vfs_path =
+                                        project_asset_vfs_path(stdfs::path{ outPath }, d->current_project_path);
+                                    NFD_FreePathU8(outPath);
+
+                                    if (!vfs_path) {
+                                        log(Error, "Scenes must be saved inside the project's assets directory");
+                                    } else if (save_scene_to_vfs(*d->vfs, *d->active_scene.lock(), *vfs_path)) {
+                                        d->selected_entity.deselect();
+                                        d->current_scene_path = *vfs_path;
+                                    } else {
+                                        log(Error, "Failed to save scene to VFS path '{}'", vfs_path->generic_string());
+                                    }
+                                } else if (result == NFD_ERROR)
+                                    log(Error, "Failed to open scene save dialog: {}", NFD_GetError());
+                            } else {
+                                if (!save_scene_to_vfs(*d->vfs, *d->active_scene.lock(), d->current_scene_path))
+                                    log(Error, "Failed to save scene to VFS path '{}'",
+                                        d->current_scene_path.generic_string());
+                            }
                         }
                     }
                     if (ImGui::MenuItem("Save", "Ctrl+S")) {
+                        // TODO: This guy is supposed to save everything, including scenes and stuff
                         // Handle the "Save" action
                         static std::string save_path;
                         if (save_path.empty()) {
@@ -986,7 +1055,24 @@ namespace codex::editor {
             }
         }
 
-        SerializationManager::load_from_file(*d->editor_scene, cxproj, SerializationManager::Format::Json);
+        SerializationManager::load_from_file(d->project, cxproj, SerializationManager::Format::Json);
+        // SerializationManager::load_from_file(*d->editor_scene, cxproj, SerializationManager::Format::Json);
+
+        if (d->project.last_open_scene) {
+            {
+                std::unique_lock guard{ d->registry_state_mutex };
+                d->registry_state_cv.wait(guard, [&d] { return d->registry_state_ready; });
+            }
+
+            log(Info, "Loading scene {}...", d->project.last_open_scene);
+            Asset<Scene> scene = AssetManager::load<Scene>(d->project.last_open_scene);
+            if (scene) {
+                d->editor_scene = scene.as_shared();
+                d->active_scene = d->editor_scene;
+            } else {
+                log(Error, "Failed to load last open scene {}", d->project.last_open_scene);
+            }
+        }
 
         // Kick off async compilation; NBMan will be loaded on the main thread
         // once the build succeeds (via pendingNBLoad flag checked in on_update).

@@ -1,0 +1,76 @@
+{
+    "name": "Default scene",
+    "entities": [
+        {
+            "components": [
+                {
+                    "type": "IDComponent",
+                    "uuid": "50c0-ab56-6bfe5d16"
+                },
+                {
+                    "type": "TransformComponent",
+                    "position": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": 0.0
+                    },
+                    "rotation": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": 0.0
+                    },
+                    "scale": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    }
+                },
+                {
+                    "type": "TagComponent",
+                    "tag": "Phonograph"
+                },
+                {
+                    "type": "SpriteRendererComponent",
+                    "asset": {
+                        "path": "sprites/phonograph.png",
+                        "uuid": "5df8-ab37-b7604776"
+                    },
+                    "texture_coords": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "w": 32.0,
+                        "h": 32.0
+                    },
+                    "size": {
+                        "x": 64.0,
+                        "y": 64.0
+                    },
+                    "colour": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0,
+                        "w": 1.0
+                    },
+                    "z_index": 0
+                },
+                {
+                    "type": "AudioSourceComponent",
+                    "event_path": "event:/Phonograph-music-1",
+                    "sound_path": "",
+                    "volume": 1.0,
+                    "pitch": 1.0,
+                    "loop": false,
+                    "play_on_start": false,
+                    "is_3d": true,
+                    "min_distance": 1.0,
+                    "max_distance": 100.0,
+                    "parameters": {
+                        "bandpass-filter-drywet": 0.0,
+                        "reverb-drywet": 0.0,
+                        "reverb-size": 0.0
+                    }
+                }
+            ]
+        }
+    ]
+}

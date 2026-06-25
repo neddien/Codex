@@ -2,6 +2,8 @@
 
 #include <codex.h>
 
+#include <editor_project.h>
+
 #include <imgui.h>
 
 #include <ImGuizmo.h>
@@ -56,9 +58,11 @@ namespace codex::editor {
 
     struct SceneEditorDescriptor
     {
+        EditorProject                   project;
         Ref<Scene>                      active_scene;
         Shared<Scene>                   editor_scene;
         Shared<Scene>                   runtime_scene;
+        std::filesystem::path           current_scene_path;
         std::filesystem::path           script_module_path;
         SelectedEntityDescriptor        selected_entity;
         f32                             column_width = 140.0f;

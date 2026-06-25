@@ -77,9 +77,6 @@ namespace codex {
     // Applicable to the Editor only (.cxproj.user)
     struct EngineUserProject : public ISerializable, public Loggable<"EngineUserProject">
     {
-        AssetPath   last_open_scene;
-        std::string last_asset_path;
-
     public:
         void archive(Archive& archive) override;
     };

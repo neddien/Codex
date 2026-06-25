@@ -1,10 +1,10 @@
 {
-    "path": "/editor/project/assets/sprites/machine.jpg",
-    "uuid": "0fc8-e3f5-864307e1",
+    "path": "sprites/machine.jpg",
+    "uuid": "046e-34c3-82363845",
     "type": "Texture2D",
     "checksum": 1784860645,
     "size": 156670,
-    "last_modified": 1778495516,
+    "last_modified": 1782284729,
     "dependencies": [],
     "import_settings": {
         "filter_mode": "Linear",

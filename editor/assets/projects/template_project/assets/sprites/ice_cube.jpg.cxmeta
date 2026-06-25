@@ -1,13 +1,13 @@
 {
-    "path": "/editor/project/assets/sprites/ice_cube.jpg",
-    "uuid": "8c00-589f-fcc156fd",
+    "path": "sprites/ice_cube.jpg",
+    "uuid": "c310-c943-9e772050",
     "type": "Texture2D",
     "checksum": 1268132152,
     "size": 146715,
-    "last_modified": 1778350062,
+    "last_modified": 1782284729,
     "dependencies": [],
     "import_settings": {
-        "filter_mode": "Nearest",
+        "filter_mode": "Linear",
         "mipmap_mode": "None",
         "wrap_mode": "Mirror",
         "format": "None"

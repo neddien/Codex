@@ -1,0 +1,12 @@
+{
+    "path": "scenes/default.cxscene",
+    "uuid": "e672-183a-3abde8e1",
+    "type": "Scene",
+    "checksum": 3308678041,
+    "size": 6188,
+    "last_modified": 1781984367,
+    "dependencies": [],
+    "import_settings": {
+        "serdes_type": "kJson"
+    }
+}

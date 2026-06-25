@@ -12,11 +12,38 @@ namespace codex::fs {
     private:
         struct FileEntry
         {
-            std::string       path; // normalized path; the map key is its fnv1a hash
-            std::vector<u8>   buffer;
-            std::shared_mutex mutex;
-            u64               last_modif = 0;
-            bool              read_only  = false;
+            struct Descriptor
+            {
+                std::string     path;
+                std::vector<u8> buffer;
+                u64             last_modif = 0;
+                bool            read_only  = false;
+            } desc;
+            mutable std::shared_mutex mutex;
+
+        public:
+            FileEntry() noexcept = default;
+            FileEntry(Descriptor descriptor) noexcept
+                : desc{ std::move(descriptor) }
+            {
+            }
+            FileEntry(const FileEntry& other) noexcept
+                : desc{ other.desc }
+            {
+            }
+            FileEntry(FileEntry&& other) noexcept
+                : desc{ std::move(other.desc) }
+            {
+            }
+            FileEntry& operator=(const FileEntry& other) noexcept { return FileEntry{ other }.swap(*this); }
+            FileEntry& operator=(FileEntry&& other) noexcept { return FileEntry{ std::move(other) }.swap(*this); }
+
+        public:
+            FileEntry& swap(FileEntry& other) noexcept
+            {
+                std::swap(desc, other.desc);
+                return *this;
+            }
         };
 
     public:
@@ -35,29 +62,15 @@ namespace codex::fs {
         bool mv(const std::string& src_rel_path, const std::string& dst_rel_path) noexcept override;
         [[nodiscard]] std::vector<std::string> list(const std::string& rel_path,
                                                     ListOptions opts = ListOptions::None) const noexcept override;
-        [[nodiscard]] bool                     is_directory(const std::string& rel_path) const noexcept override;
+        [[nodiscard]] bool                     directory(const std::string& rel_path) const noexcept override;
+        [[nodiscard]] bool                     empty(const std::string& rel_path) const noexcept override;
 
     private:
-        // All helpers below assume `mutex_` is already held and operate on normalized paths.
-
-        // True if `npath` names a directory: either an explicit entry in `dirs_`, or the
-        // implicit parent of some existing file. The empty path is the (always-present) root.
-        [[nodiscard]] bool is_dir_unlocked(const std::string& npath) const noexcept;
-
-        // Resolves the final destination path for moving/copying `nspath` to `ndpath`.
-        // If `ndpath` is an existing directory, the item lands inside it as <ndpath>/<filename>.
-        // Otherwise `ndpath` is the destination name and its parent must be an existing directory.
-        // Returns an empty string if the destination is invalid.
-        [[nodiscard]] std::string resolve_dest(const std::string& nspath, const std::string& ndpath) const noexcept;
-
-        // Copies (move_ == false) or moves (move_ == true) the whole subtree rooted at `src_dir`
-        // to `dst_dir`, recreating the directory structure. `dst_dir` must not live inside `src_dir`.
-        void transfer_tree(const std::string& src_dir, const std::string& dst_dir, const bool move_) noexcept;
-
-    private:
-        absl::flat_hash_map<usize, Box<FileEntry>> files_; // fnv1a(path) -> entry (Box keeps it pointer-stable)
-        absl::flat_hash_map<usize, std::string>    dirs_;  // fnv1a(path) -> path
-        i32                                        priority_;
-        mutable std::shared_mutex                  mutex_;
+        // TODO: FileEntry must be a shared ptr cuz we can have an open file handle on FileEntry but delete FileEntry
+        // from here at the same time, not good
+        absl::flat_hash_map<std::string, FileEntry> files_;
+        absl::flat_hash_set<std::string>            dirs_;
+        i32                                         priority_;
+        mutable std::shared_mutex                   mutex_;
     };
 } // namespace codex::fs

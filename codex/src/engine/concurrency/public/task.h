@@ -36,12 +36,12 @@ namespace codex::cc {
     } // namespace detail
 
     template <typename T>
-    class Task
+    class task
     {
     public:
         struct promise_type : public detail::result_storage<T>
         {
-            friend class Task<T>;
+            friend class task<T>;
 
         public:
             static constexpr u32 kRunning   = 0;
@@ -72,7 +72,7 @@ namespace codex::cc {
             promise_type() noexcept {}
 
         public:
-            Task get_return_object() { return Task{ std::coroutine_handle<promise_type>::from_promise(*this) }; }
+            task get_return_object() { return task{ std::coroutine_handle<promise_type>::from_promise(*this) }; }
 
             std::suspend_never initial_suspend()
             {
@@ -112,8 +112,7 @@ namespace codex::cc {
             std::coroutine_handle<> await_suspend(std::coroutine_handle<> cont)
             {
                 handle_.promise().continuation_ = cont;
-                auto prev =
-                    handle_.promise().state_.exchange(promise_type::kAwaiting, std::memory_order_acq_rel);
+                auto prev = handle_.promise().state_.exchange(promise_type::kAwaiting, std::memory_order_acq_rel);
 
                 if (prev == promise_type::kCompleted)
                     return cont;
@@ -121,7 +120,8 @@ namespace codex::cc {
                 return std::noop_coroutine();
             }
 
-            T await_resume() requires(!std::is_void_v<T>)
+            T await_resume()
+                requires(!std::is_void_v<T>)
             {
                 if (handle_.promise().exception_)
                     std::rethrow_exception(handle_.promise().exception_);
@@ -129,7 +129,8 @@ namespace codex::cc {
                 return handle_.promise().get();
             }
 
-            void await_resume() requires(std::is_void_v<T>)
+            void await_resume()
+                requires(std::is_void_v<T>)
             {
                 if (handle_.promise().exception_)
                     std::rethrow_exception(handle_.promise().exception_);
@@ -140,20 +141,20 @@ namespace codex::cc {
         };
 
     public:
-        explicit(false) Task(std::coroutine_handle<promise_type> handle)
+        explicit(false) task(std::coroutine_handle<promise_type> handle)
             : handle_{ handle }
         {
             handle_.promise().acquire_ref();
         }
 
-        Task(const Task&) = delete;
+        task(const task&) = delete;
 
-        Task(Task&& other) noexcept
+        task(task&& other) noexcept
             : handle_{ std::exchange(other.handle_, nullptr) }
         {
         }
 
-        ~Task() noexcept
+        ~task() noexcept
         {
             if (handle_) {
                 // info("~Task<T>::Task(): Ref: {}", handle_.promise().ref_.load(std::memory_order_acquire));
@@ -162,16 +163,17 @@ namespace codex::cc {
         }
 
     public:
-        Task& operator=(const Task&) = delete;
+        task& operator=(const task&) = delete;
 
-        Task& operator=(Task&& other) noexcept { return Task{ std::move(other) }.swap(*this); }
+        task& operator=(task&& other) noexcept { return task{ std::move(other) }.swap(*this); }
 
     public:
         explicit operator bool() { return !handle_.done(); }
 
         Awaiter operator co_await() { return Awaiter{ handle_ }; }
 
-        T await_sync() requires(!std::is_void_v<T>)
+        T await_sync()
+            requires(!std::is_void_v<T>)
         {
             if (!handle_)
                 throw std::runtime_error("null task");
@@ -185,7 +187,8 @@ namespace codex::cc {
             return handle_.promise().get();
         }
 
-        void await_sync() requires(std::is_void_v<T>)
+        void await_sync()
+            requires(std::is_void_v<T>)
         {
             if (!handle_)
                 throw std::runtime_error("null task");
@@ -197,7 +200,7 @@ namespace codex::cc {
                 std::rethrow_exception(handle_.promise().exception_);
         }
 
-        Task& resume()
+        task& resume()
         {
             if (handle_ && !handle_.done()) {
                 u32 expected = 1;
@@ -211,7 +214,7 @@ namespace codex::cc {
         [[nodiscard]] inline bool done() const noexcept { return handle_.done(); }
 
     public:
-        Task& swap(Task& other) noexcept
+        task& swap(task& other) noexcept
         {
             std::swap(handle_, other.handle_);
             return *this;

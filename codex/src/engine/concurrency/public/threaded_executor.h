@@ -20,6 +20,9 @@ namespace codex::cc {
         ThreadedExecutor(ThreadPool& pool);
 
     public:
+        [[nodiscard]] ThreadPool& thread_pool() const noexcept { return thread_pool_; }
+
+    public:
         void submit(const Job& job);
 
     public:

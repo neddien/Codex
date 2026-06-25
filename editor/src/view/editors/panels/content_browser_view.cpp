@@ -16,6 +16,8 @@ namespace codex::editor {
             return ICON_TI_LETTER_H;
         if (meta.type == "Shader")
             return ICON_TI_SPHERE;
+        if (meta.type == "Scene")
+            return ICON_TI_SPHERE;
         return ICON_TI_FILE;
     }
 
@@ -31,31 +33,7 @@ namespace codex::editor {
 
     void ContentBrowserView::on_init()
     {
-        auto d = get_descriptor().lock();
-
-        // Wait for the assets to be scanned
-        Engine::worker_pool().submit(
-            [this]
-            {
-                auto d = get_descriptor().lock();
-
-                assert(d);
-
-                log(Info, "Waiting for asset registry");
-
-                {
-                    std::unique_lock guard{ d->registry_state_mutex };
-                    d->registry_state_cv.wait(guard, [&d] { return d->registry_state_ready; });
-                }
-
-                if (d->registry_state == AssetRegistryState::Succeeded) {
-                    root_path_ = AssetManager::root_dir();
-                    chdir(root_path_);
-                    refresh(current_path_);
-                    log(Info, "Cache refreshed");
-                } else
-                    log(Info, "Refresh refused because AssetRegistry::scan failed");
-            });
+        log(Info, "Waiting for asset registry to complete scan...");
     }
 
     void ContentBrowserView::on_imgui_render()
@@ -101,9 +79,23 @@ namespace codex::editor {
 
     void ContentBrowserView::on_update(const f32 dt)
     {
-        if (dirty_) {
-            std::scoped_lock guard{ mutex_ };
-            refresh_nolock(current_path_);
+        auto d = get_descriptor().lock();
+
+        assert(d);
+
+        if (d->registry_state == AssetRegistryState::Succeeded) {
+            static bool content_init_done = false;
+
+            if (!content_init_done) {
+                root_path_ = AssetManager::root_dir();
+                chdir(root_path_);
+                refresh(current_path_);
+                log(Info, "Cache refreshed");
+                content_init_done = true;
+            } else if (dirty_) {
+                std::scoped_lock guard{ mutex_ };
+                refresh_nolock(current_path_);
+            }
         }
     }
 
@@ -130,8 +122,8 @@ namespace codex::editor {
             AssetManager::registry().for_each(
                 [this](const AssetMetadata& meta)
                 {
-                    const stdfs::path path = meta.path.path();
-                    if (path.parent_path() == current_path_)
+                    const stdfs::path path = stdfs::path{ root_path_ } / meta.path.path();
+                    if (path.parent_path().generic_string() == current_path_)
                         cache_.push_back(meta);
                     log(Verbose, "path.parent_path(): {} == current_path: {}", path.parent_path().generic_string(),
                         current_path_);
@@ -228,9 +220,10 @@ namespace codex::editor {
         ImGui::Columns(columns, nullptr, false);
 
         for (AssetMetadata& meta : cache_) {
-            const bool        selected   = meta.path.uuid() == selected_;
-            const ImVec2      screen_pos = ImGui::GetCursorScreenPos();
-            const std::string btn_id     = fmt::format("##{}", meta.path.uuid());
+            const bool        selected     = meta.path.uuid() == selected_;
+            const ImVec2      screen_pos   = ImGui::GetCursorScreenPos();
+            const std::string btn_id       = fmt::format("##{}", meta.path.uuid());
+            std::string       display_name = stdfs::path{ meta.path.path() }.filename().generic_string();
 
             const bool clicked = ImGui::InvisibleButton(btn_id.c_str(), { icon_size_, item_h });
             const bool hovered = ImGui::IsItemHovered();
@@ -249,7 +242,7 @@ namespace codex::editor {
             if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
                 UUID uuid = meta.path.uuid();
                 ImGui::SetDragDropPayload("CX_ASSET", &uuid, sizeof(uuid));
-                ImGui::Text("%s  %s", icon_for_asset(meta), meta.name.c_str());
+                ImGui::Text("%s  %s", icon_for_asset(meta), display_name.c_str());
                 ImGui::EndDragDropSource();
             }
 
@@ -257,11 +250,11 @@ namespace codex::editor {
             render_asset_based_on_type(meta, screen_pos);
 
             // Name truncated and centered below icon
-            const std::string name   = truncate_name(meta.name, icon_size_);
-            const f32         name_w = ImGui::CalcTextSize(name.c_str()).x;
+            const std::string display_name_trunc = truncate_name(display_name, icon_size_);
+            const f32         name_w             = ImGui::CalcTextSize(display_name_trunc.c_str()).x;
             ImGui::SetCursorScreenPos(
                 { screen_pos.x + (icon_size_ - name_w) * 0.5f, screen_pos.y + icon_size_ + style.ItemSpacing.y });
-            ImGui::TextUnformatted(name.c_str());
+            ImGui::TextUnformatted(display_name_trunc.c_str());
 
             ImGui::SetCursorScreenPos({ screen_pos.x, screen_pos.y + item_h + style.ItemSpacing.y });
             ImGui::NextColumn();

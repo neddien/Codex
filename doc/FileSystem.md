@@ -50,7 +50,7 @@ auto dirs    = vfs.list("assets", ListOptions::DirsOnly);
 
 vfs.is_directory("assets/sprites");
 
-// Async variants (runs on worker pool, returns cc::Task<T>)
+// Async variants (runs on worker pool, returns cc::task<T>)
 co_await vfs.open_async("assets/sprites/player.png");
 co_await vfs.exists_async("assets/sprites/player.png");
 co_await vfs.list_async("assets");

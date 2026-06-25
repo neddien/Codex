@@ -22,55 +22,55 @@ namespace codex {
     }
 
     template <AssetType TAsset>
-    cc::Task<Asset<TAsset>> AssetManager::load_async(UUID uuid) noexcept
+    cc::task<Asset<TAsset>> AssetManager::load_async(UUID uuid) noexcept
     {
         co_await worker_pool();
         co_return load<TAsset>(uuid);
     }
     template <AssetType TAsset>
-    cc::Task<Asset<TAsset>> AssetManager::load_async(AssetPath path) noexcept
+    cc::task<Asset<TAsset>> AssetManager::load_async(AssetPath path) noexcept
     {
         co_await worker_pool();
         co_return load<TAsset>(path);
     }
     template <AssetType TAsset>
-    cc::Task<Asset<TAsset>> AssetManager::load_async(std::string path) noexcept
+    cc::task<Asset<TAsset>> AssetManager::load_async(std::string path) noexcept
     {
         co_await worker_pool();
         co_return load<TAsset>(path);
     }
     template <AssetType TAsset, Serializable TParam>
-    cc::Task<Asset<TAsset>> AssetManager::load_async(UUID uuid, TParam param) noexcept
+    cc::task<Asset<TAsset>> AssetManager::load_async(UUID uuid, TParam param) noexcept
     {
         co_await worker_pool();
         co_return load<TAsset>(uuid, param);
     }
     template <AssetType TAsset, Serializable TParam>
-    cc::Task<Asset<TAsset>> AssetManager::load_async(AssetPath path, TParam param) noexcept
+    cc::task<Asset<TAsset>> AssetManager::load_async(AssetPath path, TParam param) noexcept
     {
         co_await worker_pool();
         co_return load<TAsset>(path, param);
     }
     template <AssetType TAsset, Serializable TParam>
-    cc::Task<Asset<TAsset>> AssetManager::load_async(std::string path, TParam param) noexcept
+    cc::task<Asset<TAsset>> AssetManager::load_async(std::string path, TParam param) noexcept
     {
         co_await worker_pool();
         co_return load<TAsset>(path, param);
     }
     template <AssetType TAsset, ImportSettingsType TParam>
-    cc::Task<void> AssetManager::reimport_async(UUID uuid, TParam params) noexcept
+    cc::task<void> AssetManager::reimport_async(UUID uuid, TParam params) noexcept
     {
         co_await worker_pool();
         reimport<TAsset>(uuid, params);
     }
     template <AssetType TAsset, ImportSettingsType TParam>
-    cc::Task<void> AssetManager::reimport_async(AssetPath path, TParam params) noexcept
+    cc::task<void> AssetManager::reimport_async(AssetPath path, TParam params) noexcept
     {
         co_await worker_pool();
         reimport<TAsset>(path, params);
     }
     template <AssetType TAsset, ImportSettingsType TParam>
-    cc::Task<void> AssetManager::reimport_async(std::string path, TParam params) noexcept
+    cc::task<void> AssetManager::reimport_async(std::string path, TParam params) noexcept
     {
         co_await worker_pool();
         reimport<TAsset>(path, params);

@@ -1,9 +1,10 @@
 #pragma once
 
 #include <engine/algorithm/public/dense_vector.h>
+#include <engine/asset_manager/public/asset_common.h>
 #include <engine/concurrency/public/mutex.h>
-#include <engine/core/public/common_third_party_libs.h>
 #include <engine/core/public/archive.h>
+#include <engine/core/public/common_third_party_libs.h>
 #include <engine/graphics/public/shader.h>
 #include <engine/memory/public/memory.h>
 #include <engine/scene/public/entity.h>
@@ -32,8 +33,10 @@ namespace codex {
         class EditorCamera;
     } // namespace scene
 
-    class CODEX_API Scene : public ISerializable, public Loggable<"Scene">
+    class CODEX_API Scene : public ISerializable, public Loggable<"Scene">, public IAsset
     {
+        CX_ASSET(Scene)
+
         friend class Window;
         friend class Entity;
         friend class Serializer;
@@ -41,6 +44,28 @@ namespace codex {
 
     public:
         struct NBCRecord;
+        struct ImportSettings : public IAssetImportSettings
+        {
+            CX_ASSET_IMPORT_SETTINGS(ImportSettings)
+
+        public:
+            enum ArType
+            {
+                kJson,
+                kBinary,
+            };
+
+        public:
+            ImportSettings() noexcept
+                : ar_type_{ ArType::kJson }
+            {
+            }
+            [[nodiscard]] ArType ar_type() const noexcept { return ar_type_; }
+            void                 archive(Archive& ar) override;
+
+        private:
+            ArType ar_type_;
+        };
 
     public:
         using BehaviourList = dense_vector<Box<NativeBehaviour>>;

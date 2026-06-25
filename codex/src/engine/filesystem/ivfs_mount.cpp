@@ -3,33 +3,33 @@
 #include <engine/core/engine.h>
 
 namespace codex::fs {
-    cc::Task<Shared<FileHandle>> IVFSMount::open_async(std::string path, FileProperties props) noexcept
+    cc::task<Shared<FileHandle>> IVFSMount::open_async(std::string path, FileProperties props) noexcept
     {
         co_await Engine::worker_pool();
         co_return open(path, props);
     }
 
-    cc::Task<bool> IVFSMount::exists_async(std::string path) const noexcept
+    cc::task<bool> IVFSMount::exists_async(std::string path) const noexcept
     {
         co_await Engine::worker_pool();
         co_return exists(path);
     }
 
-    cc::Task<bool> IVFSMount::mkdir_async(std::string path) noexcept
+    cc::task<bool> IVFSMount::mkdir_async(std::string path) noexcept
     {
         co_await Engine::worker_pool();
         co_return mkdir(path);
     }
 
-    cc::Task<std::vector<std::string>> IVFSMount::list_async(std::string path) const noexcept
+    cc::task<std::vector<std::string>> IVFSMount::list_async(std::string path) const noexcept
     {
         co_await Engine::worker_pool();
         co_return list(path);
     }
 
-    cc::Task<bool> IVFSMount::is_directory_async(std::string path) const noexcept
+    cc::task<bool> IVFSMount::directory_async(std::string path) const noexcept
     {
         co_await Engine::worker_pool();
-        co_return is_directory(path);
+        co_return directory(path);
     }
 } // namespace codex::fs

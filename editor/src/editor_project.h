@@ -5,9 +5,12 @@
 namespace codex::editor {
     struct EditorProject : public ISerializable, public Loggable<"EditorProject">
     {
-        std::string last_asset_path;
-        AssetPath   last_open_scene;
-        std::string vfs_root = "/editor";
+        EngineProject engine_project;
+        std::string   vfs_root = "/editor";
+        std::string   last_asset_path;
+        AssetPath     last_open_scene;
+
+        EditorProject() noexcept;
 
         void archive(Archive& archive) override;
     };

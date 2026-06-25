@@ -1,10 +1,10 @@
 {
-    "path": "/editor/project/assets/shaders/test_shader.glsl",
-    "uuid": "c93c-e9eb-efbbaddc",
+    "path": "shaders/test_shader.glsl",
+    "uuid": "088e-02a4-4039899b",
     "type": "Shader",
     "checksum": 1241410465,
     "size": 43,
-    "last_modified": 1778351581,
+    "last_modified": 1782284729,
     "dependencies": [],
     "import_settings": {
         "version": "330 core"

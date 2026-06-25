@@ -10,11 +10,11 @@
 #include <spdlog/spdlog.h>
 
 namespace codex {
-    static std::atomic<bool>                                           s_initialized{ false };
-    static std::vector<spdlog::sink_ptr>                               s_spd_sinks{};
-    static std::flat_map<usize, std::shared_ptr<spdlog::async_logger>> s_tag_loggers{};
-    static std::mutex                                                  s_tag_loggers_mutex{};
-    static std::flat_map<usize, std::string_view>                      s_pending_logger_regs{};
+    static std::atomic<bool>                                                 s_initialized{ false };
+    static std::vector<spdlog::sink_ptr>                                     s_spd_sinks{};
+    static absl::flat_hash_map<usize, std::shared_ptr<spdlog::async_logger>> s_tag_loggers{};
+    static std::mutex                                                        s_tag_loggers_mutex{};
+    static absl::flat_hash_map<usize, std::string_view>                      s_pending_logger_regs{};
 
     namespace {
         [[nodiscard]] constexpr spdlog::level::level_enum to_spd_level(const LogLevel level) noexcept

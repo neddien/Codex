@@ -37,9 +37,9 @@ namespace codex::fs {
         virtual usize read_at(void* dest, usize len, usize offset) noexcept;
         virtual usize write_at(const void* src, usize len, usize offset) noexcept;
 
-        cc::Task<usize> read_async(void* dest, usize len) noexcept;
-        cc::Task<usize> write_async(const void* src, usize len) noexcept;
-        cc::Task<usize> read_at_async(void* dest, usize len, usize offset) noexcept;
-        cc::Task<usize> write_at_async(const void* src, usize len, usize offset) noexcept;
+        cc::task<usize> read_async(void* dest, usize len) noexcept;
+        cc::task<usize> write_async(const void* src, usize len) noexcept;
+        cc::task<usize> read_at_async(void* dest, usize len, usize offset) noexcept;
+        cc::task<usize> write_at_async(const void* src, usize len, usize offset) noexcept;
     };
 } // namespace codex::fs

@@ -4,25 +4,18 @@
 #include "public/filesystem.h"
 
 namespace codex::fs {
+    namespace stdfs = std::filesystem;
+
     namespace {
-        // Path helpers operating on already-normalized paths (no leading/trailing slashes).
-        [[nodiscard]] std::string filename_of(const std::string& p) noexcept
+        [[nodiscard]] bool is_under(std::string_view path, std::string_view root) noexcept
         {
-            const auto pos = p.find_last_of('/');
-            return pos == std::string::npos ? p : p.substr(pos + 1);
-        }
-        [[nodiscard]] std::string parent_of(const std::string& p) noexcept
-        {
-            const auto pos = p.find_last_of('/');
-            return pos == std::string::npos ? std::string{} : p.substr(0, pos);
-        }
-        [[nodiscard]] std::string join_path(const std::string& a, const std::string& b) noexcept
-        {
-            if (a.empty())
-                return b;
-            if (b.empty())
-                return a;
-            return a + '/' + b;
+            if (path == root)
+                return true;
+
+            if (path.size() <= root.size())
+                return false;
+
+            return path.starts_with(root) && path[root.size()] == '/';
         }
     } // namespace
 
@@ -48,13 +41,13 @@ namespace codex::fs {
             std::shared_lock data_lock{ data_mutex_ };
 
             if (props_.mode & FileMode::Read) {
-                const usize avail    = entry_.buffer.size() - cursor_;
+                const usize avail    = entry_.desc.buffer.size() - cursor_;
                 const usize read_len = std::min(avail, len);
 
                 if (read_len) {
                     // TODO: Calculate read_len based on end addr returned by memcpy instead of assuming that you wrote
                     // read_len bytes.
-                    [[maybe_unused]] void* end_buf = std::memcpy(dest, entry_.buffer.data() + cursor_, len);
+                    [[maybe_unused]] void* end_buf = std::memcpy(dest, entry_.desc.buffer.data() + cursor_, len);
                     cursor_ += read_len;
                 }
 
@@ -70,16 +63,16 @@ namespace codex::fs {
 
             if (props_.mode & (FileMode::Write | FileMode::Append)) {
                 if (props_.mode & FileMode::Append)
-                    cursor_ = entry_.buffer.size();
+                    cursor_ = entry_.desc.buffer.size();
 
                 const usize total_len = cursor_ + len;
-                if (entry_.buffer.size() < total_len)
-                    entry_.buffer.resize(total_len);
+                if (entry_.desc.buffer.size() < total_len)
+                    entry_.desc.buffer.resize(total_len);
 
-                std::memcpy(entry_.buffer.data() + cursor_, src, len);
+                std::memcpy(entry_.desc.buffer.data() + cursor_, src, len);
                 cursor_ += len;
 
-                entry_.last_modif = util::chron::unix_epoch_now();
+                entry_.desc.last_modif = util::chron::unix_epoch_now();
 
                 return len;
             }
@@ -93,10 +86,10 @@ namespace codex::fs {
             if (!(props_.mode & FileMode::Read))
                 return 0;
 
-            const usize avail    = entry_.buffer.size() > offset ? entry_.buffer.size() - offset : 0;
+            const usize avail    = entry_.desc.buffer.size() > offset ? entry_.desc.buffer.size() - offset : 0;
             const usize read_len = std::min(avail, len);
             if (read_len)
-                std::memcpy(dest, entry_.buffer.data() + offset, read_len);
+                std::memcpy(dest, entry_.desc.buffer.data() + offset, read_len);
             return read_len;
         }
 
@@ -108,11 +101,11 @@ namespace codex::fs {
                 return 0;
 
             const usize end = offset + len;
-            if (entry_.buffer.size() < end)
-                entry_.buffer.resize(end);
-            std::memcpy(entry_.buffer.data() + offset, src, len);
+            if (entry_.desc.buffer.size() < end)
+                entry_.desc.buffer.resize(end);
+            std::memcpy(entry_.desc.buffer.data() + offset, src, len);
 
-            entry_.last_modif = util::chron::unix_epoch_now();
+            entry_.desc.last_modif = util::chron::unix_epoch_now();
 
             return len;
         }
@@ -130,7 +123,7 @@ namespace codex::fs {
         usize size() const noexcept override
         {
             std::shared_lock data_lock{ data_mutex_ };
-            return entry_.buffer.size();
+            return entry_.desc.buffer.size();
         }
         std::string path() const noexcept override
         {
@@ -140,7 +133,7 @@ namespace codex::fs {
         u64 last_modified() const noexcept override
         {
             std::shared_lock data_lock{ data_mutex_ };
-            return entry_.last_modif;
+            return entry_.desc.last_modif;
         }
 
     private:
@@ -163,8 +156,8 @@ namespace codex::fs {
     {
         std::shared_lock lock{ mutex_ };
 
-        const auto hash = util::crypto::fnv1a(normalize(path));
-        return files_.contains(hash) || dirs_.contains(hash);
+        const std::string npath = normalize(path);
+        return files_.contains(npath) || dirs_.contains(npath);
     }
 
     Shared<FileHandle> MemoryMount::open(const std::string& path, const FileProperties props) noexcept
@@ -178,17 +171,18 @@ namespace codex::fs {
             if (!(props.mode & FileMode::Create))
                 return nullptr;
 
-            auto [it, _] = files_.try_emplace(npath);
+            auto [it, did_insert] = files_.try_emplace(npath, FileEntry{});
+            assert(did_insert);
             return Shared<MemoryFileHandle>::make(npath, it->second, it->second.mutex, shared_from_this(), props);
         }
 
         FileEntry& entry = file_it->second;
 
-        if ((props.mode & (FileMode::Write | FileMode::Append)) && entry.read_only)
+        if ((props.mode & (FileMode::Write | FileMode::Append)) && entry.desc.read_only)
             return nullptr;
 
         if (props.mode & FileMode::Trunc)
-            entry.buffer.clear();
+            entry.desc.buffer.clear();
 
         auto mfh = Shared<MemoryFileHandle>::make(npath, entry, entry.mutex, shared_from_this(), props);
         if (props.mode & FileMode::Append)
@@ -250,8 +244,10 @@ namespace codex::fs {
     {
         std::scoped_lock lock{ mutex_ };
 
-        const stdfs::path nspath = normalize(src_rel_path);
-        const stdfs::path ndpath = normalize(dst_rel_path);
+        const stdfs::path nspath     = normalize(src_rel_path);
+        const std::string nspath_str = nspath.generic_string();
+        const stdfs::path ndpath     = normalize(dst_rel_path);
+        const std::string ndpath_str = ndpath.generic_string();
 
         if (nspath.empty() || ndpath.empty())
             return false;
@@ -264,52 +260,45 @@ namespace codex::fs {
         // /a/       /b/
         // /a/       /b/c
 
-        if (auto sit = files_.find(nspath); sit != files_.end()) {
+        if (auto sit = files_.find(nspath_str); sit != files_.end()) {
+            std::shared_lock guard{ sit->second.mutex };
+
             // f : f (replace)
-            if (auto dit = files_.find(ndpath); dit != files_.end()) {
-                dit->second.buffer     = sit->second.buffer;
-                dit->second.last_modif = util::chron::unix_epoch_now();
+            if (auto dit = files_.find(ndpath_str); dit != files_.end()) {
+                std::scoped_lock guard{ dit->second.mutex };
+
+                dit->second.desc = sit->second.desc;
                 return true;
             }
             // f : d
-            else if (auto dit = dirs_.find(ndpath); dit != dirs_.end()) {
-                files_.emplace((ndpath / nspath.filename()).generic_string(),
-                               FileEntry{
-                                   .buffer     = sit->second.buffer,
-                                   .last_modif = util::chron::unix_epoch_now(),
-                               });
+            else if (auto dit = dirs_.find(ndpath_str); dit != dirs_.end()) {
+                files_.emplace((ndpath / nspath.filename()).generic_string(), sit->second.desc);
                 return true;
             }
             // f : f (new)
             else {
-                files_.emplace(ndpath.generic_string(), FileEntry{
-                                                            .buffer     = sit->second.buffer,
-                                                            .last_modif = util::chron::unix_epoch_now(),
-                                                        });
+                files_.emplace(ndpath_str, sit->second.desc);
                 return true;
             }
-        } else if (auto sit = dirs_.find(nspath); sit != dirs_.end()) {
+        } else if (auto sit = dirs_.find(nspath_str); sit != dirs_.end()) {
             // d : f (replace) (no)
-            if (auto dit = files_.find(ndpath); dit != files_.end()) {
+            if (auto dit = files_.find(ndpath_str); dit != files_.end()) {
                 return false;
             }
             // d : d (new) or d : d
             else {
                 absl::flat_hash_map<std::string, FileEntry> files2cp;
                 for (const auto& [dpath, entry] : files_) {
+                    std::shared_lock guard{ entry.mutex };
+
                     stdfs::path path = dpath;
                     if (path.parent_path() == ndpath && recursive) {
-                        files2cp.emplace((ndpath / path.filename()).generic_string(),
-                                         FileEntry{
-                                             .buffer     = entry.buffer,
-                                             .last_modif = entry.last_modif,
-                                         });
+                        files2cp.emplace((ndpath / path.filename()).generic_string(), entry.desc);
                     } else
                         return false;
                 }
 
-                if (auto dit = dirs_.find(ndpath); dit == dirs_.end())
-                    dirs_.emplace(ndpath);
+                dirs_.emplace(ndpath_str);
 
                 if (!files2cp.empty())
                     files_.merge(files2cp);
@@ -324,10 +313,10 @@ namespace codex::fs {
     {
         std::scoped_lock lock{ mutex_ };
 
-        const stdfs::path nspath = normalize(src_rel_path);
-        const stdfs::path ndpath = normalize(dst_rel_path);
-        const usize       nshash = util::crypto::fnv1a(nspath.generic_string());
-        const usize       ndhash = util::crypto::fnv1a(ndpath.generic_string());
+        const stdfs::path nspath     = normalize(src_rel_path);
+        const stdfs::path ndpath     = normalize(dst_rel_path);
+        std::string       nspath_str = nspath.generic_string();
+        std::string       ndpath_str = ndpath.generic_string();
 
         if (nspath.empty() || ndpath.empty())
             return false;
@@ -335,45 +324,88 @@ namespace codex::fs {
         if (!exists(ndpath.parent_path().generic_string()) && !exists(nspath.generic_string()))
             return false;
 
-        // /a/file.t /b/
-        // /a/file.t /a/file2.t (also includes replace)
-        // /a/       /b/
-        // /a/       /b/c
+        if (auto sit = files_.find(nspath_str); sit != files_.end()) {
+            std::scoped_lock guard{ sit->second.mutex };
 
-        if (auto sit = files_.find(nshash); sit != files_.end()) {
             // f : f (replace)
-            if (auto dit = files_.find(ndhash); dit != files_.end()) {
-                dit->second.buffer     = std::move(sit->second.buffer);
-                dit->second.last_modif = util::chron::unix_epoch_now();
-                dit->second.read_only  = false;
-                return true;
+            if (auto dit = files_.find(ndpath_str); dit != files_.end()) {
+                std::scoped_lock guard{ dit->second.mutex };
+
+                dit->second.desc      = std::move(sit->second.desc);
+                dit->second.desc.path = ndpath;
             }
-            // f : d/f
-            else if (auto dit = dirs_.find(ndhash); dit != dirs_.end()) {
-                return true;
+            // f : d
+            else if (auto dit = dirs_.find(ndpath_str); dit != dirs_.end()) {
+                std::string dpath     = (stdfs::path{ ndpath } / stdfs::path{ nspath }.filename()).generic_string();
+                sit->second.desc.path = dpath;
+                files_.emplace(dpath, std::move(sit->second.desc));
             }
             // f : f (new)
             else {
-                files_.emplace(util::crypto::fnv1a(ndpath.generic_string()),
-                               FileEntry{
-                                   .buffer = std::move(sit->second.buffer),
-                                   .path   = std::move(sit->second.path),
-                               });
+                sit->second.desc.path = ndpath.generic_string();
+                files_.emplace(ndpath.generic_string(), std::move(sit->second.desc));
             }
 
             files_.erase(sit);
             return true;
-        } else if (auto sit = dirs_.find(nshash); sit != dirs_.end()) {
-            // d : d/d
-            if (auto dit = dirs_.find(ndhash); dit != dirs_.end()) {
+        } else if (auto sit = dirs_.find(nspath_str); sit != dirs_.end()) {
+            // d : d (replace) or d : d (new)
+            if (auto dit = dirs_.find(ndpath_str); dit != dirs_.end()) {
+                // Move directories
+                {
+                    std::vector<std::pair<std::string, std::string>> dir_moves;
+                    for (const auto& dir : dirs_) {
+                        if (is_under(dir, nspath_str)) {
+                            std::string suffix = dir.substr(nspath_str.size());
+                            dir_moves.emplace_back(dir, ndpath_str + suffix);
+                        }
+                    }
+                    for (const auto& [old_dir, new_dir] : dir_moves) {
+                        dirs_.erase(old_dir);
+                        if (!dirs_.contains(new_dir))
+                            dirs_.insert(new_dir);
+                    }
+                }
+
+                // Move files
+                {
+                    struct file_move_descriptor
+                    {
+                        decltype(files_)::iterator old_file_it;
+                        std::string                new_path;
+                        FileEntry::Descriptor      desc;
+                    };
+
+                    std::vector<file_move_descriptor> file_moves;
+                    for (auto it = files_.begin(); it != files_.end(); ++it) {
+                        std::lock_guard guard{ it->second.mutex };
+
+                        if (is_under(it->first, nspath_str)) {
+                            std::string suffix = it->first.substr(nspath_str.size());
+                            file_moves.emplace_back(file_move_descriptor{
+                                .old_file_it = it,
+                                .new_path    = ndpath_str + suffix,
+                                .desc        = std::move(it->second.desc),
+                            });
+                        }
+                    }
+                    for (auto& [old_file_it, new_file_path, desc] : file_moves) {
+                        files_.erase(old_file_it);
+                        desc.path = new_file_path;
+                        if (files_.contains(new_file_path)) {
+                            std::lock_guard guard{ files_[new_file_path].mutex };
+                            files_[new_file_path] = std::move(desc);
+                        } else
+                            files_[new_file_path] = std::move(desc);
+                    }
+                }
             }
             // d : f (no)
-            else if (auto dit = files_.find(ndhash); dit != files_.end()) {
+            else if (auto dit = files_.find(ndpath_str); dit != files_.end()) {
                 return false;
             }
-            // d : d (new)
-            else {
-            }
+
+            return true;
         }
 
         return false;
@@ -424,7 +456,7 @@ namespace codex::fs {
         return { result.begin(), result.end() };
     }
 
-    bool MemoryMount::is_directory(const std::string& rel_path) const noexcept
+    bool MemoryMount::directory(const std::string& rel_path) const noexcept
     {
         std::shared_lock lock{ mutex_ };
 
@@ -440,5 +472,26 @@ namespace codex::fs {
         }
 
         return false;
+    }
+
+    bool MemoryMount::empty(const std::string& rel_path) const noexcept
+    {
+        std::shared_lock lock{ mutex_ };
+        const auto       npath = normalize(rel_path);
+
+        if (dirs_.contains(npath)) {
+            for (const auto& [path, entry] : files_) {
+                if (is_under(path, npath))
+                    return false;
+            }
+            for (const std::string& path : dirs_) {
+                if (is_under(path, npath))
+                    return false;
+            }
+        } else if (files_.contains(npath)) {
+            const FileEntry& entry = files_.at(npath);
+            std::shared_lock guard{ entry.mutex };
+            return entry.desc.buffer.empty();
+        }
     }
 } // namespace codex::fs

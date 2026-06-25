@@ -43,9 +43,9 @@ set(CX_ENGINE_ROOT_DIR
 add_library(CodexEngine SHARED ${ENGINE_HEADERS} ${ENGINE_INLINES} ${ENGINE_SOURCES})
 add_library(CodexEngine-static STATIC ${ENGINE_HEADERS} ${ENGINE_SOURCES})
 
-# Set the C++ Standard to 23 for this target.
-set_property(TARGET CodexEngine PROPERTY CXX_STANDARD 23)
-set_property(TARGET CodexEngine-static PROPERTY CXX_STANDARD 23)
+# Set the C++ Standard to 20 for this target
+set_property(TARGET CodexEngine PROPERTY CXX_STANDARD 20)
+set_property(TARGET CodexEngine-static PROPERTY CXX_STANDARD 20)
 
 # Tell the guy to export the symbols. This is only relevant for Windows really.
 target_compile_definitions(CodexEngine PRIVATE CX_BUILD_SHARED)
@@ -183,7 +183,7 @@ endif()
 
 # ============= # Graphics API # ============= #
 # FIXME: Why is the Graphics API compile time? It should be dynamic (on-startup).
-if(CX_GRAPHICS_API STREQUAL "OpenGL") 
+if(CX_GRAPHICS_API STREQUAL "OpenGL")
   # glad
   set(GLAD_INCLUDE_DIR "vendor/glad/include")
   set(GLAD_SOURCE_DIR "vendor/glad/src")
@@ -235,24 +235,34 @@ target_link_libraries(CodexEngine PRIVATE nlohmann_json::nlohmann_json)
 target_link_libraries(CodexEngine-static PRIVATE nlohmann_json::nlohmann_json)
 
 # ImGui, core from Conan, backends compiled by us because they are
-# thin platform-specific adapters that imgui intentionally excludes from the library.
-# Conan's data cmake sets imgui_PACKAGE_FOLDER_<CONFIG> as a plain path.
+# thin platform-specific adapters that imgui intentionally excludes from the
+# library. conanfile.py copies every backend into IMGUI_BACKENDS_DIR at
+# generate() time only the backends.
 string(TOUPPER "${CMAKE_BUILD_TYPE}" _cx_cfg)
-set(_imgui_root "${imgui_PACKAGE_FOLDER_${_cx_cfg}}")
 set(_fmt_lib_dir "${fmt_LIB_DIRS_${_cx_cfg}}")
 set(_fmt_bin_dir "${fmt_BIN_DIRS_${_cx_cfg}}")
 set(_sdl_lib_dir "${sdl_LIB_DIRS_${_cx_cfg}}")
 set(_sdl_bin_dir "${sdl_BIN_DIRS_${_cx_cfg}}")
 
+# conanfile.py copies the backends into the Conan output folder (builds/conan,
+# per scripts/build.py) at generate() time. Locate them by that same convention;
+# override with -DIMGUI_BACKENDS_DIR=<path> if you relocate the output folder.
+set(IMGUI_BACKENDS_DIR "${CMAKE_SOURCE_DIR}/builds/conan/imgui_backends"
+    CACHE PATH "Directory of imgui backend sources copied by conanfile.py")
+
+if(NOT EXISTS "${IMGUI_BACKENDS_DIR}/imgui_impl_opengl3.cpp")
+    message(FATAL_ERROR
+        "imgui backends not found in '${IMGUI_BACKENDS_DIR}'. Run 'conan install' "
+        "(it copies them in generate()) before configuring.")
+endif()
+
 foreach(_cx_tgt CodexEngine CodexEngine-static)
     target_link_libraries(${_cx_tgt} PUBLIC imgui::imgui)
-    target_include_directories(${_cx_tgt} PUBLIC
-        "${_imgui_root}/res/bindings"
-        "${_imgui_root}/res/misc/cpp")
+    target_include_directories(${_cx_tgt} PUBLIC "${IMGUI_BACKENDS_DIR}")
     target_sources(${_cx_tgt} PRIVATE
-        "${_imgui_root}/res/bindings/imgui_impl_opengl3.cpp"
-        "${_imgui_root}/res/bindings/imgui_impl_sdl2.cpp"
-        "${_imgui_root}/res/misc/cpp/imgui_stdlib.cpp")
+        "${IMGUI_BACKENDS_DIR}/imgui_impl_opengl3.cpp"
+        "${IMGUI_BACKENDS_DIR}/imgui_impl_sdl2.cpp"
+        "${IMGUI_BACKENDS_DIR}/imgui_stdlib.cpp")
 endforeach()
 
 # glm

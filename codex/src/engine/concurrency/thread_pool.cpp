@@ -17,7 +17,7 @@ namespace codex::cc {
         for (auto& thread : threads_)
             thread.join();
 
-        info("Deallocated");
+        log(Info, "Deallocated");
     }
 
     void ThreadPool::enqueue(const Job& job) noexcept
@@ -28,7 +28,7 @@ namespace codex::cc {
         }
         cv_.notify_one();
 
-        // codex::info("ThreadPool: Job enqueued");
+        log(Debug, "Job enqueued");
     }
 
     void ThreadPool::alloc(const u32 count) noexcept
@@ -37,16 +37,14 @@ namespace codex::cc {
         {
             Job job;
             while (true) {
-                /*codex::info("ThreadPool: Thread #{} goes to sleep",
-                            std::hash<std::thread::id>{}(std::this_thread::get_id()));*/
+                log(Debug, "Thread #{} goes to sleep", std::hash<std::thread::id>{}(std::this_thread::get_id()));
 
                 {
                     std::unique_lock<std::mutex> lock{ mutex_ };
                     cv_.wait(lock, [this] { return !jobs_.empty() || stop_; });
 
                     if (stop_ && jobs_.empty()) {
-                        /*codex::info("ThreadPool: Thread #{} exited",
-                                    std::hash<std::thread::id>{}(std::this_thread::get_id()));*/
+                        log(Debug, "Thread #{} exited", std::hash<std::thread::id>{}(std::this_thread::get_id()));
                         return;
                     }
 
@@ -54,8 +52,8 @@ namespace codex::cc {
                     jobs_.pop();
                 }
 
-                /*/codex::info("ThreadPool: Thread #{} picked up Job {}",
-                            std::hash<std::thread::id>{}(std::this_thread::get_id()), job.target_type().name());*/
+                log(Debug, "Thread #{} picked up Job {}", std::hash<std::thread::id>{}(std::this_thread::get_id()),
+                    job.target_type().name());
                 job();
             }
         };
@@ -64,6 +62,6 @@ namespace codex::cc {
             threads_.emplace_back(thread_fn);
         }
 
-        info("Allocated {} threads", count);
+        log(Info, "Allocated {} threads", count);
     }
 } // namespace codex::cc
