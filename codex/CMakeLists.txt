@@ -231,9 +231,8 @@ target_link_libraries(CodexEngine PUBLIC spdlog::spdlog)
 target_link_libraries(CodexEngine-static PUBLIC spdlog::spdlog)
 
 # nlohmann json
-target_link_libraries(CodexEngine PRIVATE nlohmann_json::nlohmann_json)
-target_link_libraries(CodexEngine-static PRIVATE nlohmann_json::nlohmann_json)
-target_include_directories(CodexEngine-static PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(CodexEngine PUBLIC nlohmann_json::nlohmann_json)
+target_link_libraries(CodexEngine-static PUBLIC nlohmann_json::nlohmann_json)
 
 # ImGui, core from Conan, backends compiled by us because they are
 # thin platform-specific adapters that imgui intentionally excludes from the
