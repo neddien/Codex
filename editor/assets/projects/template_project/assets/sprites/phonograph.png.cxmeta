@@ -1,13 +1,14 @@
 {
     "path": "sprites/phonograph.png",
     "uuid": "27cf-a0be-a2f4f938",
+    "storage_path": "sprites/phonograph.png",
     "type": "Texture2D",
     "checksum": 137047651,
     "size": 577,
-    "last_modified": 1782284729,
+    "last_modified": 1782504462,
     "dependencies": [],
     "import_settings": {
-        "filter_mode": "Linear",
+        "filter_mode": "Nearest",
         "mipmap_mode": "None",
         "wrap_mode": "Mirror",
         "format": "None"

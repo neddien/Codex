@@ -4,7 +4,7 @@
         [
             {
                 "type": "IDComponent",
-                "uuid": "728f-e758-2656c53e"
+                "uuid": "d027-510e-21b3a9ac"
             },
             {
                 "type": "TransformComponent",
@@ -35,82 +35,13 @@
         [
             {
                 "type": "IDComponent",
-                "uuid": "eb01-d9d3-09068661"
+                "uuid": "e83f-6cfd-bce28950"
             },
             {
                 "type": "TransformComponent",
                 "position": {
-                    "x": 97.99998474121094,
-                    "y": -43.999996185302734,
-                    "z": 0.0
-                },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "z": 0.0
-                },
-                "scale": {
-                    "x": 1.0,
-                    "y": 1.0,
-                    "z": 1.0
-                }
-            },
-            {
-                "type": "TagComponent",
-                "tag": "Phonograph"
-            },
-            {
-                "type": "SpriteRendererComponent",
-                "asset": {
-                    "path": "sprites/phonograph.png",
-                    "uuid": "27cf-a0be-a2f4f938"
-                },
-                "texture_coords": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "w": 32.0,
-                    "h": 32.0
-                },
-                "size": {
-                    "x": 32.0,
-                    "y": 32.0
-                },
-                "colour": {
-                    "x": 1.0,
-                    "y": 1.0,
-                    "z": 1.0,
-                    "w": 1.0
-                },
-                "z_index": 0
-            },
-            {
-                "type": "AudioSourceComponent",
-                "event_path": "event:/Phonograph-music-1",
-                "sound_path": "",
-                "volume": 1.0,
-                "pitch": 1.0,
-                "loop": false,
-                "play_on_start": true,
-                "is_3d": true,
-                "min_distance": 1.0,
-                "max_distance": 100.0,
-                "parameters": {
-                    "bandpass-filter-drywet": 0.0,
-                    "reverb-drywet": 0.0,
-                    "reverb-size": 0.0
-                }
-            }
-        ],
-        [
-            {
-                "type": "IDComponent",
-                "uuid": "f8b8-9d62-45647360"
-            },
-            {
-                "type": "TransformComponent",
-                "position": {
-                    "x": 0.0,
-                    "y": 0.0,
+                    "x": -183.00015258789063,
+                    "y": 2.9998703002929688,
                     "z": 0.0
                 },
                 "rotation": {
@@ -135,14 +66,14 @@
                     "uuid": "2792-434e-e3d9cb37"
                 },
                 "texture_coords": {
-                    "x": 1136.0,
-                    "y": 352.0,
+                    "x": 368.0,
+                    "y": 32.0,
                     "w": 16.0,
                     "h": 16.0
                 },
                 "size": {
-                    "x": 32.0,
-                    "y": 32.0
+                    "x": 64.0,
+                    "y": 64.0
                 },
                 "colour": {
                     "x": 1.0,
@@ -175,8 +106,8 @@
                     "y": 0.0
                 },
                 "size": {
-                    "x": 16.0,
-                    "y": 16.0
+                    "x": 32.0,
+                    "y": 32.0
                 },
                 "physics_material": {
                     "density": 1.0,
@@ -187,6 +118,75 @@
             },
             {
                 "type": "AudioListenerComponent"
+            }
+        ],
+        [
+            {
+                "type": "IDComponent",
+                "uuid": "9c77-d253-5cc4c560"
+            },
+            {
+                "type": "TransformComponent",
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 1.0,
+                    "y": 1.0,
+                    "z": 1.0
+                }
+            },
+            {
+                "type": "TagComponent",
+                "tag": "Phonograph"
+            },
+            {
+                "type": "SpriteRendererComponent",
+                "asset": {
+                    "path": "sprites/phonograph.png",
+                    "uuid": "27cf-a0be-a2f4f938"
+                },
+                "texture_coords": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "w": 32.0,
+                    "h": 32.0
+                },
+                "size": {
+                    "x": 64.0,
+                    "y": 64.0
+                },
+                "colour": {
+                    "x": 1.0,
+                    "y": 1.0,
+                    "z": 1.0,
+                    "w": 1.0
+                },
+                "z_index": 0
+            },
+            {
+                "type": "AudioSourceComponent",
+                "event_path": "event:/Phonograph-music-1",
+                "sound_path": "",
+                "volume": 1.0,
+                "pitch": 1.0,
+                "loop": false,
+                "play_on_start": true,
+                "is_3d": true,
+                "min_distance": 1.0,
+                "max_distance": 100.0,
+                "parameters": {
+                    "bandpass-filter-drywet": 0.0,
+                    "reverb-drywet": 0.0,
+                    "reverb-size": 0.0
+                }
             }
         ]
     ]

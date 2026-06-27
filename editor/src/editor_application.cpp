@@ -10,9 +10,9 @@
 namespace codex::editor {
     namespace stdfs = std::filesystem;
 
-    stdfs::path            EditorApplication::s_app_data_path_{};
-    stdfs::path            EditorApplication::s_var_app_data_path_{};
-    fs::VirtualFilesystem  EditorApplication::s_vfs_{};
+    stdfs::path           EditorApplication::s_app_data_path_{};
+    stdfs::path           EditorApplication::s_var_app_data_path_{};
+    fs::VirtualFilesystem EditorApplication::s_vfs_{};
 
     stdfs::path EditorApplication::get_app_data_path() noexcept
     {
@@ -52,6 +52,7 @@ namespace codex::editor {
 
         s_vfs_.mount(Shared<fs::DiskMount>::make(s_app_data_path_, 0), "/editor/share", true);
         s_vfs_.mount(Shared<fs::DiskMount>::make(s_var_app_data_path_, 0), "/editor/var", true);
+        s_vfs_.mkdir("/editor/tmp");
 
         info("Application data path: '{}'", s_app_data_path_.string());
         info("Variable application data path: '{}'", s_var_app_data_path_.string());

@@ -1,10 +1,11 @@
 {
     "path": "scenes/scene0.cxscene",
     "uuid": "5028-4a0b-5ea6da67",
+    "storage_path": "scenes/scene0.cxscene",
     "type": "Scene",
-    "checksum": 3591248333,
-    "size": 2386,
-    "last_modified": 1782105331,
+    "checksum": 2871858198,
+    "size": 52,
+    "last_modified": 1782549264,
     "dependencies": [],
     "import_settings": {
         "serdes_type": "kJson"

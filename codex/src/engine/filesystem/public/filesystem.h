@@ -1,7 +1,7 @@
 #pragma once
 
 namespace codex::fs {
-    constexpr auto MaxPathLength = 4096;
+    constexpr auto kMaxPathLength = 4096;
 
     enum class SpecialFolder
     {

@@ -25,7 +25,7 @@ namespace codex::fs {
     struct PakEntry
     {
         u64      path_hash;
-        char     path[64]; // FIXME: CHange back to MaxPathLength
+        char     path[128]; // KMaxPathLength
         u64      data_offset;
         u64      compressed_size;
         u64      uncompressed_size;

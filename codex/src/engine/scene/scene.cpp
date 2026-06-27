@@ -58,6 +58,23 @@ namespace codex {
         copy_components<Components...>(from, to, map);
     }
 
+    template <typename... Components>
+    [[nodiscarcd]] static std::vector<Component*> collect_components(ComponentGroup<Components...>,
+                                                                     Entity entity) noexcept
+    {
+        std::vector<Component*> components;
+        (
+            [&]()
+            {
+                if (entity.has_component<Components>()) {
+                    components.push_back(&entity.get_component<Components>());
+                }
+            }(),
+            ...);
+
+        return components;
+    }
+
     Scene::Scene(Scene&& other) noexcept
     {
         registry_ = std::move(other.registry_);
@@ -743,48 +760,44 @@ namespace codex {
     {
         ar("name", name_);
 
-        // Polymorphic component dispatch needs explicit control over the array/type-tag
-        // traversal, so this talks to the backend directly rather than through ar(key, vec).
         IArchiveBackend& b = ar.backend();
 
         if (ar.saving()) {
-            // The array length must precede its elements (binary), so count first.
             usize entity_total = 0;
-            for (auto view = registry_->view<entt::entity>(); const auto e : view) {
-                if (!Entity(e, this))
-                    break;
-                ++entity_total;
+            {
+                auto registry = registry_.lock();
+                for (const auto& e : registry->storage<entt::entity>()) {
+                    ++entity_total;
+                }
+            }
+
+            std::vector<entt::entity> entities;
+            entities.reserve(entity_total);
+
+            {
+                auto registry = registry_.lock();
+                for (const auto& e : registry->storage<entt::entity>())
+                    entities.push_back(e);
             }
 
             b.begin_array("entities", entity_total);
-            for (auto view = registry_->view<entt::entity>(); const auto e : view) {
-                auto entity = Entity(e, this);
-                if (!entity)
-                    break;
-
-                b.begin_object({});
-
-                Component* head  = &entity.get_component<IDComponent>();
-                usize      count = 0;
-                for (const Component* c = head; c; c = c->next_)
-                    ++count;
-
-                b.begin_array("components", count);
-                for (Component* c = head; c; c = c->next_) {
+            for (const auto& entity : entities) {
+                std::vector<Component*> components       = collect_components(AllComponents{}, Entity{ entity, this });
+                usize                   total_components = components.size();
+                b.begin_array("components", total_components);
+                for (Component* c : components) {
                     b.begin_object({});
-                    c->archive(ar); // writes "type" + fields
+                    c->archive(ar);
                     b.end_object();
                 }
                 b.end_array();
-
-                b.end_object();
             }
             b.end_array();
         } else {
             usize entity_total = 0;
             b.begin_array("entities", entity_total);
             for (usize i = 0; i < entity_total; ++i) {
-                b.begin_object({});
+                // b.begin_object({});
                 auto entity = create_entity();
 
                 usize count = 0;
@@ -798,7 +811,7 @@ namespace codex {
                     b.end_object();
                 }
                 b.end_array();
-                b.end_object();
+                // b.end_object();
             }
             b.end_array();
         }

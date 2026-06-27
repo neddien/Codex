@@ -10,7 +10,7 @@
 #include <engine/memory/public/memory.h>
 
 namespace codex::fs {
-    class VirtualFilesystem
+    class VirtualFilesystem : public Loggable<"VFS">
     {
     private:
         struct Node
@@ -50,17 +50,22 @@ namespace codex::fs {
         [[nodiscard]] cc::task<bool>               mkdir_async(std::string path, bool recursive = false) noexcept;
         [[nodiscard]] cc::task<std::vector<std::string>> list_async(std::string dir) const noexcept;
         [[nodiscard]] cc::task<bool>                     is_directory_async(std::string path) const noexcept;
-        bool export_to_pak(Shared<FileHandle> out, const PakProperties props = {}) noexcept;
-
-        // Debugging
-        // std::vector<std::string> get_mount_points() const;
-        // IVFSMount*               find_mount_for_path(const std::string& path);
+        bool export_to_pak(Shared<FileHandle> out, const PakProperties props = {},
+                           const std::string& root = "/") noexcept;
 
     private:
-        Node* walk_to(const std::string& path, Node** const previous_node = nullptr) noexcept;
-        bool  mkdir_nolock(const std::string& path, const bool recursive) noexcept;
-        bool  ensure_mount_point_nolock(const std::string& path, const bool recursive = false) noexcept;
-        bool  rm_nolock(const std::string& path, const bool recursive) noexcept;
+        struct resolved_node
+        {
+            IVFSMount*  mount;
+            Node*       node;
+            std::string rel_path;
+            usize       depth;
+        };
+        resolved_node resolve_mount_nolock(const std::string& path) const noexcept;
+        Node*         walk_to(const std::string& path, Node** const previous_node = nullptr) noexcept;
+        bool          mkdir_nolock(const std::string& path, const bool recursive) noexcept;
+        bool          ensure_mount_point_nolock(const std::string& path, const bool recursive = false) noexcept;
+        bool          rm_nolock(const std::string& path, const bool recursive) noexcept;
         bool cp_nolock(const std::string& src_path, const std::string& dst_path, const bool recursive = false) noexcept;
         bool mv_nolock(const std::string& src_path, const std::string& dst_path) noexcept;
 

@@ -29,3 +29,15 @@ add_custom_command(
         "$<TARGET_FILE_DIR:ShippedRuntime>/blue_pascal.png"
     COMMENT ":: Copying ShippedRuntime assets"
 )
+
+if(DEFINED CX_PLATFORM_WINDOWS)
+    install(TARGETS ShippedRuntime DESTINATION bin)
+  install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/assets/" DESTINATION bin)
+  install(DIRECTORY "${CX_ENGINE_ASSET_PATH}/" DESTINATION bin)
+elseif(DEFINED CX_PLATFORM_UNIX)
+  install(TARGETS ShippedRuntime DESTINATION bin)
+  #install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/assets/"
+  #        DESTINATION share/${PROJECT_NAME})
+  install(DIRECTORY "${CX_ENGINE_ASSET_PATH}/"
+          DESTINATION share/${PROJECT_NAME})
+endif()

@@ -59,8 +59,7 @@ namespace codex {
         virtual void archive_impl(Archive& ar) {}
 
     protected:
-        mutable Component* next_ = nullptr;
-        mutable Entity     parent_;
+        mutable Entity parent_;
     };
 
     struct CODEX_API IDComponent : public Component

@@ -8,7 +8,6 @@ codex::Engine* codex::create_engine(codex::EngineArgs args)
     EngineProject project;
     project.name              = "CodexEditor";
     project.engine_ver        = { CX_VER_MAJ, CX_VER_MIN, CX_VER_REV, CX_BUILD_COUNT };
-    project.boot_scene        = AssetPath{ "/editor/scenes/default.cxscene" };
     project.engine_properties = { .name              = "CodexEditor",
                                   .cwd               = "./",
                                   .args              = std::move(args),

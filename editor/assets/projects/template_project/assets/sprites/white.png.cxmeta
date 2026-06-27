@@ -1,13 +1,14 @@
 {
     "path": "sprites/white.png",
     "uuid": "b317-06d9-e34f7620",
+    "storage_path": "sprites/white.png",
     "type": "Texture2D",
     "checksum": 1818651173,
     "size": 166,
-    "last_modified": 1782284729,
+    "last_modified": 1782504462,
     "dependencies": [],
     "import_settings": {
-        "filter_mode": "Linear",
+        "filter_mode": "Nearest",
         "mipmap_mode": "None",
         "wrap_mode": "Mirror",
         "format": "None"

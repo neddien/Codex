@@ -202,7 +202,10 @@ namespace codex::editor {
         // glDepthFunc(GL_LESS);
 
         // TODO: Remove this hardcoded path
-        load_project("/home/stigranyan/dev/codex.n/editor/assets/projects/template_project/template.cxproj");
+        std::string_view val = std::getenv("CX_DEFAULT_LOAD_PROJECT");
+        if (!val.empty()) {
+            load_project(std::string{ val } + "/template.cxproj");
+        }
     }
 
     void SceneEditorView::on_detach()
@@ -493,11 +496,34 @@ namespace codex::editor {
                                     d->vfs->rm("/editor/project/assets/package");
                                 d->vfs->mkdir("/editor/project/assets/package");
                             }
-                            AssetManager::registry().write_manifest_async(
-                                "/editor/project/assets/package/__registry.manifest.bin");
+                            AssetManager::registry()
+                                .write_manifest_async("/editor/project/assets/package/__registry.manifest.bin")
+                                .await_sync();
                             Engine::project().save_to_vfs(*d->vfs,
                                                           "/editor/project/assets/package/__engine.project.bin");
-                            AssetManager::registry().export_assets_async("/editor/project/assets/package/data");
+                            AssetManager::registry()
+                                .export_assets_async("/editor/project/assets/package/data")
+                                .await_sync();
+
+                            if (auto fh =
+                                    d->vfs->open("/editor/tmp/asset_registry.cxpkz",
+                                                 { fs::FileMode::Create | fs::FileMode::Trunc | fs::FileMode::Write });
+                                fh) {
+                                bool proceed = true;
+                                if (!d->vfs->export_to_pak(fh, {}, "/editor/project/assets/package")) {
+                                    log(Error, "Failed to package cooked assets!");
+                                    proceed = false;
+                                }
+                                if (proceed &&
+                                    !d->vfs->mv("/editor/tmp/asset_registry.cxpkz", "/editor/project/assets/package")) {
+                                    log(Error, "Failed to move packaged registry!");
+                                }
+
+                                if (proceed)
+                                    log(Info, "Project successfully packaged!");
+                            } else {
+                                log(Error, "Failed to create /editor/tmp/asset_registry.cxpkz!");
+                            }
                         }
                     }
                     if (ImGui::MenuItem("Save Scene", "Ctrl+Shift+S")) {
@@ -1002,6 +1028,11 @@ namespace codex::editor {
 
         unload_project();
 
+        if (!std::filesystem::exists(cxproj)) {
+            log(Error, "{}: No such file or directory", cxproj.generic_string());
+            return;
+        }
+
         d->current_project_path = cxproj;
         d->current_project_path = d->current_project_path.parent_path();
 
@@ -1058,15 +1089,15 @@ namespace codex::editor {
         SerializationManager::load_from_file(d->project, cxproj, SerializationManager::Format::Json);
         // SerializationManager::load_from_file(*d->editor_scene, cxproj, SerializationManager::Format::Json);
 
-        if (d->project.last_open_scene) {
+        if (!d->project.last_open_scene.empty()) {
             {
                 std::unique_lock guard{ d->registry_state_mutex };
                 d->registry_state_cv.wait(guard, [&d] { return d->registry_state_ready; });
             }
 
-            log(Info, "Loading scene {}...", d->project.last_open_scene);
             Asset<Scene> scene = AssetManager::load<Scene>(d->project.last_open_scene);
             if (scene) {
+                log(Info, "Loaded scene {}", scene.path());
                 d->editor_scene = scene.as_shared();
                 d->active_scene = d->editor_scene;
             } else {

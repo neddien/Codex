@@ -34,8 +34,5 @@
     },
     "vfs_root": "/editor",
     "last_asset_path": "",
-    "last_open_scene": {
-        "path": "scenes/scene0.cxscene",
-        "uuid": "5028-4a0b-5ea6da67"
-    }
+    "last_open_scene": "scenes/scene1.cxscene"
 }

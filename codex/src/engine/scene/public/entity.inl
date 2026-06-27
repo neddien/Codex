@@ -29,14 +29,8 @@ namespace codex {
     {
         CX_ASSERT(!scene_->registry_->all_of<T>(handle), "Entity already has that component.");
 
-        // IDComponent is always the first component.
-        Component* comp = &first_component();
-        while (comp->next_)
-            comp = comp->next_;
-
-        auto& c     = scene_->registry_->emplace<T>(handle, std::forward<TArgs>(args)...);
-        comp->next_ = &c;
-        c.parent_   = *this;
+        auto& c   = scene_->registry_->emplace<T>(handle, std::forward<TArgs>(args)...);
+        c.parent_ = *this;
         c.on_init(); // TODO: This being called here is questionable
         return c;
     }
@@ -45,21 +39,14 @@ namespace codex {
         requires(std::is_base_of_v<Component, T>)
     T& Entity::add_or_replace_component(TArgs&&... args)
     {
-        // IDComponent is always the first component.
-        Component* comp = &first_component();
-        while (comp->next_)
-            comp = comp->next_;
-
         if (has_component<T>()) {
-            auto& c     = scene_->registry_->emplace_or_replace<T>(handle, std::forward<TArgs>(args)...);
-            comp->next_ = &c;
+            auto& c = scene_->registry_->emplace_or_replace<T>(handle, std::forward<TArgs>(args)...);
             c.on_init();
             return c;
         }
 
-        auto& c     = scene_->registry_->emplace<T>(handle, std::forward<TArgs>(args)...);
-        comp->next_ = &c;
-        c.parent_   = *this;
+        auto& c   = scene_->registry_->emplace<T>(handle, std::forward<TArgs>(args)...);
+        c.parent_ = *this;
         c.on_init();
         return c;
     }

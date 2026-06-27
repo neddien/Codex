@@ -8,7 +8,7 @@ namespace codex::editor {
         EngineProject engine_project;
         std::string   vfs_root = "/editor";
         std::string   last_asset_path;
-        AssetPath     last_open_scene;
+        std::string   last_open_scene;
 
         EditorProject() noexcept;
 
