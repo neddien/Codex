@@ -69,12 +69,12 @@ namespace codex {
         std::filesystem::path cwd;
         EngineArgs            args;
         EngineFlags           flags = EngineFlags::InitAll;
-        WindowProperties      window_properties;
+        VideoProperties       video_properties;
     };
 
     void serialize(Archive& ar, EngineProperties& properties);
 
-    class CODEX_API Engine : public Loggable<"Engine">
+    class CODEX_API Engine : private Loggable<"Engine">
     {
         friend int ::main(int argc, char** argv);
         friend Engine* create_engine(EngineArgs args);
@@ -99,7 +99,7 @@ namespace codex {
         }
         [[nodiscard]] static inline auto frame_cap() noexcept -> u32
         {
-            return s_instance_->properties_.window_properties.frame_cap;
+            return s_instance_->properties_.video_properties.frame_cap;
         }
         [[nodiscard]] static inline auto delta() noexcept -> f32 { return s_instance_->delta_time_; }
         [[nodiscard]] static inline auto imgui_layer() noexcept -> imgui::ImGuiLayer*
@@ -136,6 +136,7 @@ namespace codex {
         virtual auto on_init() -> void {};
         auto         run() -> void;
         auto         stop() -> void;
+        auto         dispose() noexcept -> void;
         auto         on_event(events::Event& e) -> void;
         auto         push_layer(Layer* layer) -> void;
         auto         push_overlay(Layer* overlay) -> void;
@@ -145,6 +146,7 @@ namespace codex {
         EngineProperties&         properties_;
         Box<Window>               window_    = nullptr;
         bool                      running_   = true;
+        bool                      disposed_  = false;
         bool                      minimized_ = false;
         LayerStack                layer_stack_;
         f32                       delta_time_  = 0.0f;

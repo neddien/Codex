@@ -19,14 +19,20 @@ private:
     Entity                camera_ = Entity::none();
 
     RF_PROPERTY(DisplayName = "Velocity", Category = "Movement")
-    Vector2f velocity_ = { 150.0f, 150.0f };
+    vec2 velocity_ = { 150.0f, 150.0f };
 
     RF_PROPERTY(DisplayName = "Current Velocity", Category = "Movement")
-    Vector2f current_velocity_ = { 0.0f, 0.0f };
+    vec2 current_velocity_ = { 0.0f, 0.0f };
 
     RF_PROPERTY(DisplayName = "Subitotus", Category = "Movement")
-    Vector3f sub_ = { 10.0f, 10.0f, 0.0f };
+    vec3 sub_ = { 10.0f, 10.0f, 0.0f };
 
     RF_PROPERTY(DisplayName = "Camera Lerp", Category = "Camera")
     f32 lerp_ = 0.5f;
+
+    RF_PROPERTY(DisplayName = "Fire Rate", Category = "Shooting")
+    f32 fire_rate_ = 0.5f;
+
+    RF_PROPERTY(DisplayName = "Projectile Prefab", Category = "Shooting")
+    Asset<scene::Prefab> projectile_;
 };

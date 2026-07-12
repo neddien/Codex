@@ -12,6 +12,7 @@ namespace codex::editor {
     std::optional<scene::EditorCamera> Editor::s_camera_          = std::nullopt;
     ImFont*                            Editor::s_large_icon_font_ = nullptr;
     ImFont*                            Editor::s_xl_icon_font_    = nullptr;
+    ImFont*                            Editor::s_console_font_    = nullptr;
 
     void Editor::on_attach()
     {
@@ -60,14 +61,23 @@ namespace codex::editor {
         xl_config.PixelSnapH = true;
         s_xl_icon_font_      = io.Fonts->AddFontFromFileTTF(icon_font_path.c_str(), 64.0f, &xl_config, icon_ranges);
 
+        // Monospace font for the console panel.
+        static std::string console_font_path =
+            (EditorApplication::get_app_data_path() / "fonts/cascadia-code-nfm/CaskaydiaCoveNerdFontMono-Regular.ttf")
+                .string();
+        if (stdfs::exists(console_font_path))
+            s_console_font_ = io.Fonts->AddFontFromFileTTF(console_font_path.c_str(), font_size);
+        else
+            warn("Console font not found: {}", console_font_path);
+
         io.Fonts->Build();
 
         // Init the renderer.
         const auto width  = Engine::window().width();
         const auto height = Engine::window().height();
         gfx::Renderer::init(width, height);
-        gfx::BatchRenderer2D::init(EditorApplication::vfs(), "/editor/share/gl_shaders/batch_renderer2d_quad.glsl");
-        gfx::DebugDraw::init(EditorApplication::vfs(), "/editor/share/gl_shaders/debug_draw_line2d.glsl");
+        gfx::BatchRenderer2D::init(EditorApplication::vfs(), "/edit/share/gl_shaders/batch_renderer2d_quad.glsl");
+        gfx::DebugDraw::init(EditorApplication::vfs(), "/edit/share/gl_shaders/debug_draw_line2d.glsl");
 
         NFD_Init();
 

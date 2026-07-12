@@ -16,8 +16,8 @@ namespace codex::fs {
             if (not(src && dst))
                 return false;
 
-            constexpr auto          buf_len = 1024 * 1024; // 1MiB
-            std::array<u8, buf_len> buf;
+            constexpr auto  buf_len = 1024 * 1024; // 1MiB
+            std::vector<u8> buf(buf_len);
 
             src->seek(0);
             dst->seek(0);
@@ -32,6 +32,20 @@ namespace codex::fs {
 
             dst->flush();
             return true;
+        }
+
+        stdfs::path remove_prefix(const stdfs::path& path, const stdfs::path& prefix)
+        {
+            auto [p, pre] = std::mismatch(path.begin(), path.end(), prefix.begin(), prefix.end());
+
+            if (pre != prefix.end())
+                return path; // prefix doesn't match
+
+            stdfs::path result;
+            for (; p != path.end(); ++p)
+                result /= *p;
+
+            return result;
         }
     } // namespace
 
@@ -97,41 +111,10 @@ namespace codex::fs {
         return true;
     }
 
-    Shared<FileHandle> VirtualFilesystem::open(const std::string& path, const FileProperties props) noexcept
+    Shared<FileHandle> VirtualFilesystem::open(const std::string& path, FileProperties props) noexcept
     {
-        const auto npath       = normalize(path);
-        auto       components  = util::str::split(npath, '/');
-        Node*      mount_node  = root_.get();
-        usize      mount_depth = 0;
-
-        {
-            std::shared_lock lock{ mutex_ };
-
-            Node* cur   = root_.get();
-            usize depth = 0;
-            for (const auto& c : components) {
-                auto it = cur->children.find(c);
-                if (it == cur->children.end())
-                    break;
-
-                cur = it->second.get();
-                ++depth;
-
-                if (!cur->mounts.empty()) {
-                    mount_node  = cur;
-                    mount_depth = depth;
-                }
-            }
-        }
-
-        const auto local_path = util::str::join(components.begin() + mount_depth, components.end(), '/');
-
-        for (auto& m : mount_node->mounts) {
-            if (auto fh = m->open(local_path, props))
-                return fh;
-        }
-
-        return nullptr;
+        std::scoped_lock guard{ mutex_ };
+        return open_nolock(path, std::move(props));
     }
 
     bool VirtualFilesystem::exists(const std::string& path) const noexcept
@@ -273,9 +256,8 @@ namespace codex::fs {
         const auto src_npath      = normalize(src_path);
         const auto dst_npath      = normalize(dst_path);
         auto       src_components = util::str::split(src_npath, '/');
-        auto       dst_components = util::str::split(dst_npath, '/');
 
-        resolved_node src_rslvd = resolve_mount_nolock(src_path);
+        resolved_node src_rslvd = resolve_mount_nolock(src_path, true);
         resolved_node dst_rslvd = resolve_mount_nolock(dst_path);
         IVFSMount*    src_mnt   = src_rslvd.mount;
         IVFSMount*    dst_mnt   = dst_rslvd.mount;
@@ -284,45 +266,61 @@ namespace codex::fs {
             return false;
 
         if (src_mnt == dst_mnt) {
-            src_mnt->cp(src_rslvd.rel_path, dst_rslvd.rel_path, recursive);
-            return true;
+            return src_mnt->cp(src_rslvd.rel_path, dst_rslvd.rel_path, recursive);
         }
+
+        std::string dst_base = dst_rslvd.rel_path;
 
         // Dir
         if (src_mnt->directory(src_rslvd.rel_path)) {
-            // check if dir empty and recursive == false, then we good
-            // otherwise we bad unless recursive == true
-            if (src_mnt->empty(src_rslvd.rel_path)) {
-                // dont care about recursive copy anyways
-                dst_mnt->mkdir(dst_components.back());
-                return true;
-            } else if (recursive) {
-                std::vector<std::string> dirs =
-                    src_mnt->list(src_rslvd.rel_path, ListOptions::DirsOnly | ListOptions::Recursive);
-                std::vector<std::string> files =
-                    src_mnt->list(src_rslvd.rel_path, ListOptions::FilesOnly | ListOptions::Recursive);
+            if (!recursive)
+                return false;
 
-                std::sort(dirs.begin(), dirs.end(), [](const std::string& a, const std::string& b)
-                          { return std::ranges::count(a, '/') < std::ranges::count(b, '/'); });
+            if (dst_mnt->directory(dst_rslvd.rel_path))
+                dst_base += "/" + src_components.back();
 
-                for (const std::string& dir : dirs)
-                    dst_mnt->mkdir(dir);
+            std::vector<std::string> dirs;
+            std::vector<std::string> files;
+            try {
+                dirs  = src_mnt->list(src_rslvd.rel_path, ListOptions::DirsOnly | ListOptions::Recursive);
+                files = src_mnt->list(src_rslvd.rel_path, ListOptions::FilesOnly | ListOptions::Recursive);
+            }
+            catch (const std::exception& ex) {
+                log(Error, "Failed to list: {}", ex.what());
+                return false;
+            }
 
-                for (const std::string& file : files) {
-                    Shared<FileHandle> sfh = src_mnt->open(file, { FileMode::Read });
+            std::sort(dirs.begin(), dirs.end(), [](const std::string& a, const std::string& b)
+                      { return std::ranges::count(a, '/') < std::ranges::count(b, '/'); });
+
+            if (!dst_mnt->mkdir(dst_base))
+                return false;
+            for (const std::string& dir : dirs) {
+                if (dst_mnt->mkdir(dst_base + "/" + dir))
+                    continue;
+                else
+                    return false;
+            }
+
+            for (const std::string& file : files) {
+                if (auto sfh = src_mnt->open(src_rslvd.rel_path + "/" + file, { FileMode::Read }); sfh) {
                     Shared<FileHandle> dfh =
-                        dst_mnt->open(file, { FileMode::Create | FileMode::Trunc | FileMode::Write });
+                        dst_mnt->open(dst_base + "/" + file, { FileMode::Create | FileMode::Trunc | FileMode::Write });
                     if (not stream_file(std::move(sfh), std::move(dfh)))
                         return false;
-                }
-
-                return true;
+                } else
+                    return false;
             }
+
+            return true;
         }
         // File
         else {
             // f : d
             Shared<FileHandle> sfh = src_mnt->open(src_rslvd.rel_path, { FileMode::Read });
+            if (!sfh)
+                return false;
+
             Shared<FileHandle> dfh;
             if (dst_mnt->directory(dst_rslvd.rel_path)) {
                 dfh = dst_mnt->open(dst_rslvd.rel_path + "/" + src_components.back(),
@@ -346,7 +344,7 @@ namespace codex::fs {
         if (src_npath.empty() || dst_npath.empty() || src_npath == dst_npath)
             return false;
 
-        auto src = resolve_mount_nolock(src_npath);
+        auto src = resolve_mount_nolock(src_npath, true);
         auto dst = resolve_mount_nolock(dst_npath);
 
         if (!src.mount || !dst.mount)
@@ -395,44 +393,10 @@ namespace codex::fs {
         return mv_nolock(src_path, dst_path);
     }
 
-    std::vector<std::string> VirtualFilesystem::list_nolock(const std::string& dir) const noexcept
+    std::vector<std::string> VirtualFilesystem::list(const std::string& dir, ListOptions opts) const
     {
-        auto  components  = util::str::split(normalize(dir), '/');
-        auto* cur         = root_.get();
-        auto* mount_node  = root_.get();
-        usize mount_depth = 0;
-        usize depth       = 0;
-
-        for (const auto& c : components) {
-            auto it = cur->children.find(c);
-            if (it == cur->children.end())
-                break;
-
-            cur = it->second.get();
-            ++depth;
-
-            if (!cur->mounts.empty()) {
-                mount_node  = cur;
-                mount_depth = depth;
-            }
-        }
-
-        std::unordered_set<std::string> result;
-
-        // Explicit trie children at the exact node.
-        if (depth == components.size()) {
-            for (const auto& [name, _] : cur->children)
-                result.insert(name);
-        }
-
-        // Virtual contents from the responsible mount
-        const auto local_path = util::str::join(components.begin() + mount_depth, components.end(), '/');
-        for (auto& m : mount_node->mounts) {
-            for (auto& entry : m->list(local_path))
-                result.insert(entry);
-        }
-
-        return { result.begin(), result.end() };
+        std::scoped_lock guard{ mutex_ };
+        return list_nolock(dir, std::move(opts));
     }
 
     bool VirtualFilesystem::is_directory_nolock(const std::string& path) const noexcept
@@ -469,7 +433,7 @@ namespace codex::fs {
         return false;
     }
 
-    std::vector<std::string> VirtualFilesystem::list(const std::string& dir, const ListOptions opts) const noexcept
+    std::vector<std::string> VirtualFilesystem::list_nolock(const std::string& dir, ListOptions opts) const
     {
         const bool recursive  = !!(opts & ListOptions::Recursive);
         const bool files_only = !!(opts & ListOptions::FilesOnly);
@@ -481,13 +445,13 @@ namespace codex::fs {
             const auto n = normalize(d);
             return n.empty() ? "/" : '/' + n;
         };
+
         const auto join_abs = [](const std::string& base, const std::string& name) -> std::string
         { return (base == "/") ? '/' + name : base + '/' + name; };
 
-        std::shared_lock lock{ mutex_ };
-
         if (!recursive) {
-            auto                     entries  = list_nolock(dir);
+            // FIXME: Recursive recursive implementation?
+            auto                     entries  = list_children_nolock(dir);
             const auto               abs_base = make_abs(dir);
             std::vector<std::string> result;
             result.reserve(entries.size());
@@ -511,7 +475,7 @@ namespace codex::fs {
         while (!stk.empty()) {
             auto [cur_dir, prefix] = std::move(stk.top());
             stk.pop();
-            for (auto& name : list_nolock(cur_dir)) {
+            for (auto& name : list_children_nolock(cur_dir)) {
                 const std::string full        = join_abs(cur_dir, name);
                 const std::string result_path = prefix.empty() ? name : prefix + '/' + name;
                 const bool        is_dir      = is_directory_nolock(full);
@@ -552,7 +516,7 @@ namespace codex::fs {
         co_return mkdir(path, recursive);
     }
 
-    cc::task<std::vector<std::string>> VirtualFilesystem::list_async(std::string dir) const noexcept
+    cc::task<std::vector<std::string>> VirtualFilesystem::list_async(std::string dir) const
     {
         co_await Engine::worker_pool();
         co_return list(dir);
@@ -568,6 +532,8 @@ namespace codex::fs {
                                           const std::string& root) noexcept
     {
         std::unique_lock lock{ mutex_ };
+
+        const stdfs::path root_path_fp = stdfs::path{ root };
 
         const auto is_precompressed = [&](const std::string& path)
         {
@@ -590,18 +556,14 @@ namespace codex::fs {
             Shared<FileHandle> handle;
         };
 
-        const auto                                npath       = normalize(root);
-        u64                                       offset_idx  = 0;
-        u64                                       entry_count = 0;
-        u64                                       data_offset = 0;
-        u64                                       data_size   = 0;
-        std::stack<std::pair<std::string, Node*>> node_st;
-        std::vector<entry>                        entries;
-        std::unordered_set<std::string>           seen_paths;
+        const auto         npath       = normalize(root);
+        u64                offset_idx  = 0;
+        u64                entry_count = 0;
+        u64                data_offset = 0;
+        u64                data_size   = 0;
+        std::vector<entry> entries;
 
         resolved_node rslvd = resolve_mount_nolock(npath);
-
-        node_st.emplace("", rslvd.node);
 
         auto header = PakHeader{
             .version         = { PakVersion[0], PakVersion[1], PakVersion[2] },
@@ -617,67 +579,47 @@ namespace codex::fs {
         };
         std::memcpy(header.pak_name, props.name.c_str(), props.name.size());
 
-        // Phase 1: Compress all the files inside the VFS into LZ4, store their blobs in a temporary directory.
-        while (!node_st.empty()) {
-            auto [parent_path, cur] = node_st.top();
-            node_st.pop();
+        // Phase 1: Metadata generation for each file
 
-            std::string cur_path = (parent_path.empty())
-                                       ? cur->path
-                                       : (parent_path + ((parent_path == "/") ? cur->path : '/' + cur->path));
+        // We skip directories and only care about files because PAKs don't understand directories, only files
+        // where the path is just the string key for that file.
+        try {
+            for (const std::string& list_entry_path :
+                 list_nolock(root, ListOptions::FilesOnly | ListOptions::Recursive)) {
+                const stdfs::path list_entry_path_fp = stdfs::path{ list_entry_path };
+                const std::string rel_path           = remove_prefix(list_entry_path_fp, root_path_fp).generic_string();
 
-            // If we're directory then skip i assume since paks don't have the idea of a
-            // directory, they just contain compressed files where the path is just the string key
-            // for that file.
-            for (auto& mount : cur->mounts) {
-                for (const auto& list_entry :
-                     mount->list(rslvd.rel_path, ListOptions::FilesOnly | ListOptions::Recursive)) {
-                    auto handle = mount->open(list_entry);
-                    if (!handle) {
-                        log(Error, "Failed to open file: {} for cooking", list_entry);
-                        return false;
-                    }
-
-                    const auto full_path = cur_path + '/' + list_entry;
-                    const auto rel_path  = std::string_view{ full_path }.substr(1);
-
-                    if (rel_path ==
-                        std::string_view{ out->path() }.substr(std::string_view{ out->path() }.find_first_not_of('/')))
-                        continue;
-
-                    const std::string rel_str{ rel_path };
-                    if (seen_paths.count(rel_str))
-                        continue;
-                    seen_paths.insert(rel_str);
-
-                    if (rel_path.size() >= sizeof(PakEntry::path)) {
-                        log(Error, "Path too long for PAK entry (max {} chars): {}", sizeof(PakEntry::path) - 1,
-                            full_path);
-                        return false;
-                    }
-
-                    PakEntry entry{};
-                    entry.path_hash = util::crypto::djb2_hash(rel_path);
-                    std::memcpy(entry.path, rel_path.data(), rel_path.size());
-                    entry.path[rel_path.size()] = 0;
-                    entry.data_offset           = offset_idx++;
-                    entry.uncompressed_size     = handle->size();
-                    entry.last_modified         = header.last_modified;
-
-                    if ((props.flags & PakFlags::Compressed) && handle->size() >= props.compression_threshold &&
-                        !is_precompressed(list_entry)) {
-                        entry.flags = PakFlags::Compressed | PakFlags::CompressionTypeLZ4;
-                    }
-
-                    entries.emplace_back(entry, 0, std::move(handle));
+                auto handle = open_nolock(list_entry_path);
+                if (!handle) {
+                    log(Error, "Failed to open file: {} for cooking", list_entry_path);
+                    return false;
                 }
-            }
 
-            for (auto& [_, node] : cur->children) {
-                if (node) {
-                    node_st.emplace(cur_path, node.get());
+                if (rel_path.size() >= sizeof(PakEntry::path)) {
+                    log(Error, "Path too long for PAK entry (max {} chars): {}", sizeof(PakEntry::path) - 1,
+                        list_entry_path);
+                    return false;
                 }
+
+                PakEntry entry{};
+                entry.path_hash = util::crypto::fnv1a(rel_path);
+                std::memcpy(entry.path, rel_path.data(), rel_path.size());
+                entry.path[rel_path.size()] = 0;
+                entry.data_offset           = offset_idx++;
+                entry.uncompressed_size     = handle->size();
+                entry.last_modified         = header.last_modified;
+
+                if ((props.flags & PakFlags::Compressed) && handle->size() >= props.compression_threshold &&
+                    !is_precompressed(list_entry_path)) {
+                    entry.flags = PakFlags::Compressed | PakFlags::CompressionTypeLZ4;
+                }
+
+                entries.emplace_back(entry, 0, std::move(handle));
             }
+        }
+        catch (const std::exception& ex) {
+            log(Error, "Failed to compress to CXPAK: {}", ex.what());
+            return false;
         }
 
         lock.unlock(); // release before I/O-heavy phases 2 and 3
@@ -755,7 +697,38 @@ namespace codex::fs {
         return true;
     }
 
-    VirtualFilesystem::resolved_node VirtualFilesystem::resolve_mount_nolock(const std::string& path) const noexcept
+    std::optional<std::filesystem::path> VirtualFilesystem::materialize(const std::string&           vfs_path,
+                                                                        const std::filesystem::path& cache_dir)
+    {
+        auto source = open(vfs_path, { FileMode::Read });
+        if (!source)
+            return std::nullopt;
+
+        std::error_code ec;
+        std::filesystem::create_directories(cache_dir, ec);
+        if (ec)
+            return std::nullopt;
+
+        const auto output = cache_dir / UUID{}.to_string();
+
+        std::ofstream dest(output, std::ios::binary);
+        if (!dest)
+            return std::nullopt;
+
+        std::vector<u8> buffer(1024 * 1024);
+
+        while (const usize count = source->read(buffer.data(), buffer.size())) {
+            dest.write(reinterpret_cast<const char*>(buffer.data()), static_cast<std::streamsize>(count));
+
+            if (!dest)
+                return std::nullopt;
+        }
+
+        return output;
+    }
+
+    VirtualFilesystem::resolved_node VirtualFilesystem::resolve_mount_nolock(const std::string& path,
+                                                                             bool existing_only) const noexcept
     {
         const auto npath      = normalize(path);
         auto       components = util::str::split(npath, '/');
@@ -781,8 +754,23 @@ namespace codex::fs {
 
         const auto rel_path = util::str::join(components.begin() + mount_depth, components.end(), '/');
 
-        return { const_cast<IVFSMount*>(mount_node->mounts.front().get()), const_cast<Node*>(mount_node), rel_path,
-                 depth };
+        if (!mount_node)
+            return {};
+
+        if (existing_only) {
+            for (const Shared<IVFSMount>& mnt : mount_node->mounts) {
+                if (mnt->exists(rel_path)) {
+                    return { const_cast<IVFSMount*>(mnt.get()), const_cast<Node*>(mount_node), rel_path, depth };
+                }
+            }
+        } else {
+            for (const Shared<IVFSMount>& mnt : mount_node->mounts) {
+                if (mnt)
+                    return { const_cast<IVFSMount*>(mnt.get()), const_cast<Node*>(mount_node), rel_path, depth };
+            }
+        }
+
+        return {};
     }
 
     VirtualFilesystem::Node* VirtualFilesystem::walk_to(const std::string& path, Node** const previous_node) noexcept
@@ -802,5 +790,78 @@ namespace codex::fs {
         }
 
         return cur;
+    }
+
+    Shared<FileHandle> VirtualFilesystem::open_nolock(const std::string& path, const FileProperties props) noexcept
+    {
+        const auto npath       = normalize(path);
+        auto       components  = util::str::split(npath, '/');
+        Node*      mount_node  = root_.get();
+        usize      mount_depth = 0;
+
+        Node* cur   = root_.get();
+        usize depth = 0;
+        for (const auto& c : components) {
+            auto it = cur->children.find(c);
+            if (it == cur->children.end())
+                break;
+
+            cur = it->second.get();
+            ++depth;
+
+            if (!cur->mounts.empty()) {
+                mount_node  = cur;
+                mount_depth = depth;
+            }
+        }
+
+        const auto local_path = util::str::join(components.begin() + mount_depth, components.end(), '/');
+
+        for (auto& m : mount_node->mounts) {
+            if (auto fh = m->open(local_path, props))
+                return fh;
+        }
+
+        return nullptr;
+    }
+
+    std::vector<std::string> VirtualFilesystem::list_children_nolock(const std::string& dir) const
+    {
+        auto  components  = util::str::split(normalize(dir), '/');
+        auto* cur         = root_.get();
+        auto* mount_node  = root_.get();
+        usize mount_depth = 0;
+        usize depth       = 0;
+
+        for (const auto& c : components) {
+            auto it = cur->children.find(c);
+            if (it == cur->children.end())
+                break;
+
+            cur = it->second.get();
+            ++depth;
+
+            if (!cur->mounts.empty()) {
+                mount_node  = cur;
+                mount_depth = depth;
+            }
+        }
+
+        std::unordered_set<std::string> result;
+
+        // Explicit trie children at the exact node.
+        if (depth == components.size()) {
+            for (const auto& [name, _] : cur->children)
+                result.insert(name);
+        }
+
+        // Virtual contents from the responsible mount
+        const auto local_path = util::str::join(components.begin() + mount_depth, components.end(), '/');
+        for (auto& m : mount_node->mounts) {
+            for (auto& entry : m->list(local_path))
+                result.insert(entry);
+        }
+
+        return { result.begin(), result.end() };
     }
 } // namespace codex::fs

@@ -63,7 +63,6 @@ namespace CodexEngine.Structs
 	}
 
 	[StructLayout(LayoutKind.Sequential)]
-	public struct Vector2f
 	{
 		public float X;
 		public float Y;

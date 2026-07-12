@@ -35,26 +35,25 @@ namespace codex::gfx {
         void begin(const scene::EditorCamera& camera);
         void end();
 
-        void draw_line_2d(const Vector2f source, const Vector2f destination,
-                          const Vector4f colour = { 0.0f, 1.0f, 0.0f, 1.0f }, const i32 lifeTime = 1);
-        void draw_rect_2d(const Rectf rect, const f32 angle = 0.0f, const Vector4f colour = { 0.0f, 1.0f, 0.0f, 1.0f },
+        void draw_line_2d(const vec2 source, const vec2 destination, const vec4 colour = { 0.0f, 1.0f, 0.0f, 1.0f },
                           const i32 lifeTime = 1);
-        void draw_circle_2d(const Vector2f centrePos, const i32 radius = 50, const f32 angle = 0.0f,
-                            const i32 segments = 20, const Vector4f colour = { 0.0f, 1.0f, 0.0f, 1.0f },
-                            i32 lifeTime = 1);
+        void draw_rect_2d(const rect rect, const f32 angle = 0.0f, const vec4 colour = { 0.0f, 1.0f, 0.0f, 1.0f },
+                          const i32 lifeTime = 1);
+        void draw_circle_2d(const vec2 centrePos, const i32 radius = 50, const f32 angle = 0.0f,
+                            const i32 segments = 20, const vec4 colour = { 0.0f, 1.0f, 0.0f, 1.0f }, i32 lifeTime = 1);
 
     public:
         static void init(fs::VirtualFilesystem& vfs, std::string_view path);
         static void dispose() noexcept;
 
     private:
-        Box<opengl::VertexArray>                          vao_;
-        Box<opengl::VertexBuffer>                         vbo_;
-        Box<opengl::VertexBufferLayout>                   layout_;
+        Box<opengl::VertexArray>                               vao_;
+        Box<opengl::VertexBuffer>                              vbo_;
+        Box<opengl::VertexBufferLayout>                        layout_;
         std::vector<Line2D>                                    lines_;
         std::array<f32, LINE2D_MAX_COUNT * LINE2D_VERTEX_SIZE> verticies_;
         const scene::Camera*                                   current_camera_;
-        Matrix4f                                               current_camera_view_matrix_;
+        mat4                                                   current_camera_view_matrix_;
         static Shader*                                         s_shader_;
     };
 } // namespace codex::gfx

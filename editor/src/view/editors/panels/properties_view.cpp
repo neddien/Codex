@@ -174,14 +174,21 @@ namespace codex::editor {
                                     }
                                     case Vector2f: {
                                         SceneEditorView::draw_vec2_control(
-                                            prop_id.c_str(), *type_info.property_value<math::Vector2f>(v, prop.name),
+                                            prop_id.c_str(), *type_info.property_value<math::vec2>(v, prop.name),
                                             d->column_width);
                                         break;
                                     }
                                     case Vector3f: {
                                         SceneEditorView::draw_vec3_control(
-                                            prop_id.c_str(), *type_info.property_value<math::Vector3f>(v, prop.name),
+                                            prop_id.c_str(), *type_info.property_value<math::vec3>(v, prop.name),
                                             d->column_width);
+                                        break;
+                                    }
+                                    case PrefabAsset: {
+                                        auto*     asset = type_info.property_value<Asset<scene::Prefab>>(v, prop.name);
+                                        AssetPath path  = asset->path();
+                                        if (render_asset_path_box(prop_id.c_str(), "Prefab", path))
+                                            *asset = AssetManager::load<scene::Prefab>(path.uuid());
                                         break;
                                     }
                                     default: break; // throw CodexException("Should not happen."); break;
@@ -228,8 +235,8 @@ namespace codex::editor {
 
                     // Texture coordinates
                     const auto tex_coords = sprite.texture_coords();
-                    Vector2f   pos{ tex_coords.x, tex_coords.y };
-                    Vector2f   size{ tex_coords.w, tex_coords.h };
+                    vec2       pos{ tex_coords.x, tex_coords.y };
+                    vec2       size{ tex_coords.w, tex_coords.h };
                     SceneEditorView::draw_vec2_control("Texture position: ", pos, d->column_width);
                     SceneEditorView::draw_vec2_control("Texture size: ", size, d->column_width);
                     sprite.set_texture_coords({ pos.x, pos.y, size.x, size.y });
@@ -254,7 +261,7 @@ namespace codex::editor {
                     f32 temp_colour[4]{ colour.x, colour.y, colour.z, colour.w };
                     ImGui::ColorPicker4("##color_picker_src", temp_colour, flags);
                     colour = { temp_colour[0], temp_colour[1], temp_colour[2], temp_colour[3] };
-                    sprite.set_colour(Vector4f{ temp_colour[0], temp_colour[1], temp_colour[2], temp_colour[3] });
+                    sprite.set_colour(vec4{ temp_colour[0], temp_colour[1], temp_colour[2], temp_colour[3] });
                     ImGui::Columns(1);
 
                     static i32 z_index;
@@ -584,7 +591,7 @@ namespace codex::editor {
                                                                  // mode
                         f32 temp_colour[4]{ c.colour.x, c.colour.y, c.colour.z, c.colour.w };
                         ImGui::ColorPicker4("##grid_colour_picker", temp_colour, flags);
-                        c.colour = Vector4f{ temp_colour[0], temp_colour[1], temp_colour[2], temp_colour[3] };
+                        c.colour = vec4{ temp_colour[0], temp_colour[1], temp_colour[2], temp_colour[3] };
                         ImGui::Columns(1);
                     }
                 }
@@ -783,6 +790,38 @@ namespace codex::editor {
                             ImGui::Dummy(ImVec2(0.0f, 4.0f));
                         }
 
+                        // Sprite size (the on-screen quad size; 0 falls back to one tile).
+                        {
+                            vec2 sprite_size = c.sprite.size();
+                            SceneEditorView::draw_vec2_control("Sprite size", sprite_size, d->column_width);
+                            ImGui::Dummy(ImVec2(0.0f, 4.0f));
+
+                            if (sprite_size != c.sprite.size())
+                                c.sprite.set_size(sprite_size);
+                        }
+
+                        // Active animation
+                        if (!c.animations.empty()) {
+                            ImGui::Columns(2);
+                            ImGui::SetColumnWidth(0, d->column_width);
+                            ImGui::Text("Active animation");
+                            ImGui::NextColumn();
+
+                            if (c.active_animation >= c.animations.size())
+                                c.active_animation = 0;
+                            if (ImGui::BeginCombo("##tsanim_active", c.animations[c.active_animation].name.c_str())) {
+                                for (usize i = 0; i < c.animations.size(); ++i) {
+                                    if (ImGui::Selectable(
+                                            (c.animations[i].name + "##tsanim_active_" + std::to_string(i)).c_str(),
+                                            i == c.active_animation))
+                                        c.active_animation = static_cast<u32>(i);
+                                }
+                                ImGui::EndCombo();
+                            }
+                            ImGui::Columns(1);
+                            ImGui::Dummy(ImVec2(0.0f, 4.0f));
+                        }
+
                         // Add animation button
                         {
                             if (ImGui::Button("Add an animation")) {
@@ -842,7 +881,42 @@ namespace codex::editor {
                                 ImGui::Columns(1);
                             }
 
-                            // Animation preview (first frame tile)
+                            {
+                                ImGui::Columns(2);
+                                ImGui::SetColumnWidth(0, d->column_width);
+                                ImGui::Text("Playback Mode");
+                                ImGui::NextColumn();
+                                std::string_view playmode;
+                                switch (anim.playback_mode) {
+                                    using enum TilesetAnimationComponent::Animation::PlaybackMode;
+                                    case kNormal: playmode = "Normal"; break;
+                                    case kReverse: playmode = "Reverse"; break;
+                                    case kPingPong: playmode = "Ping Pong"; break;
+                                    case kOneShot: playmode = "One Shot"; break;
+                                    case kOneShotReverse: playmode = "One Shot Reverse"; break;
+                                    default: playmode = "None"; break;
+                                }
+
+                                if (ImGui::BeginCombo("##plybck_md", playmode.data())) {
+                                    using enum TilesetAnimationComponent::Animation::PlaybackMode;
+                                    if (ImGui::Selectable("Normal")) {
+                                        anim.playback_mode = kNormal;
+                                    } else if (ImGui::Selectable("Reverse")) {
+                                        anim.playback_mode = kReverse;
+                                    } else if (ImGui::Selectable("Ping Pong")) {
+                                        anim.playback_mode = kPingPong;
+                                    } else if (ImGui::Selectable("One Shot")) {
+                                        anim.playback_mode = kOneShot;
+                                    } else if (ImGui::Selectable("One Shot Reverse")) {
+                                        anim.playback_mode = kOneShotReverse;
+                                    }
+
+                                    ImGui::EndCombo();
+                                }
+                                ImGui::Columns(1);
+                            }
+
+                            // Live animation preview
                             {
                                 ImGui::Columns(2);
                                 ImGui::SetColumnWidth(0, d->column_width);
@@ -851,15 +925,35 @@ namespace codex::editor {
 
                                 ImGui::BeginGroup();
                                 if (c.sprite) {
-                                    auto   texture = c.sprite.texture();
-                                    f32    tex_w   = static_cast<f32>(texture->width());
-                                    f32    tex_h   = static_cast<f32>(texture->height());
-                                    f32    tile_x  = anim.starting_tile.x * c.grid_size.x;
-                                    f32    tile_y  = anim.starting_tile.y * c.grid_size.y;
-                                    ImVec2 uv0     = { tile_x / tex_w, 1.0f - tile_y / tex_h };
-                                    ImVec2 uv1     = { (tile_x + c.grid_size.x) / tex_w,
-                                                       1.0f - (tile_y + c.grid_size.y) / tex_h };
+                                    // Drive the preview off the UI clock so it plays even in
+                                    // edit mode, independent of scene playback state.
+                                    // The active animation previews the component's real playback
+                                    // state so it matches the viewport frame-for-frame; the others
+                                    // run off the UI clock.
+                                    const bool is_active =
+                                        !c.animations.empty() && &anim == &c.animations[c.active_animation];
+                                    u32 frame = 0;
+                                    if (anim.frame_count > 0) {
+                                        if (is_active)
+                                            frame = anim.current_frame % anim.frame_count;
+                                        else if (anim.frame_rate > 0.0f)
+                                            frame =
+                                                static_cast<u32>(ImGui::GetTime() * anim.frame_rate) % anim.frame_count;
+                                    }
+
+                                    auto texture = c.sprite.texture();
+                                    f32  tex_w   = static_cast<f32>(texture->width());
+                                    f32  tex_h   = static_cast<f32>(texture->height());
+                                    f32  tile_x  = (anim.starting_tile.x + static_cast<f32>(frame)) * c.grid_size.x;
+                                    f32  tile_y  = anim.starting_tile.y * c.grid_size.y;
+                                    // Mirror the engine's texture mapping exactly (RenderBatch::upload_quad
+                                    // + the quad shader sample v = pixel_y / tex_h with no flip): the
+                                    // on-screen top of the quad samples tile_y + grid_h, the bottom tile_y.
+                                    ImVec2 uv0 = { tile_x / tex_w, (tile_y + c.grid_size.y) / tex_h };
+                                    ImVec2 uv1 = { (tile_x + c.grid_size.x) / tex_w, tile_y / tex_h };
                                     ImGui::Image((ImTextureID)(texture->gl_id()), { 100.0f, 100.0f }, uv0, uv1);
+                                    if (anim.frame_count > 0)
+                                        ImGui::Text("Frame %u / %u", frame + 1, anim.frame_count);
                                 } else {
                                     ImGui::Text("No bound texture.");
                                 }

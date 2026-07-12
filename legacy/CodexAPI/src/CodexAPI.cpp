@@ -103,7 +103,6 @@ void UpdateEntityFromDescriptor(int32_t id, EntityDescriptor* desc)
 		else 
 			texture = codex::Resources::GetResource<codex::Texture2D>(file_path);
 
-		auto sprite = codex::Sprite(texture, desc->spriteRenderer.sprite.srcRect);
 		sprite_component.SetSprite(sprite);
 		sprite_component.SetZIndex(desc->spriteRenderer.zIndex);
 		sprite_component.SetColour(desc->spriteRenderer.colour);
@@ -111,19 +110,16 @@ void UpdateEntityFromDescriptor(int32_t id, EntityDescriptor* desc)
 	else AddSpriteRendererComponent(id, &desc->spriteRenderer);*/
 }
 
-void SetSelectedTileCoord(codex::Vector2f newCoord)
 {
 	auto* active_scene = (codex::EditorScene*)g_WindowInstance->GetCurrentScene();
 	active_scene->SetSelectedTileCoord(newCoord);
 }
 
-codex::Vector2f GetSelectedTileCoord()
 {
 	auto* active_scene = (codex::EditorScene*)g_WindowInstance->GetCurrentScene();
 	return active_scene->GetSelectedTileCoord();
 }
 
-void GetMousePositionInWorld(codex::Vector2f& vec)
 {
 	auto* active_scene = (codex::EditorScene*)g_WindowInstance->GetCurrentScene();
 	vec = active_scene->GetMousePositionInWorld();
@@ -149,7 +145,6 @@ void AddSpriteRendererComponent(int32_t id, DescriptorSpriteRendererComponent* c
 	const auto& descriptor_sprite = c->sprite;
 	auto native_sprite = codex::Sprite(
 		codex::Resources::Load<codex::Texture2D>(descriptor_sprite.texture.filePath),
-		descriptor_sprite.srcRect);
 	entity.AddComponent<codex::SpriteRendererComponent>(native_sprite, c->colour);
 }
 
@@ -200,7 +195,6 @@ void UpdateSpriteRendererComponent(int32_t id, DescriptorSpriteRendererComponent
 
 	auto& sprite_component = entity.GetComponent<codex::SpriteRendererComponent>();
 
-	codex::Sprite sprite(codex::Resources::Load<codex::Texture2D>(c->sprite.texture.filePath), c->sprite.srcRect);
 	sprite_component.SetSprite(sprite);
 	sprite_component.SetColour(c->colour);
 	sprite_component.SetZIndex(c->zIndex);

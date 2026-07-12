@@ -68,11 +68,7 @@ namespace CodexEditor.ViewModel.ECS
 	[DataContract]
 	class TransformComponent : Component
 	{
-		private Vector3 _position;
-		private Vector3 _rotation;
-		private Vector3 _scale;
 		[DataMember]
-		public Vector3 Position
 		{
 			get => _position;
 			set
@@ -85,7 +81,6 @@ namespace CodexEditor.ViewModel.ECS
 			}
 		}
 		[DataMember]
-		public Vector3 Rotation
 		{
 			get => _rotation;
 			set
@@ -98,7 +93,6 @@ namespace CodexEditor.ViewModel.ECS
 			}
 		}
 		[DataMember]
-		public Vector3 Scale
 		{
 			get => _scale;
 			set
@@ -113,9 +107,6 @@ namespace CodexEditor.ViewModel.ECS
 
 		public TransformComponent(Entity parent) : base(parent)
 		{
-			Position = new Vector3();
-			Rotation = new Vector3();
-			Scale = new Vector3(1.0f);
 		}
 
 		public override IMSComponent GetMultiselectionComponent(MSEntityModel msEntity) => new MSTransformComponent(msEntity);
@@ -244,7 +235,6 @@ namespace CodexEditor.ViewModel.ECS
 				{
 					for (int x = 0; x < _texture.Width; x += (int)_tileSize.X)
 					{
-						_sprites.Add(new Sprite(_texture, new RectangleF(x, y, _tileSize.X, _tileSize.Y)));
 					}
 				}
 			}*/
@@ -413,7 +403,6 @@ namespace CodexEditor.ViewModel.ECS
 				case nameof(PosZ):
 					SelectedComponents.ForEach(x =>
 					{
-						x.Position = new Vector3(
 							_posX ?? x.Position.X,
 							_posY ?? x.Position.Y,
 							_posZ ?? x.Position.Z
@@ -427,7 +416,6 @@ namespace CodexEditor.ViewModel.ECS
 				case nameof(RotZ):
 					SelectedComponents.ForEach(x =>
 					{
-						x.Rotation = new Vector3(
 							_rotX ?? x.Rotation.X,
 							_rotY ?? x.Rotation.Y,
 							_rotZ ?? x.Rotation.Z);
@@ -440,7 +428,6 @@ namespace CodexEditor.ViewModel.ECS
 				case nameof(ScaleZ):
 					SelectedComponents.ForEach(x =>
 					{
-						x.Scale = new Vector3(
 							_scaleX ?? x.Scale.X,
 							_scaleY ?? x.Scale.Y,
 							_scaleZ ?? x.Scale.Z);

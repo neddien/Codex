@@ -50,9 +50,10 @@ namespace codex::editor {
             }
         }
 
-        s_vfs_.mount(Shared<fs::DiskMount>::make(s_app_data_path_, 0), "/editor/share", true);
-        s_vfs_.mount(Shared<fs::DiskMount>::make(s_var_app_data_path_, 0), "/editor/var", true);
-        s_vfs_.mkdir("/editor/tmp");
+        s_vfs_.mount(Shared<fs::DiskMount>::make(s_app_data_path_, 0), "/edit/share", true);
+        s_vfs_.mount(Shared<fs::DiskMount>::make(CE_INSTALL_DIR, 0), "/edit/install", true);
+        s_vfs_.mount(Shared<fs::DiskMount>::make(s_var_app_data_path_, 0), "/edit/var", true);
+        s_vfs_.mkdir("/edit/tmp");
 
         info("Application data path: '{}'", s_app_data_path_.string());
         info("Variable application data path: '{}'", s_var_app_data_path_.string());

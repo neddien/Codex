@@ -11,7 +11,6 @@ namespace CodexEditor.ViewModel.Shared
 	public enum VectorType
 	{
 		Vector2,
-		Vector3,
 		Vector4
 	}
 
@@ -25,7 +24,6 @@ namespace CodexEditor.ViewModel.Shared
 
 		public static readonly DependencyProperty VectorTypeProperty =
 			DependencyProperty.Register(nameof(VectorType), typeof(VectorType), typeof(VectorBox),
-				new PropertyMetadata(VectorType.Vector3));
 
 		public Orientation Orientation
 		{

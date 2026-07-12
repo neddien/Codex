@@ -47,11 +47,11 @@ namespace codex::gfx {
         static void begin(const scene::Camera& camera, const TransformComponent& camera_transform);
         static void begin(const scene::EditorCamera& camera);
         static void end(gfx::Shader* custom_end_shader = nullptr);
-        static void render_rect(Texture2D* texture, const Rectf& src_rect, const Matrix4f& mat, const Vector4f& colour,
+        static void render_rect(Texture2D* texture, const rect& src_rect, const mat4& mat, const vec4& colour,
                                 const i32 z_index = 0, const i32 entity_id = -1);
 
     public:
-        static inline void render_sprite(const Sprite& sprite, const Matrix4f& transform, const i32 entity_id = -1)
+        static inline void render_sprite(const Sprite& sprite, const mat4& transform, const i32 entity_id = -1)
         {
             render_rect(sprite.texture().as_shared().get(), sprite.texture_coords(), transform, sprite.colour(),
                         sprite.z_index(), entity_id);
@@ -62,8 +62,8 @@ namespace codex::gfx {
         static i32                      s_max_quad_count_per_batch_;
         static Shader*                  s_quad_shader_;
         static const scene::Camera*     s_current_camera_;
-        static Matrix4f                 s_current_camera_view_mat_;
-        static Vector3f                 s_current_camera_pos_;
+        static mat4                     s_current_camera_view_mat_;
+        static vec3                    s_current_camera_pos_;
         static std::vector<RenderBatch> s_batches_;
     };
 } // namespace codex::gfx

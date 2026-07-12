@@ -27,6 +27,7 @@ namespace codex::sys {
         bool                       create_window    = true;
         bool                       separate_console = false;
         bool                       shell_open       = false;
+        bool                       detached         = false;
         WindowState                window_state     = WindowState::Normal;
         std::function<void(i32)>   on_exit          = nullptr;
     };

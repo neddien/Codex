@@ -139,7 +139,6 @@
                             <Setter Property="Height" TargetName="rowDef3" Value="Auto"/>
                             <Setter Property="Visibility" TargetName="zNumBox" Value="Collapsed"/>
                         </DataTrigger>
-                        <DataTrigger Binding="{Binding VectorType, RelativeSource={RelativeSource Self}}" Value="Vector3">
                             <Setter Property="Width" TargetName="colDef3" Value="Auto"/>
                             <Setter Property="Height" TargetName="rowDef3" Value="Auto"/>
                         </DataTrigger>

@@ -4,6 +4,7 @@
 #include <engine/filesystem/vfs.h>
 #include <engine/graphics/public/texture2d.h>
 #include <engine/native_behaviour/public/native_behaviour_manager.h>
+#include <engine/scene/public/prefab.h>
 #include <engine/scene/scene_loader.h>
 
 namespace codex {
@@ -21,6 +22,9 @@ namespace codex {
         register_loader<NBScriptSourceNullLoader>({ "cpp", "cxx", "cc" });
         register_loader<NBScriptHeaderNullLoader>({ "h", "hpp", "hh", "hxx" });
         register_loader<SceneLoader>({ ".cxscene", ".cxsc" });
+        register_loader<scene::PrefabLoader>({
+            ".cxprefab",
+        });
 
         self.log(Info, "Initialized with root '{}', {} loaders registered", self.root_path_, self.loaders_.size());
     }

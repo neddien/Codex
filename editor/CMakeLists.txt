@@ -25,6 +25,7 @@ set_property(TARGET CodexEditor PROPERTY CXX_STANDARD 23)
 
 target_link_libraries(CodexEditor CodexEngine)
 add_dependencies(CodexEditor CodexEngine)
+target_include_directories(CodexEditor PRIVATE "${CMAKE_SOURCE_DIR}/codex-shipped/common")
 
 get_target_property(CODEX_BUILD_DIR CodexEngine BINARY_DIR)
 

@@ -221,8 +221,13 @@ namespace codex {
     void detail::dispose_logger()
     {
         std::scoped_lock guard{ s_tag_loggers_mutex };
+
+        s_initialized.store(false);
         s_tag_loggers.clear();
         s_spd_sinks.clear();
+
+        spdlog::drop_all();
+        spdlog::shutdown();
     }
 
     void detail::register_logger(const std::string_view logger_name) noexcept

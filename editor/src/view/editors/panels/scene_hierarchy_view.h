@@ -5,7 +5,7 @@
 #include "editor_panel.h"
 
 namespace codex::editor {
-    class SceneHierarchyView : public EditorPanel
+    class SceneHierarchyView : public EditorPanel, private Loggable<"SceneHierarchyView">
     {
     public:
         using EditorPanel::EditorPanel;

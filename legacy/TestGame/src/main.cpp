@@ -71,7 +71,6 @@ public:
         {
             if (m_Entity)
             {
-                Vector2f pos = { Input::GetMouseX(), Input::GetMouseY() };
                 fmt::println("Selected entity at {} is {}", pos, m_Framebuffer->ReadPixel(1, pos.x, pos.y));
             }
         }

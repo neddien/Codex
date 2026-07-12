@@ -1,6 +1,6 @@
 project("CodexEngine")
 
-# ============= # Version      # ============= #
+# ============= # Version # ============= #
 set(CX_VER_MAJ 0)
 set(CX_VER_MIN 1)
 set(CX_VER_REV 0)
@@ -217,7 +217,7 @@ else()
   target_link_libraries(CodexEngine-static PUBLIC SDL2::SDL2 SDL2::SDL2main)
 endif()
 
-# fmt (shared — must be loaded by the engine at startup so dlopen'd plugins
+# fmt (shared - must be loaded by the engine at startup so dlopen'd plugins
 # can resolve fmt symbols without needing their own copy)
 target_link_libraries(CodexEngine PUBLIC fmt::fmt)
 target_link_libraries(CodexEngine-static PUBLIC fmt::fmt)
@@ -234,10 +234,6 @@ target_link_libraries(CodexEngine-static PUBLIC spdlog::spdlog)
 target_link_libraries(CodexEngine PUBLIC nlohmann_json::nlohmann_json)
 target_link_libraries(CodexEngine-static PUBLIC nlohmann_json::nlohmann_json)
 
-# ImGui, core from Conan, backends compiled by us because they are
-# thin platform-specific adapters that imgui intentionally excludes from the
-# library. conanfile.py copies every backend into IMGUI_BACKENDS_DIR at
-# generate() time only the backends.
 string(TOUPPER "${CMAKE_BUILD_TYPE}" _cx_cfg)
 set(_fmt_lib_dir "${fmt_LIB_DIRS_${_cx_cfg}}")
 set(_fmt_bin_dir "${fmt_BIN_DIRS_${_cx_cfg}}")
@@ -431,9 +427,18 @@ if(DEFINED CX_PLATFORM_WINDOWS)
   install(DIRECTORY "${_sdl_bin_dir}/" DESTINATION bin FILES_MATCHING PATTERN "SDL2*.dll")
   install(FILES "${FMOD_CORE_DLL_PATH}" "${FMOD_STUDIO_DLL_PATH}" DESTINATION bin)
 
+  # Private dependency bundle consumed by the editor's project cooker. Keep it
+  # separate from the installation's general bin directory so unrelated files
+  # are never included in a shipped project.
+  install(TARGETS CodexEngine DESTINATION data/shipped/bin)
+  install(DIRECTORY "${_fmt_bin_dir}/" DESTINATION data/shipped/bin FILES_MATCHING PATTERN "fmt*.dll")
+  install(DIRECTORY "${_sdl_bin_dir}/" DESTINATION data/shipped/bin FILES_MATCHING PATTERN "SDL2*.dll")
+  install(FILES "${FMOD_CORE_DLL_PATH}" "${FMOD_STUDIO_DLL_PATH}" DESTINATION data/shipped/bin)
+
   # Program Files (or same location as the binary) for unmodifiable file data.
   # App Data for modifidable file data.
 elseif(DEFINED CX_PLATFORM_UNIX)
+  set_target_properties(CodexEngine PROPERTIES INSTALL_RPATH "$ORIGIN")
   install(
     TARGETS CodexEngine
             CodexEngine-static
@@ -452,6 +457,23 @@ elseif(DEFINED CX_PLATFORM_UNIX)
     execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
       \"${FMOD_STUDIO_LIB_FILE}\"
       \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/lib/${FMOD_STUDIO_SONAME}\")
+  ")
+
+  # Private dependency bundle consumed by the editor's project cooker. This
+  # prevents a /usr/local installation from causing all of /usr/local/lib to
+  # be copied into every exported project.
+  install(TARGETS CodexEngine DESTINATION data/shipped/lib)
+  install(DIRECTORY "${_fmt_lib_dir}/" DESTINATION data/shipped/lib FILES_MATCHING PATTERN "libfmt*.so*")
+  install(DIRECTORY "${_sdl_lib_dir}/" DESTINATION data/shipped/lib FILES_MATCHING PATTERN "libSDL2*.so*")
+  install(FILES "${FMOD_CORE_LIB_DIR}/${FMOD_CORE_LIB_FILE}" DESTINATION data/shipped/lib)
+  install(FILES "${FMOD_STUDIO_LIB_DIR}/${FMOD_STUDIO_LIB_FILE}" DESTINATION data/shipped/lib)
+  install(CODE "
+    execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
+      \"${FMOD_CORE_LIB_FILE}\"
+      \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/data/shipped/lib/${FMOD_CORE_SONAME}\")
+    execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
+      \"${FMOD_STUDIO_LIB_FILE}\"
+      \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/data/shipped/lib/${FMOD_STUDIO_SONAME}\")
   ")
 
   # /etc/appname for global configuration files. /usr/local/share/appname for

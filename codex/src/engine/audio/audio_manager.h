@@ -24,7 +24,7 @@ namespace codex::ax {
         // One-shot playback
         // static void PlaySound(const std::filesystem::path& path);
         // static void PlaySound(const std::filesystem::path& path, float volume);
-        // static void PlaySound(const std::filesystem::path& path, const Vector3& position);
+        // static void PlaySound(const std::filesystem::path& path, const vec3& position);
 
         // Controlled playback
         // static SoundHandle Play(const std::filesystem::path& path);

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <engine/core/public/exception.h>
 #include <engine/core/public/archive.h>
+#include <engine/core/public/exception.h>
 #include <engine/native_behaviour/public/native_behaviour.h>
 #include <engine/scene/public/components.h>
 #include <engine/scene/public/entity.h>
@@ -75,6 +75,7 @@ namespace codex {
         CX_REGISTER_COMPONENT(TilesetAnimationComponent);
         CX_REGISTER_COMPONENT(AudioSourceComponent);
         CX_REGISTER_COMPONENT(AudioListenerComponent);
+        CX_REGISTER_COMPONENT(HierarchyComponent);
     }
 
     template <typename... Components>
@@ -88,7 +89,7 @@ namespace codex {
         ComponentGroup<IDComponent, TransformComponent, TagComponent, SpriteRendererComponent, NativeBehaviourComponent,
                        CameraComponent, RigidBody2DComponent, BoxCollider2DComponent, CircleCollider2DComponent,
                        GridRendererComponent, TilemapComponent, TilesetAnimationComponent, AudioSourceComponent,
-                       AudioListenerComponent>;
+                       AudioListenerComponent, HierarchyComponent>;
 
     ///////////////////////////////////////////////////////////////////////////////
 } // namespace codex

@@ -4,13 +4,13 @@
         [
             {
                 "type": "IDComponent",
-                "uuid": "d027-510e-21b3a9ac"
+                "uuid": "706b-5d74-fbd3aa64"
             },
             {
                 "type": "TransformComponent",
                 "position": {
-                    "x": 0.0,
-                    "y": 0.0,
+                    "x": -50.99994659423828,
+                    "y": -73.99991607666016,
                     "z": 0.0
                 },
                 "rotation": {
@@ -26,98 +26,50 @@
             },
             {
                 "type": "TagComponent",
-                "tag": "Camera"
+                "tag": "Entity 4"
             },
             {
-                "type": "CameraComponent"
-            }
-        ],
-        [
-            {
-                "type": "IDComponent",
-                "uuid": "e83f-6cfd-bce28950"
-            },
-            {
-                "type": "TransformComponent",
-                "position": {
-                    "x": -183.00015258789063,
-                    "y": 2.9998703002929688,
-                    "z": 0.0
+                "type": "TilesetAnimationComponent",
+                "sprite": {
+                    "asset": {
+                        "path": "sprites/dun_tileset.png",
+                        "uuid": "2792-434e-e3d9cb37"
+                    },
+                    "texture_coords": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "w": 384.0,
+                        "h": 160.0
+                    },
+                    "size": {
+                        "x": 64.0,
+                        "y": 64.0
+                    },
+                    "colour": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0,
+                        "w": 1.0
+                    },
+                    "z_index": 0
                 },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "z": 0.0
+                "grid_size": {
+                    "x": 16.0,
+                    "y": 16.0
                 },
-                "scale": {
-                    "x": 1.0,
-                    "y": 1.0,
-                    "z": 1.0
-                }
-            },
-            {
-                "type": "TagComponent",
-                "tag": "Player"
-            },
-            {
-                "type": "SpriteRendererComponent",
-                "asset": {
-                    "path": "sprites/dun_tileset.png",
-                    "uuid": "2792-434e-e3d9cb37"
-                },
-                "texture_coords": {
-                    "x": 368.0,
-                    "y": 32.0,
-                    "w": 16.0,
-                    "h": 16.0
-                },
-                "size": {
-                    "x": 64.0,
-                    "y": 64.0
-                },
-                "colour": {
-                    "x": 1.0,
-                    "y": 1.0,
-                    "z": 1.0,
-                    "w": 1.0
-                },
-                "z_index": 0
-            },
-            {
-                "type": "NativeBehaviourComponent",
-                "attached_scripts": [
-                    "PlayerController"
-                ]
-            },
-            {
-                "type": "RigidBody2DComponent",
-                "body_type": "Dynamic",
-                "fixed_rotation": false,
-                "linear_damping": 25.0,
-                "angular_damping": 0.10000000149011612,
-                "high_velocity": false,
-                "enabled": true,
-                "gravity_scale": 0.0
-            },
-            {
-                "type": "BoxCollider2DComponent",
-                "offset": {
-                    "x": 0.0,
-                    "y": 0.0
-                },
-                "size": {
-                    "x": 32.0,
-                    "y": 32.0
-                },
-                "physics_material": {
-                    "density": 1.0,
-                    "friction": 0.5,
-                    "restitution": 0.5,
-                    "restitution_threshold": 0.5
-                }
-            },
-            {
-                "type": "AudioListenerComponent"
+                "animations": [
+                    {
+                        "name": "animation #0",
+                        "starting_tile": {
+                            "x": 0.0,
+                            "y": 4.0
+                        },
+                        "frame_count": 7,
+                        "frame_rate": 24.0,
+                        "playback_mode": "kPingPong"
+                    }
+                ],
+                "active_animation": 0
             }
         ],
         [
@@ -128,8 +80,8 @@
             {
                 "type": "TransformComponent",
                 "position": {
-                    "x": 0.0,
-                    "y": 0.0,
+                    "x": 31.200010299682617,
+                    "y": 20.80000114440918,
                     "z": 0.0
                 },
                 "rotation": {
@@ -187,6 +139,144 @@
                     "reverb-drywet": 0.0,
                     "reverb-size": 0.0
                 }
+            }
+        ],
+        [
+            {
+                "type": "IDComponent",
+                "uuid": "e83f-6cfd-bce28950"
+            },
+            {
+                "type": "TransformComponent",
+                "position": {
+                    "x": -183.00015258789063,
+                    "y": 2.9998703002929688,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 1.0,
+                    "y": 1.0,
+                    "z": 1.0
+                }
+            },
+            {
+                "type": "TagComponent",
+                "tag": "Player"
+            },
+            {
+                "type": "NativeBehaviourComponent",
+                "scripts": {
+                    "PlayerController": "{\n    \"velocity_\": {\n        \"x\": 150.0,\n        \"y\": 150.0\n    },\n    \"current_velocity_\": {\n        \"x\": 0.0,\n        \"y\": 0.0\n    },\n    \"sub_\": {\n        \"x\": 10.0,\n        \"y\": 10.0,\n        \"z\": 0.0\n    },\n    \"lerp_\": 0.5,\n    \"fire_rate_\": 0.5,\n    \"projectile_\": {\n        \"path\": {\n            \"path\": \"prefabs/projectile.cxprefab\",\n            \"uuid\": \"589d-f524-3d2b9754\"\n        }\n    }\n}"
+                }
+            },
+            {
+                "type": "RigidBody2DComponent",
+                "body_type": "Dynamic",
+                "fixed_rotation": true,
+                "linear_damping": 10.0,
+                "angular_damping": 0.10000000149011612,
+                "high_velocity": false,
+                "enabled": true,
+                "gravity_scale": 0.0
+            },
+            {
+                "type": "BoxCollider2DComponent",
+                "offset": {
+                    "x": 0.0,
+                    "y": 0.0
+                },
+                "size": {
+                    "x": 64.0,
+                    "y": 64.0
+                },
+                "physics_material": {
+                    "density": 1.0,
+                    "friction": 0.5,
+                    "restitution": 0.5,
+                    "restitution_threshold": 0.5
+                }
+            },
+            {
+                "type": "TilesetAnimationComponent",
+                "sprite": {
+                    "asset": {
+                        "path": "sprites/mrgoose-Sheet.png",
+                        "uuid": "0907-1e10-719a0b32"
+                    },
+                    "texture_coords": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "w": 896.0,
+                        "h": 64.0
+                    },
+                    "size": {
+                        "x": 128.0,
+                        "y": 128.0
+                    },
+                    "colour": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0,
+                        "w": 1.0
+                    },
+                    "z_index": 0
+                },
+                "grid_size": {
+                    "x": 64.0,
+                    "y": 64.0
+                },
+                "animations": [
+                    {
+                        "name": "animation #0",
+                        "starting_tile": {
+                            "x": 64.0,
+                            "y": 0.0
+                        },
+                        "frame_count": 13,
+                        "frame_rate": 12.0,
+                        "playback_mode": "kNormal"
+                    }
+                ],
+                "active_animation": 0
+            },
+            {
+                "type": "AudioListenerComponent"
+            }
+        ],
+        [
+            {
+                "type": "IDComponent",
+                "uuid": "d027-510e-21b3a9ac"
+            },
+            {
+                "type": "TransformComponent",
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 1.0,
+                    "y": 1.0,
+                    "z": 1.0
+                }
+            },
+            {
+                "type": "TagComponent",
+                "tag": "Camera"
+            },
+            {
+                "type": "CameraComponent"
             }
         ]
     ]

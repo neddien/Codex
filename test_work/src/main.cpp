@@ -50,9 +50,9 @@ public:
         gfx::BatchRenderer2D::begin(camera_, camera_transform_);
 
         if (texture_) {
-            gfx::BatchRenderer2D::render_rect(
-                &texture_, opengl::Rectf{ 0.0f, 0.0f, (f32)texture_.width(), (f32)texture_.height() },
-                sprite_transform_.to_matrix(), Vector4f{ 1.0f, 1.0f, 1.0f, 1.0f });
+            gfx::BatchRenderer2D::render_rect(&texture_,
+                                              opengl::rect{ 0.0f, 0.0f, (f32)texture_.width(), (f32)texture_.height() },
+                                              sprite_transform_.world_mat(), vec4{ 1.0f, 1.0f, 1.0f, 1.0f });
         }
 
         gfx::BatchRenderer2D::end();
@@ -72,7 +72,7 @@ public:
                 camera_.set_height(ev.height());
 
                 const auto scaler       = std::min(ev.width() / window_orig_size_.x, ev.height() / window_orig_size_.y);
-                sprite_transform_.scale = Vector3f{ sprite_scale_.x * scaler, sprite_scale_.y * scaler, 1.0f };
+                sprite_transform_.scale = vec3{ sprite_scale_.x * scaler, sprite_scale_.y * scaler, 1.0f };
 
                 return true;
             });
@@ -83,8 +83,8 @@ private:
     scene::Camera         camera_;
     TransformComponent    camera_transform_;
     gfx::Texture2D        texture_;
-    Vector2f              window_orig_size_;
-    Vector3f              sprite_scale_;
+    vec2                  window_orig_size_;
+    vec3                  sprite_scale_;
     TransformComponent    sprite_transform_;
 };
 
@@ -101,10 +101,10 @@ public:
 
 Engine* codex::create_engine(const codex::EngineArgs args)
 {
-    return new TestWork(
-        EngineProperties{ .name              = "TestWork",
-                          .cwd               = "./",
-                          .args              = args,
-                          .flags             = codex::EngineFlags::Video | codex::EngineFlags::Logger,
-                          .window_properties = { .width = 800, .height = 600, .frame_cap = 300, .vsync = false } });
+    return new TestWork(EngineProperties{
+        .name             = "TestWork",
+        .cwd              = "./",
+        .args             = args,
+        .flags            = codex::EngineFlags::Video | codex::EngineFlags::Logger,
+        .video_properties = { .window_width = 800, .window_height = 600, .frame_cap = 300, .vsync = false } });
 }

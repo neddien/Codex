@@ -53,12 +53,10 @@ class PropertyInfo:
             "bool": "Bool",
             "std::string": "String",
             "std::basic_string<char>": "String",
-            "Vector3f": "Vector3f",
-            "Vector4f": "Vector4f",
-            "Vector2f": "Vector2f",
-            "Vector3": "Vector3",
-            "Vector4": "Vector4",
-            "Vector2": "Vector2",
+            "vec4": "Vector4f",
+            "vec2": "Vector2f",
+            "ivec4": "Vector4",
+            "ivec2": "Vector2",
         }
 
         return type_map.get(base_type, "UserDefined")
@@ -398,12 +396,12 @@ class LibclangReflectionParser:
             '-Df32=float',
             '-Df64=double',
             '-Dusize=size_t',
-            '-DVector3f=float[3]',
-            '-DVector2f=float[2]',
-            '-DVector4f=float[4]',
-            '-DVector3=double[3]',
-            '-DVector2=double[2]',
-            '-DVector4=double[4]',
+            '-Dvec3=float[3]',
+            '-Dvec2=float[2]',
+            '-Dvec4=float[4]',
+            '-Divec3=int[3]',
+            '-Divec2=int[2]',
+            '-Divec4=int[4]',
         ])
 
         # On non-Windows, add clang's built-in headers for stddef.h etc.
@@ -777,12 +775,12 @@ static bool s_{self.class_info.name}_Registered = []() {{
             "bool": "false",
             "std::string": '""',
             "std::basic_string<char>": '""',
-            "Vector3": "Vector3()",
-            "Vector4": "Vector4()",
-            "Vector2": "Vector2()",
-            "Vector3f": "Vector3f()",
-            "Vector4f": "Vector4f()",
-            "Vector2f": "Vector2f()",
+            "ivec3": "ivec3()",
+            "ivec4": "ivec4()",
+            "ivec2": "ivec2()",
+            "vec3": "vec3()",
+            "vec4": "vec4()",
+            "vec2": "vec2()",
         }
         return defaults.get(clean_type, f"{clean_type}()")
 

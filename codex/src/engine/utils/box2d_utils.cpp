@@ -15,12 +15,12 @@ namespace codex::util {
         return b2_staticBody;
     }
 
-    [[nodiscard]] b2Vec3 to_b2_vec3(const Vector3f& vec) noexcept
+    [[nodiscard]] b2Vec3 to_b2_vec3(const vec3& vec) noexcept
     {
         return b2Vec3(vec.x, vec.y, vec.z);
     }
 
-    [[nodiscard]] b2Vec2 to_b2_vec2(const Vector2f& vec) noexcept
+    [[nodiscard]] b2Vec2 to_b2_vec2(const vec2& vec) noexcept
     {
         return b2Vec2(vec.x, vec.y);
     }

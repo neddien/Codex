@@ -66,13 +66,13 @@ namespace codex::editor {
         std::filesystem::path           script_module_path;
         SelectedEntityDescriptor        selected_entity;
         f32                             column_width = 140.0f;
-        Vector4f                        select_colour{ 0.9f, 0.5f, 0.07f, 1.0f };
+        vec4                           select_colour{ 0.9f, 0.5f, 0.07f, 1.0f };
         std::filesystem::path           current_project_path;
         std::atomic<CompilationState>   compilation_state{ CompilationState::Idle };
         std::atomic<bool>               pending_nb_load{ false };
         f64                             compilation_finish_time = 0.0;
-        Shared<fs::VirtualFilesystem>   vfs                     = Shared<fs::VirtualFilesystem>::make();
         std::atomic<AssetRegistryState> registry_state{ AssetRegistryState::Idle };
+        std::atomic<u64>                asset_registry_revision{ 0 };
         std::mutex                      registry_state_mutex;
         std::condition_variable         registry_state_cv;
         bool                            registry_state_ready{ false };
@@ -94,6 +94,7 @@ namespace codex::editor {
             pending_nb_load         = false;
             compilation_finish_time = .0f;
             registry_state          = AssetRegistryState::Idle;
+            asset_registry_revision = 0;
             registry_state_ready    = false;
             selected_asset          = {};
             outline_border_size     = .05f;
@@ -119,11 +120,17 @@ namespace codex::editor {
                                         std::memory_order_acq_rel);
                 other.registry_state.exchange(tmp, std::memory_order_acq_rel);
             }
+            {
+                auto tmp = asset_registry_revision.load(std::memory_order_acquire);
+                asset_registry_revision.exchange(other.asset_registry_revision.load(std::memory_order_acquire),
+                                                 std::memory_order_acq_rel);
+                other.asset_registry_revision.exchange(tmp, std::memory_order_acq_rel);
+            }
             std::swap(registry_state_ready, other.registry_state_ready);
             std::swap(selected_asset, other.selected_asset);
             std::swap(outline_shader, other.outline_shader);
             std::swap(outline_border_size, other.outline_border_size);
-            vfs.swap(other.vfs);
+            return *this;
         }
     };
 
@@ -135,8 +142,8 @@ namespace codex::editor {
 
     private:
         Box<opengl::FrameBuffer>                          framebuffer_ = nullptr;
-        Vector2f                                          viewport_bounds_[2]{};
-        Vector2f                                          viewport_size_{};
+        vec2                                              viewport_bounds_[2]{};
+        vec2                                              viewport_size_{};
         bool                                              gizmo_active_ = false;
         GizmoMode                                         gizmo_mode_   = GizmoMode::Translation;
         NativeBehaviour*                                  script_       = nullptr;
@@ -171,6 +178,7 @@ namespace codex::editor {
 
     public:
         void compile_project();
+        void load_script_module(Scene& scene);
         void on_scene_play() noexcept;
         void on_scene_simulate() noexcept;
         void on_scene_stop() noexcept;
@@ -210,13 +218,14 @@ namespace codex::editor {
     private:
         void load_outline_shader();
         void viewport_resize();
+        void cook_and_export_project();
 
     public:
         static void render_grid(gfx::DebugDraw& renderer, const scene::EditorCamera& camera,
                                 const GridRendererComponent& c) noexcept;
-        static void draw_vec3_control(const char* label, Vector3f& values, const f32 column_width = 100.0f,
+        static void draw_vec3_control(const char* label, vec3& values, const f32 column_width = 100.0f,
                                       const f32 speed = 1.0f, const f32 reset_value = 0.0f);
-        static void draw_vec2_control(const char* label, Vector2f& values, const f32 column_width = 100.0f,
+        static void draw_vec2_control(const char* label, vec2& values, const f32 column_width = 100.0f,
                                       const f32 speed = 1.0f, const f32 reset_value = 0.0);
         static void draw_asset_path(const AssetPath& path, const f32 column_width = 100.0f);
     };

@@ -23,14 +23,10 @@
 
 namespace codex {
     void B2WorldDeleter::operator()(b2World* world) noexcept
-    {
-        delete world;
-    }
+    { delete world; }
 
     void Scene::ImportSettings::archive(Archive& ar)
-    {
-        ar("serdes_type", ar_type_);
-    }
+    { ar("serdes_type", ar_type_); }
 
     using EntityMap = std::unordered_map<UUID, entt::entity>;
 
@@ -54,9 +50,7 @@ namespace codex {
     template <typename... Components>
     static void copy_components(ComponentGroup<Components...>, const entt::registry& from, entt::registry& to,
                                 const EntityMap& map) noexcept
-    {
-        copy_components<Components...>(from, to, map);
-    }
+    { copy_components<Components...>(from, to, map); }
 
     template <typename... Components>
     [[nodiscarcd]] static std::vector<Component*> collect_components(ComponentGroup<Components...>,
@@ -89,16 +83,18 @@ namespace codex {
 
     Scene::~Scene() noexcept
     {
+        // Stop the fixed-update thread first: it iterates the behaviours we are
+        // about to destroy.
+        state_.store(State::Edit);
+        if (fixed_update_thread_.joinable())
+            fixed_update_thread_.join();
+
         // Attached scripts need to be detached (and freed) first before NBMan is unloaded.
         // The reason why I'm not directly invoking the destructor of entt::basic_registry<> is
         // because it causes a crash on OSX.
         auto view = registry_->view<NativeBehaviourComponent>();
         for (auto& e : view)
             view.get<NativeBehaviourComponent>(e).dispose_behaviours();
-
-        state_.store(State::Edit);
-        if (fixed_update_thread_.joinable())
-            fixed_update_thread_.join();
     }
 
     void Scene::copy_to(Scene& other) const noexcept
@@ -126,16 +122,14 @@ namespace codex {
         */
     }
 
-    void Scene::clone_via_serialization(Scene& other) const noexcept
+    void Scene::clone_via_serialization(Scene& other) const
     {
         const std::vector<u8> bytes = SerializationManager::to_binary(*this);
         SerializationManager::from_binary(other, bytes);
     }
 
     u32 Scene::entity_count() const noexcept
-    {
-        return registry_->view<entt::entity>().size_hint();
-    }
+    { return registry_->view<entt::entity>().size_hint(); }
 
     void Scene::swap(Scene& other) noexcept
     {
@@ -151,40 +145,193 @@ namespace codex {
     }
 
     bool Scene::is_valid(const Entity entity) const noexcept
-    {
-        return registry_->valid(entity.handle);
-    }
+    { return registry_->valid(entity.handle_); }
 
-    Entity Scene::create_entity(const std::string_view defaultTag, UUID uuid) noexcept
+    Entity Scene::create_entity(std::string_view tag) noexcept
     {
         Entity cx_entity;
         {
-            auto registry   = registry_.lock();
-            auto entity     = registry->create();
-            cx_entity       = Entity{ entity, this };
-            auto& id_comp   = registry->emplace<IDComponent>(entity, uuid);
-            id_comp.parent_ = cx_entity;
+            auto registry                 = registry_.lock();
+            auto entity                   = registry->create();
+            cx_entity                     = Entity{ entity, this };
+            auto& id_comp                 = registry->emplace<IDComponent>(entity, UUID{});
+            uuid_to_entity_[id_comp.uuid] = cx_entity;
+            id_comp.parent_               = cx_entity;
         }
 
-        cx_entity.add_component<TransformComponent>();
-        cx_entity.add_component<TagComponent>(defaultTag);
+        cx_entity.add_component<TagComponent>(tag);
         return cx_entity;
     }
 
-    void Scene::remove_entity(const Entity entity)
+    Entity Scene::create_entity(const std::optional<math::transform>& transform, std::string_view tag,
+                                UUID uuid) noexcept
     {
-        CX_ASSERT(registry_->valid(entity.handle), "Entity does not exists in registry.");
-        registry_->destroy(entity.handle);
+        Entity cx_entity;
+        {
+            auto registry                 = registry_.lock();
+            auto entity                   = registry->create();
+            cx_entity                     = Entity{ entity, this };
+            auto& id_comp                 = registry->emplace<IDComponent>(entity, uuid);
+            uuid_to_entity_[id_comp.uuid] = cx_entity;
+            id_comp.parent_               = cx_entity;
+        }
+
+        cx_entity.add_component<TransformComponent>(transform.value_or(math::transform{}));
+        cx_entity.add_component<TagComponent>(tag);
+        return cx_entity;
+    }
+
+    void Scene::remove_entity(Entity entity)
+    {
+        CX_ASSERT(registry_->valid(entity.handle_), "Entity does not exists in registry.");
+
+        std::scoped_lock guard{ mutex_ };
+        auto             registry = registry_.lock();
+
+        // Detach in case there's a hierarchy
+        if (entity.has_component<HierarchyComponent>()) {
+            auto&               hc   = entity.get_component<HierarchyComponent>();
+            HierarchyComponent* p_hc = nullptr;
+
+            if (hc.parent) {
+                p_hc = &hc.parent.get_component<HierarchyComponent>();
+                if (auto it = std::find(p_hc->children.begin(), p_hc->children.end(), entity);
+                    it != p_hc->children.end())
+                    p_hc->children.erase(it);
+            }
+
+            for (Entity& e : hc.children) {
+                auto& c_hc  = e.get_component<HierarchyComponent>();
+                c_hc.parent = hc.parent; // If we don't have a parent, neither will our children when we'll die so its
+                                         // okay to assign parent here blindly
+
+                if (p_hc) {
+                    p_hc->children.push_back(e);
+                }
+            }
+        }
+
+        auto& idc = entity.get_component<IDComponent>();
+        if (auto it = uuid_to_entity_.find(idc.uuid); it != uuid_to_entity_.end())
+            uuid_to_entity_.erase(it);
+
+        // Release the entity's behaviours (and its bag) before the registry entry gets deleted
+        if (auto* nbc = registry->try_get<NativeBehaviourComponent>(entity.handle_))
+            nbc->dispose();
+
+        registry->destroy(entity.handle_);
     }
 
     void Scene::remove_entity(const u32 entity)
+    { remove_entity(Entity{ static_cast<entt::entity>(entity), this }); }
+
+    Entity Scene::instantiate_prefab(const scene::Prefab& prefab, const std::optional<math::transform>& transform,
+                                     std::string_view tag, UUID uuid) noexcept
     {
-        registry_->destroy(static_cast<entt::entity>(entity));
+        Entity entity = prefab.instantiate(*this);
+
+        if (transform)
+            static_cast<math::transform&>(entity.get_component<TransformComponent>()) = *transform;
+
+        auto& idc = entity.get_component<IDComponent>();
+        auto& tc  = entity.get_component<TagComponent>();
+
+        // Updated the UUID to Entity map
+        if (auto it = uuid_to_entity_.find(idc.uuid); it != uuid_to_entity_.end())
+            uuid_to_entity_.erase(it);
+        uuid_to_entity_[uuid] = entity;
+
+        idc.uuid = uuid;
+        tc.tag   = tag;
+
+        // Need to construct physics body and call on_init() in case this prefab is
+        // being spawned from runtime because the prefab might have NB and RB2D
+        // components which need to be properly configured and initialized.
+        if (state() != State::Edit && physics_world_) {
+            std::scoped_lock guard{ mutex_ };
+            {
+                auto registry = registry_.lock();
+                construct_physics_body(*registry, entity.handle_);
+            }
+
+            std::vector<NativeBehaviour*> spawned;
+            {
+                auto registry = registry_.lock();
+                if (auto* nbc = registry->try_get<NativeBehaviourComponent>(entity.handle_))
+                    spawned = nbc->behaviours();
+            }
+            for (NativeBehaviour* bh : spawned) {
+                try {
+                    bh->on_init();
+                }
+                catch (const std::exception& ex) {
+                    log(Error, "A behaviour exception occured while spawning a prefab: {}", ex.what());
+                }
+            }
+        }
+
+        return entity;
     }
 
-    Entity Scene::instantiate_prefab(const scene::Prefab& prefab) noexcept
+    void Scene::enqueue_for_disposal(Entity entity) noexcept
     {
-        return prefab.instantiate(*this);
+        std::scoped_lock guard{ mutex_ };
+        entities_to_be_disposed_.push_back(entity);
+    }
+
+    Entity Scene::entity_by_uuid(UUID uuid) noexcept
+    {
+        std::scoped_lock guard{ mutex_ };
+        if (auto it = uuid_to_entity_.find(uuid); it != uuid_to_entity_.end())
+            return it->second;
+        return Entity{};
+    }
+
+    void Scene::set_parent(Entity parent, Entity child) noexcept
+    {
+        // If parent or child are nil, or parent is child
+        if ((!parent || !child) || parent == child)
+            return;
+
+        if (!parent.has_component<HierarchyComponent>())
+            parent.add_component<HierarchyComponent>();
+
+        if (!child.has_component<HierarchyComponent>())
+            child.add_component<HierarchyComponent>();
+
+        auto& c_hc = child.get_component<HierarchyComponent>();
+        auto& p_hc = parent.get_component<HierarchyComponent>();
+
+        Entity cur = parent;
+        while (cur) {
+            if (cur == child)
+                return;
+            if (!cur.has_component<HierarchyComponent>())
+                break;
+            cur = cur.get_component<HierarchyComponent>().parent;
+        }
+
+        // If our parent already has this child
+        if (std::find(p_hc.children.begin(), p_hc.children.end(), child) != p_hc.children.end())
+            return;
+
+        // If our child already has a parent
+        if (c_hc.parent) {
+            auto& cp_hc = c_hc.parent.get_component<HierarchyComponent>();
+            cp_hc.children.erase(std::find(cp_hc.children.begin(), cp_hc.children.end(), child));
+        }
+
+        mat4 w_child = child.transform().world_mat();
+
+        c_hc.parent = parent;
+        p_hc.children.push_back(child);
+
+        // Calculate local_new and decompose to TRS
+        mat4       local_new   = glm::inverse(parent.transform().world_mat()) * w_child;
+        transform& local_child = child.transform();
+        vec3       rot_in_rad;
+        math::transform_decompose(local_new, local_child.position, rot_in_rad, local_child.scale);
+        local_child.rotation = glm::degrees(rot_in_rad);
     }
 
     Scene::BagHandle Scene::create_behaviour_bag(Entity owner) noexcept
@@ -267,8 +414,52 @@ namespace codex {
     }
 
     [[nodiscard]] Entity Scene::primary_camera_entity() noexcept
+    { return (primary_camera_entity_) ? *primary_camera_entity_ : Entity::none(); }
+
+    void Scene::transform_pass()
     {
-        return (primary_camera_entity_) ? *primary_camera_entity_ : Entity::none();
+        std::scoped_lock guard{ mutex_ };
+        auto             registry = registry_.lock();
+
+        auto calc_local = [](const vec3& translation, const vec3& rotation, const vec3& scale) -> mat4
+
+        {
+            mat4 trs_mat =
+                glm::eulerAngleXYZ(glm::radians(rotation.x), glm::radians(rotation.y), glm::radians(rotation.z));
+            trs_mat[3] = vec4(translation, 1.0f);
+            return glm::scale(trs_mat, scale);
+        };
+
+        std::vector<entt::entity> parent_entities;
+        auto                      view = registry->view<TransformComponent>();
+        for (const auto& [e, tc] : view.each()) {
+            if (auto* hc = registry->try_get<HierarchyComponent>(e); hc) {
+                if (hc->parent)
+                    continue;
+            }
+
+            parent_entities.emplace_back(e);
+        }
+
+        for (entt::entity p : parent_entities) {
+            std::queue<std::pair<entt::entity, mat4>> equeue;
+
+            equeue.push({ p, mat4{ 1.0f } });
+
+            while (!equeue.empty()) {
+                auto [e, world] = equeue.front();
+                equeue.pop();
+
+                auto& tc  = registry->get<TransformComponent>(e);
+                tc.local_ = calc_local(tc.position, tc.rotation, tc.scale);
+                tc.world_ = world * tc.local_;
+
+                if (auto* hc = registry->try_get<HierarchyComponent>(e); hc) {
+                    for (Entity c : hc->children)
+                        equeue.push({ c.handle_, tc.world_ });
+                }
+            }
+        }
     }
 
     void Scene::render_sprites()
@@ -287,8 +478,8 @@ namespace codex {
                     // The scaling we do here is the Sprite's size.
 
                     // TODO: Get rid of this and optimize this?
-                    const auto transform = transform_component.to_matrix() *
-                                           glm::scale(glm::identity<Matrix4f>(), { size.x, size.y, 1.0f });
+                    const auto transform =
+                        transform_component.world_mat() * glm::scale(glm::identity<mat4>(), { size.x, size.y, 1.0f });
                     gfx::BatchRenderer2D::render_sprite(renderer_component.sprite(), transform, static_cast<i32>(e));
                 }
             }
@@ -304,12 +495,12 @@ namespace codex {
                     auto sprite = tilemap_component.sprite;
                     sprite.set_size(tilemap_component.grid_size);
                     sprite.set_texture_coords(
-                        util::to_rectf(tile.atlas, tilemap_component.tile_size.x, tilemap_component.tile_size.y));
+                        util::to_rect(tile.atlas, tilemap_component.tile_size.x, tilemap_component.tile_size.y));
                     sprite.set_z_index(tile.layer);
 
-                    auto transform = Matrix4f{ 1.0f };
+                    auto transform = mat4{ 1.0f };
                     transform      = glm::translate(transform, tile.pos);
-                    transform      = glm::scale(transform, Vector3f{ sprite.size().x, sprite.size().y, 1.0f });
+                    transform      = glm::scale(transform, vec3{ sprite.size().x, sprite.size().y, 1.0f });
                     gfx::BatchRenderer2D::render_sprite(sprite, transform, static_cast<i32>(e));
                 }
             }
@@ -317,15 +508,73 @@ namespace codex {
 
         // Tileset Animation
         {
-            auto registry = registry_.lock();
-            auto view     = registry->view<TilesetAnimationComponent, TransformComponent>();
+            auto      registry = registry_.lock();
+            auto      view     = registry->view<TilesetAnimationComponent, TransformComponent>();
+            const f32 dt       = Engine::delta();
             for (auto& e : view) {
                 auto&       tac = view.get<TilesetAnimationComponent>(e);
                 const auto& tc  = view.get<TransformComponent>(e);
-                for (auto& anim : tac.animations) {
-                    // render here
-                    gfx::BatchRenderer2D::render_sprite(tac.sprite, tc.to_matrix(), (i32)e);
-                    anim.current_frame = (anim.current_frame < anim.frame_count) ? ++anim.current_frame : 0;
+
+                if (!tac.sprite)
+                    continue;
+                auto* anim = tac.active_anim();
+                if (!anim)
+                    continue;
+
+                // Advance playback at the animation's own frame rate.
+                if (anim->frame_count > 0 && anim->frame_rate > 0.0f) {
+                    const f32 frame_time = 1.0f / anim->frame_rate;
+                    anim->accumulator += dt;
+                    while (anim->accumulator >= frame_time) {
+                        anim->accumulator -= frame_time;
+
+                        switch (anim->playback_mode) {
+                            using enum TilesetAnimationComponent::Animation::PlaybackMode;
+                            case kNormal: {
+                                anim->current_frame = (anim->current_frame + 1) % anim->frame_count;
+                            } break;
+                            case kReverse: {
+                                anim->current_frame = (anim->current_frame + anim->frame_count - 1) % anim->frame_count;
+                            } break;
+                            case kPingPong: {
+                                if (anim->reverse) {
+                                    anim->current_frame =
+                                        (anim->current_frame + anim->frame_count - 1) % anim->frame_count;
+
+                                    if (anim->current_frame == 0)
+                                        anim->reverse = false;
+                                } else {
+                                    anim->current_frame = (anim->current_frame + 1) % anim->frame_count;
+
+                                    if (anim->current_frame == anim->frame_count - 1)
+                                        anim->reverse = true;
+                                }
+                            } break;
+                            case kOneShot: {
+                                if (anim->current_frame != anim->frame_count - 1) {
+                                    anim->current_frame = (anim->current_frame + 1) % anim->frame_count;
+                                }
+                            } break;
+                            case kOneShotReverse: {
+                                if (anim->current_frame != 0) {
+                                    anim->current_frame =
+                                        (anim->current_frame + anim->frame_count - 1) % anim->frame_count;
+                                }
+                            } break;
+                        }
+                    }
+
+                    auto sprite = tac.sprite;
+                    sprite.set_texture_coords(
+                        rect{ (anim->starting_tile.x + static_cast<f32>(anim->current_frame)) * tac.grid_size.x,
+                              anim->starting_tile.y * tac.grid_size.y, tac.grid_size.x, tac.grid_size.y });
+
+                    vec2 size = sprite.size();
+                    if (size.x <= 0.0f || size.y <= 0.0f)
+                        size = tac.grid_size;
+
+                    const auto transform = tc.world_mat() * glm::scale(glm::identity<mat4>(), { size.x, size.y, 1.0f });
+                    gfx::BatchRenderer2D::render_sprite(sprite, transform, static_cast<i32>(e));
                 }
             }
         }
@@ -337,10 +586,11 @@ namespace codex {
             CX_DEBUG_PROFILE_SCOPE("audio_listener_update")
             const auto primary_camera = primary_camera_entity();
             if (primary_camera.has_component<AudioListenerComponent>()) {
-                const auto& tc = primary_camera.get_component<TransformComponent>();
+                const auto& tc    = primary_camera.get_component<TransformComponent>();
+                mat4        trans = tc.world_mat();
 
                 ax::SpatialAttributes attr;
-                attr.position = tc.position;
+                attr.position = vec3(trans[3]);
                 // attr.velocity = ?
                 ax::AudioSystem::set_listener_attributes(attr);
             }
@@ -361,7 +611,8 @@ namespace codex {
 
                 if (asc.is_3d) {
                     ax::SpatialAttributes attr;
-                    attr.position = view.get<TransformComponent>(e).position;
+                    mat4                  trans = view.get<TransformComponent>(e).world_mat();
+                    attr.position               = vec3(trans[3]);
                     asc.handle->set_spatial_attributes(attr);
                 }
             }
@@ -370,84 +621,77 @@ namespace codex {
 
     void Scene::construct_physics_bodies()
     {
-        // Rigid body 2d construction.
-        {
-            auto registry = registry_.lock();
+        auto registry = registry_.lock();
 
-            const auto rb2d_view = registry->view<TransformComponent, RigidBody2DComponent>();
-            for (const auto& e : rb2d_view) {
-                const auto& trans = rb2d_view.get<TransformComponent>(e);
-                auto&       rb2d  = rb2d_view.get<RigidBody2DComponent>(e);
+        const auto rb2d_view = registry->view<TransformComponent, RigidBody2DComponent>();
+        for (const auto& e : rb2d_view) {
+            construct_physics_body(*registry, e);
+            registry->on_destroy<RigidBody2DComponent>().connect<&Scene::destroy_physics_body>(*this);
+        }
+    }
 
-                b2BodyDef body_def;
-                body_def.position.Set(trans.position.x * physics_properties_.scaling_factor,
-                                      trans.position.y * physics_properties_.scaling_factor);
-                body_def.type           = util::to_b2_type(rb2d.body_type);
-                body_def.angle          = trans.rotation.z;
-                body_def.angularDamping = rb2d.angular_damping;
-                body_def.linearDamping  = rb2d.linear_damping;
-                body_def.bullet         = rb2d.high_velocity;
-                body_def.fixedRotation  = rb2d.fixed_rotation;
-                body_def.gravityScale   = rb2d.gravity_scale;
-                body_def.enabled        = rb2d.enabled;
-                body_def.angle          = math::to_radf(trans.rotation.z);
-                auto* b2_body           = physics_world_->CreateBody(&body_def);
+    void Scene::construct_physics_body(entt::registry& registry, const entt::entity entity)
+    {
+        auto* rb2d = registry.try_get<RigidBody2DComponent>(entity);
+        if (!rb2d || rb2d->runtime_body)
+            return;
 
-                rb2d.runtime_body = b2_body;
-            }
+        const auto& trans = registry.get<TransformComponent>(entity);
+
+        b2BodyDef body_def;
+        body_def.position.Set(trans.position.x * physics_properties_.scaling_factor,
+                              trans.position.y * physics_properties_.scaling_factor);
+        body_def.type           = util::to_b2_type(rb2d->body_type);
+        body_def.angularDamping = rb2d->angular_damping;
+        body_def.linearDamping  = rb2d->linear_damping;
+        body_def.bullet         = rb2d->high_velocity;
+        body_def.fixedRotation  = rb2d->fixed_rotation;
+        body_def.gravityScale   = rb2d->gravity_scale;
+        body_def.enabled        = rb2d->enabled;
+        body_def.angle          = math::to_radf(trans.rotation.z);
+        auto* b2_body           = physics_world_->CreateBody(&body_def);
+
+        rb2d->runtime_body = b2_body;
+
+        if (const auto* collider = registry.try_get<BoxCollider2DComponent>(entity)) {
+            b2PolygonShape shape;
+            shape.SetAsBox(collider->size.x * trans.scale.x * physics_properties_.scaling_factor,
+                           collider->size.y * trans.scale.y * physics_properties_.scaling_factor,
+                           util::to_b2_vec2(collider->offset * physics_properties_.scaling_factor), 0.0f);
+
+            b2FixtureDef fixture_def;
+            fixture_def.shape                = &shape;
+            fixture_def.density              = collider->physics_material.density_;
+            fixture_def.friction             = collider->physics_material.friction_;
+            fixture_def.restitution          = collider->physics_material.restitution_;
+            fixture_def.restitutionThreshold = collider->physics_material.restitution_threshold_;
+
+            b2_body->CreateFixture(&fixture_def);
         }
 
-        // Box collider 2d construction.
-        {
-            auto registry = registry_.lock();
+        if (const auto* collider = registry.try_get<CircleCollider2DComponent>(entity)) {
+            b2CircleShape shape;
+            shape.m_p.Set(collider->offset.x * physics_properties_.scaling_factor,
+                          collider->offset.y * physics_properties_.scaling_factor);
+            shape.m_radius = collider->radius * physics_properties_.scaling_factor;
 
-            const auto box_collider_view =
-                registry->view<TransformComponent, RigidBody2DComponent, BoxCollider2DComponent>();
-            for (const auto& e : box_collider_view) {
-                const auto& body     = box_collider_view.get<RigidBody2DComponent>(e);
-                const auto& collider = box_collider_view.get<BoxCollider2DComponent>(e);
-                const auto& trans    = box_collider_view.get<TransformComponent>(e);
+            b2FixtureDef fixture_def;
+            fixture_def.shape                = &shape;
+            fixture_def.density              = collider->physics_material.density_;
+            fixture_def.friction             = collider->physics_material.friction_;
+            fixture_def.restitution          = collider->physics_material.restitution_;
+            fixture_def.restitutionThreshold = collider->physics_material.restitution_threshold_;
 
-                b2PolygonShape shape;
-                shape.SetAsBox(collider.size.x * trans.scale.x * physics_properties_.scaling_factor,
-                               collider.size.y * trans.scale.y * physics_properties_.scaling_factor,
-                               util::to_b2_vec2(collider.offset * physics_properties_.scaling_factor), 0.0f);
-
-                b2FixtureDef fixture_def;
-                fixture_def.shape                = &shape;
-                fixture_def.density              = collider.physics_material.density_;
-                fixture_def.friction             = collider.physics_material.friction_;
-                fixture_def.restitution          = collider.physics_material.restitution_;
-                fixture_def.restitutionThreshold = collider.physics_material.restitution_threshold_;
-
-                reinterpret_cast<b2Body*>(body.runtime_body)->CreateFixture(&fixture_def);
-            }
+            b2_body->CreateFixture(&fixture_def);
         }
+    }
 
-        // Cirlce collider 2d
-        {
-            auto registry = registry_.lock();
-
-            const auto circle_collider_view =
-                registry->view<TransformComponent, RigidBody2DComponent, CircleCollider2DComponent>();
-            for (const auto& e : circle_collider_view) {
-                const auto& body     = circle_collider_view.get<RigidBody2DComponent>(e);
-                const auto& collider = circle_collider_view.get<CircleCollider2DComponent>(e);
-
-                b2CircleShape shape;
-                shape.m_p.Set(collider.offset.x * physics_properties_.scaling_factor,
-                              collider.offset.y * physics_properties_.scaling_factor);
-                shape.m_radius = collider.radius * physics_properties_.scaling_factor;
-
-                b2FixtureDef fixture_def;
-                fixture_def.shape                = &shape;
-                fixture_def.density              = collider.physics_material.density_;
-                fixture_def.friction             = collider.physics_material.friction_;
-                fixture_def.restitution          = collider.physics_material.restitution_;
-                fixture_def.restitutionThreshold = collider.physics_material.restitution_threshold_;
-
-                reinterpret_cast<b2Body*>(body.runtime_body)->CreateFixture(&fixture_def);
-            }
+    void Scene::destroy_physics_body(entt::registry& registry, entt::entity entity) noexcept
+    {
+        auto& rb2d = registry.get<RigidBody2DComponent>(entity);
+        if (rb2d.runtime_body && physics_world_) {
+            physics_world_->DestroyBody(reinterpret_cast<b2Body*>(rb2d.runtime_body));
+            rb2d.runtime_body = nullptr;
         }
     }
 
@@ -457,6 +701,9 @@ namespace codex {
 
     void Scene::on_runtime_start()
     {
+        // Transform pass
+        transform_pass();
+
         physics_world_ = Box<b2World, B2WorldDeleter>::make(util::to_b2_vec2(physics_properties_.gravity));
         physics_world_->SetAllowSleeping(true);
 
@@ -480,6 +727,8 @@ namespace codex {
         }
 
         construct_physics_bodies();
+
+        attach_pending_behaviours();
 
         // Native behaviour instantiation
         // TODO: Thread safety
@@ -529,7 +778,8 @@ namespace codex {
                             event->set_min_max_distance(asc.min_distance, asc.max_distance);
 
                             ax::SpatialAttributes attr;
-                            attr.position = asc_view.get<TransformComponent>(e).position;
+                            mat4                  trans = asc_view.get<TransformComponent>(e).world_mat();
+                            attr.position               = vec3(trans[3]);
                             event->set_spatial_attributes(attr);
                         }
 
@@ -545,6 +795,9 @@ namespace codex {
 
     void Scene::on_simulation_start()
     {
+        // Transform pass
+        transform_pass();
+
         physics_world_ = Box<b2World, B2WorldDeleter>::make(util::to_b2_vec2(physics_properties_.gravity));
         physics_world_->SetAllowSleeping(true);
 
@@ -605,6 +858,9 @@ namespace codex {
 
     void Scene::on_editor_update([[maybe_unused]] const f32 dt, scene::EditorCamera& camera, gfx::Shader* end_shader)
     {
+        // Transform pass
+        transform_pass();
+
         // Render
         {
             gfx::BatchRenderer2D::begin(camera);
@@ -615,6 +871,9 @@ namespace codex {
 
     void Scene::on_simulation_update([[maybe_unused]] const f32 dt, scene::EditorCamera& camera)
     {
+        // Transform pass
+        transform_pass();
+
         // Render
         {
             gfx::BatchRenderer2D::begin(camera);
@@ -625,6 +884,9 @@ namespace codex {
 
     void Scene::on_runtime_update(const f32 dt)
     {
+        // Transform pass
+        transform_pass();
+
         // Render.
         {
             // Grab primary camera.
@@ -655,28 +917,46 @@ namespace codex {
             }
         }
 
-        // Native behaviour instantiation
-        // TODO: Thread safety
+        // Native behaviour updates.
         {
-            for (Box<NativeBehaviour>& bh : behaviours_) {
-                assert(bh);
+            bool stop = false;
+            {
+                std::scoped_lock guard{ mutex_ };
 
-                try {
-                    bh->on_update(dt);
-                }
-                catch (const std::exception& ex) {
-                    log(Error, "A behaviour exception occured: {}", ex.what());
+                // NOTE: Temporary Fix: Need to create a snapshot of behaviours here because
+                // behaviours can spawn prefabs with their own behaviour(s) which will
+                // case our behaviours_ dense vector to be invalidated
+                // TODO: This is not acceptable for a tight game loop, in the future we'll need to
+                // have separate to_be_attached_ and to_be_disposed_ lists holding their respective
+                // behaviours as the names suggest.
+                std::vector<NativeBehaviour*> behaviours;
+                for (Box<NativeBehaviour>& bh : behaviours_)
+                    behaviours.push_back(bh.get());
 
-                    // FIXME: This doesn't work as intended!
-                    if (state() == Scene::State::Play) {
-                        // TODO: Edit? What if we're on runtime?
-                        set_state(Scene::State::Edit);
-                        on_runtime_stop();
-                    } else if (state() == Scene::State::Simulate) {
-                        // TODO: Edit? What if we're on runtime?
-                        set_state(Scene::State::Edit);
-                        on_simulation_stop();
+                for (NativeBehaviour* bh : behaviours) {
+                    assert(bh);
+
+                    try {
+                        bh->on_update(dt);
                     }
+                    catch (const std::exception& ex) {
+                        log(Error, "A behaviour exception occured: {}", ex.what());
+                        stop = true;
+                    }
+                }
+
+                for (Entity entity : entities_to_be_disposed_)
+                    remove_entity(entity);
+                entities_to_be_disposed_.clear();
+            }
+
+            if (stop) {
+                if (state() == Scene::State::Play) {
+                    set_state(Scene::State::Edit);
+                    on_runtime_stop();
+                } else if (state() == Scene::State::Simulate) {
+                    set_state(Scene::State::Edit);
+                    on_simulation_stop();
                 }
             }
         }
@@ -686,6 +966,8 @@ namespace codex {
 
     void Scene::on_fixed_update(Scene& self) noexcept
     {
+        CX_DEBUG_PROFILE_SCOPE("Scene::on_fixed_update")
+
         using clock = std::chrono::high_resolution_clock;
 
         const auto frame_interval     = 1.0f / self.physics_properties_.tick_rate;
@@ -703,9 +985,15 @@ namespace codex {
             while (lag >= frame_interval) {
                 // Native behaviours.
                 if (self.state_.load() == State::Play || self.state_.load() == State::Simulate) {
-                    // Native behaviour instantiation
-                    // TODO: Thread safety
-                    for (Box<NativeBehaviour>& bh : self.behaviours_) {
+                    std::scoped_lock guard{ self.mutex_ };
+
+                    // Snapshot for the same reason as on_runtime_update: callbacks may
+                    // spawn prefabs and grow behaviours_ mid-iteration.
+                    std::vector<NativeBehaviour*> behaviours;
+                    for (Box<NativeBehaviour>& bh : self.behaviours_)
+                        behaviours.push_back(bh.get());
+
+                    for (NativeBehaviour* bh : behaviours) {
                         assert(bh);
 
                         try {
@@ -714,32 +1002,33 @@ namespace codex {
                         catch (const std::exception& ex) {
                             self.log(Error, "A behaviour exception occured: {}", ex.what());
 
-                            // FIXME: This doesn't work as intended!
-                            if (self.state() == Scene::State::Play) {
-                                // TODO: Edit? What if we're on runtime?
-                                self.set_state(Scene::State::Edit);
-                                self.on_runtime_stop();
-                            } else if (self.state() == Scene::State::Simulate) {
-                                // TODO: Edit? What if we're on runtime?
-                                self.set_state(Scene::State::Edit);
-                                self.on_simulation_stop();
-                            }
+                            // Cannot call on_runtime_stop() from this thread (it joins this
+                            // very thread); drop to Edit so the loop exits and the editor
+                            // performs the actual cleanup.
+                            self.set_state(Scene::State::Edit);
                         }
                     }
                 }
 
                 // Physics.
-                {
-                    auto registry = self.registry_.lock();
-                    auto view     = registry->view<TransformComponent, RigidBody2DComponent>();
+                if (self.state_.load() != State::Edit) {
+                    std::scoped_lock guard{ self.mutex_ };
+                    auto             registry = self.registry_.lock();
+                    auto             view     = registry->view<TransformComponent, RigidBody2DComponent>();
                     self.physics_world_->Step(frame_interval, self.physics_properties_.velocity_iterations,
                                               self.physics_properties_.position_iterations);
                     for (auto& e : view) {
                         auto& trans = view.get<TransformComponent>(e);
                         auto& rb2d  = view.get<RigidBody2DComponent>(e);
 
-                        auto        b2_body = reinterpret_cast<b2Body*>(rb2d.runtime_body);
-                        const auto& b2_pos  = b2_body->GetPosition();
+                        // Bodies added at runtime outside the prefab path are built here.
+                        if (!rb2d.runtime_body)
+                            self.construct_physics_body(*registry, e);
+
+                        auto* b2_body = reinterpret_cast<b2Body*>(rb2d.runtime_body);
+                        if (!b2_body)
+                            continue;
+                        const auto& b2_pos = b2_body->GetPosition();
 
                         trans.position.x = b2_pos.x / self.physics_properties_.scaling_factor + 1.0f;
                         trans.position.y = b2_pos.y / self.physics_properties_.scaling_factor + 1.0f;
@@ -756,6 +1045,15 @@ namespace codex {
         }
     }
 
+    void Scene::attach_pending_behaviours() noexcept
+    {
+        std::scoped_lock guard{ mutex_ };
+        auto             registry = registry_.lock();
+        auto             view     = registry->view<NativeBehaviourComponent>();
+        for (auto& e : view)
+            view.get<NativeBehaviourComponent>(e).attach_pending();
+    }
+
     void Scene::archive(Archive& ar)
     {
         ar("name", name_);
@@ -763,55 +1061,80 @@ namespace codex {
         IArchiveBackend& b = ar.backend();
 
         if (ar.saving()) {
-            usize entity_total = 0;
-            {
-                auto registry = registry_.lock();
-                for (const auto& e : registry->storage<entt::entity>()) {
-                    ++entity_total;
-                }
-            }
-
             std::vector<entt::entity> entities;
-            entities.reserve(entity_total);
-
             {
                 auto registry = registry_.lock();
-                for (const auto& e : registry->storage<entt::entity>())
+                for (const auto& e : registry->view<entt::entity>())
                     entities.push_back(e);
             }
 
+            usize entity_total = entities.size();
             b.begin_array("entities", entity_total);
             for (const auto& entity : entities) {
-                std::vector<Component*> components       = collect_components(AllComponents{}, Entity{ entity, this });
-                usize                   total_components = components.size();
-                b.begin_array("components", total_components);
-                for (Component* c : components) {
-                    b.begin_object({});
-                    c->archive(ar);
-                    b.end_object();
-                }
-                b.end_array();
+                Entity cx_entity{ entity, this };
+                serialize(ar, cx_entity);
             }
             b.end_array();
         } else {
             usize entity_total = 0;
             b.begin_array("entities", entity_total);
             for (usize i = 0; i < entity_total; ++i) {
-                // b.begin_object({});
-                auto entity = create_entity();
+                Entity entity = create_entity();
+                serialize(ar, entity);
+            }
+            b.end_array();
 
-                usize count = 0;
-                b.begin_array("components", count);
-                for (usize c = 0; c < count; ++c) {
-                    b.begin_object({});
-                    std::string type_name;
-                    ar("type", type_name); // consume the tag, then dispatch the rest
-                    if (!type_name.empty())
-                        ComponentFactory::get().deserialize_component(type_name, ar, entity);
-                    b.end_object();
+            // Need to update uuid_to_entity_ map now that all entities are present with their real UUIDs
+            {
+                uuid_to_entity_.clear();
+
+                auto        registry = registry_.lock();
+                const auto& view     = registry->view<const IDComponent>();
+
+                for (const auto& [e, v] : view.each()) {
+                    uuid_to_entity_[v.uuid] = Entity{ e, this };
                 }
-                b.end_array();
-                // b.end_object();
+            }
+
+            // We need to resolve HierarchyComponents now that all the entities are complete
+            {
+                auto        registry = registry_.lock();
+                const auto& view     = registry->view<HierarchyComponent>();
+
+                for (const auto& [e, hc] : view.each()) {
+                    hc.resolve_pending();
+                }
+            }
+        }
+    }
+
+    void serialize(Archive& ar, Entity& entity)
+    {
+        if (!entity)
+            return;
+
+        IArchiveBackend& b = ar.backend();
+
+        if (ar.saving()) {
+            std::vector<Component*> components       = collect_components(AllComponents{}, entity);
+            usize                   total_components = components.size();
+            b.begin_array("components", total_components);
+            for (Component* c : components) {
+                b.begin_object({});
+                c->archive(ar);
+                b.end_object();
+            }
+            b.end_array();
+        } else {
+            usize count = 0;
+            b.begin_array("components", count);
+            for (usize c = 0; c < count; ++c) {
+                b.begin_object({});
+                std::string type_name;
+                ar("type", type_name); // consume the tag, then dispatch the rest
+                if (!type_name.empty())
+                    ComponentFactory::get().deserialize_component(type_name, ar, entity);
+                b.end_object();
             }
             b.end_array();
         }

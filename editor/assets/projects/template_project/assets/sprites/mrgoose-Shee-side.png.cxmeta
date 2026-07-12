@@ -1,0 +1,16 @@
+{
+    "path": "sprites/mrgoose-Shee-side.png",
+    "uuid": "00b4-9dee-397ae45c",
+    "storage_path": "sprites/mrgoose-Shee-side.png",
+    "type": "Texture2D",
+    "checksum": 3806225275,
+    "size": 3475,
+    "last_modified": 1783617120,
+    "dependencies": [],
+    "import_settings": {
+        "filter_mode": "Linear",
+        "mipmap_mode": "None",
+        "wrap_mode": "Mirror",
+        "format": "None"
+    }
+}

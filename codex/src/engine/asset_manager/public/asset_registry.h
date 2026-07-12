@@ -113,6 +113,7 @@ namespace codex {
         }
         cc::task<void> write_manifest_async(const std::string vfs_path) const noexcept;
         cc::task<void> export_assets_async(const std::string vfs_path) const noexcept;
+        void           from_manifest(const std::string& path) noexcept;
 
     private:
         cc::task<void> resolve_meta(const std::filesystem::path path) noexcept;

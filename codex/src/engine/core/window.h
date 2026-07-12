@@ -58,20 +58,20 @@ namespace codex {
         Null
     };
 
-    struct WindowProperties
+    struct VideoProperties
     {
-        std::string title      = "Codex - Window";
-        i32         width      = 1280;
-        i32         height     = 720;
-        i32         pos_x      = 0;
-        i32         pos_y      = 0;
-        u32         frame_cap  = 300;
-        WindowFlags flags      = WindowFlags::Visible | WindowFlags::Resizable;
-        bool        vsync      = true;
-        bool        borderless = false;
+        std::string window_title  = "Codex - Window";
+        i32         window_width  = 1280;
+        i32         window_height = 720;
+        i32         window_pos_x  = 0;
+        i32         window_pos_y  = 0;
+        u32         frame_cap     = 300;
+        WindowFlags window_flags  = WindowFlags::Visible | WindowFlags::Resizable;
+        bool        vsync         = true;
+        bool        borderless    = false;
     };
 
-    void serialize(Archive& ar, WindowProperties& properties);
+    void serialize(Archive& ar, VideoProperties& properties);
 
     class CODEX_API Window : public Loggable<"Window">
     {
@@ -97,15 +97,15 @@ namespace codex {
         [[nodiscard]] inline SDL_Window*    native_window() noexcept { return sdl_window_; }
         [[nodiscard]] inline SDL_GLContext* gl_context() noexcept { return &gl_context_; }
         [[nodiscard]] inline u32            frame_count() const noexcept { return frame_count_; }
-        [[nodiscard]] inline Vector2        position() const noexcept
+        [[nodiscard]] inline ivec2          position() const noexcept
         {
-            Vector2 vec;
+            ivec2 vec;
             SDL_GetWindowPosition(sdl_window_, &vec.x, &vec.y);
             return vec;
         }
-        [[nodiscard]] inline Vector2 size() const noexcept
+        [[nodiscard]] inline ivec2 size() const noexcept
         {
-            Vector2 vec;
+            ivec2 vec;
             SDL_GetWindowSize(sdl_window_, &vec.x, &vec.y);
             return vec;
         }
@@ -116,19 +116,16 @@ namespace codex {
             auto cursor_ptr = sdl_cursor(cursor);
             SDL_SetCursor(cursor_ptr);
         }
-        inline void set_position(const Vector2& new_pos) noexcept
+        inline void set_position(const ivec2& new_pos) noexcept
         {
             SDL_SetWindowPosition(sdl_window_, new_pos.x, new_pos.y);
         }
-        inline void set_size(const Vector2& new_size) noexcept
-        {
-            SDL_SetWindowSize(sdl_window_, new_size.x, new_size.y);
-        }
+        inline void set_size(const ivec2& new_size) noexcept { SDL_SetWindowSize(sdl_window_, new_size.x, new_size.y); }
         inline void minimize() const noexcept { SDL_MinimizeWindow(sdl_window_); }
         inline void maximize() const noexcept { SDL_MaximizeWindow(sdl_window_); }
 
     public:
-        void        init(const WindowProperties& windowInfo = WindowProperties{}, const void* nativeWindow = nullptr);
+        void        init(const VideoProperties& windowInfo = VideoProperties{}, const void* nativeWindow = nullptr);
         void        on_update(const f32 deltaTime);
         void        swap_buffers();
         void        process_events();

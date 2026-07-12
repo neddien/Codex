@@ -11,6 +11,13 @@ void PlayerController::on_init()
 
 void PlayerController::on_update(const f32 dt)
 {
+    static f32 fire_rate_t = 0;
+    if (Input::is_key_down(Key::J) && projectile_ && fire_rate_t >= fire_rate_) {
+        create_prefab(projectile_, get_component<TransformComponent>());
+        fire_rate_t = 0;
+    }
+
+    fire_rate_t += dt;
 }
 
 void PlayerController::on_fixed_update(const f32 dt)

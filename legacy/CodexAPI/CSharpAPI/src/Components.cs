@@ -9,9 +9,6 @@ namespace CodexEngine.Components
 	[StructLayout(LayoutKind.Sequential)]
 	public class DescriptorTransformComponent
 	{
-		public Vector3 Position = new Vector3(0, 0, 0);
-		public Vector3 Rotation = new Vector3(0, 0, 0);
-		public Vector3 Scale = new Vector3(1, 1, 1);
 
 		public DescriptorTransformComponent() 
 		{

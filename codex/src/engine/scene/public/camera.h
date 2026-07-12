@@ -21,7 +21,7 @@ namespace codex::scene {
             , near_clip_(near_clip)
             , far_clip_(far_clip)
             , projection_type_(projection_type)
-            , projection_(Matrix4f(1.0f))
+            , projection_(mat4(1.0f))
             , pan_(1.0f)
         {
             update_projection_matrix();
@@ -85,8 +85,8 @@ namespace codex::scene {
         }
 
     public:
-        [[nodiscard]] static Vector3f screen_coordinates_to_world(const Camera& camera, const Vector2f& screen_coord,
-                                                                  const Vector3f& camera_position) noexcept;
+        [[nodiscard]] static vec3 screen_coordinates_to_world(const Camera& camera, const vec2& screen_coord,
+                                                               const vec3& camera_position) noexcept;
 
     public:
         void archive(Archive& archive) override;
@@ -98,7 +98,7 @@ namespace codex::scene {
         f32            near_clip_;
         f32            far_clip_;
         ProjectionType projection_type_;
-        Matrix4f       projection_;
+        mat4           projection_;
         f32            pan_;
     };
 } // namespace codex::scene

@@ -6,7 +6,7 @@ namespace codex::editor {
     struct EditorProject : public ISerializable, public Loggable<"EditorProject">
     {
         EngineProject engine_project;
-        std::string   vfs_root = "/editor";
+        std::string   vfs_root = "/edit";
         std::string   last_asset_path;
         std::string   last_open_scene;
 

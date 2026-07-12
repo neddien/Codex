@@ -41,13 +41,31 @@ namespace codex {
 
     Engine::~Engine()
     {
-        layer_stack_.clear();
+        dispose();
+    }
 
-        if (properties_.flags & EngineFlags::Input)
+    void Engine::dispose() noexcept
+    {
+        if (disposed_)
+            return;
+        disposed_ = true;
+        running_  = false;
+
+        layer_stack_.clear();
+        imgui_layer_ = nullptr;
+
+        if ((properties_.flags & EngineFlags::Input) && input_) {
             Input::dispose();
+            input_ = nullptr;
+        }
 
         if (properties_.flags & EngineFlags::Audio)
             AudioSystem::dispose();
+
+        NBMan::dispose();
+        window_.reset();
+        worker_thread_executor_.reset();
+        thread_pool_.reset();
 
         // Always dispose the logger at the very end.
         if (properties_.flags & EngineFlags::Logger)
@@ -84,7 +102,7 @@ namespace codex {
 
             if (properties_.flags & EngineFlags::Video) {
                 window_ = Box<Window>::make();
-                window_->init(properties_.window_properties);
+                window_->init(properties_.video_properties);
                 window_->set_event_callback(bind_event_delegate(this, &Engine::on_event));
             }
 
@@ -171,9 +189,9 @@ namespace codex {
             const auto frame_time = std::chrono::duration_cast<std::chrono::milliseconds>(clock::now() - frame_start);
 
             // Cap the framerate if needed.
-            if (properties_.window_properties.frame_cap > 0) {
+            if (properties_.video_properties.frame_cap > 0) {
                 static auto desired_frame_time =
-                    std::chrono::milliseconds(1000 / properties_.window_properties.frame_cap);
+                    std::chrono::milliseconds(1000 / properties_.video_properties.frame_cap);
 
                 if (frame_time < desired_frame_time)
                     std::this_thread::sleep_for(desired_frame_time - frame_time);
@@ -242,6 +260,6 @@ namespace codex {
             ar("flags", flags);
             properties.flags = (EngineFlags)flags;
         }
-        ar("window_properties", properties.window_properties);
+        ar("window_properties", properties.video_properties);
     }
 } // namespace codex

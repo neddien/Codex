@@ -70,7 +70,7 @@ namespace codex::gfx {
     void DebugDraw::begin(const scene::Camera& camera, const TransformComponent& transform)
     {
         current_camera_             = &camera;
-        current_camera_view_matrix_ = glm::inverse(transform.to_matrix());
+        current_camera_view_matrix_ = glm::inverse(transform.world_mat());
         if (!s_shader_)
             return;
 
@@ -90,8 +90,8 @@ namespace codex::gfx {
 
         auto count = 0;
         for (const auto& line : lines_) {
-            const auto&    colour = line.colour();
-            const Vector2f pos[]  = { line.source(), line.destination() };
+            const auto& colour = line.colour();
+            const vec2  pos[]  = { line.source(), line.destination() };
             for (auto i = 0; i < LINE2D_VERTEX_COMPONENT_COUNT * LINE2D_VERTEX_COUNT;
                  i += LINE2D_VERTEX_COMPONENT_COUNT) {
                 verticies_[count + i]     = pos[i / LINE2D_VERTEX_COMPONENT_COUNT].x;
@@ -120,24 +120,23 @@ namespace codex::gfx {
         vbo_->unbind();
     }
 
-    void DebugDraw::draw_line_2d(const Vector2f source, const Vector2f destination, const Vector4f colour,
-                                 const i32 lifeTime)
+    void DebugDraw::draw_line_2d(const vec2 source, const vec2 destination, const vec4 colour, const i32 lifeTime)
     {
         if (lines_.size() < LINE2D_MAX_COUNT)
             lines_.emplace_back(source, destination, colour, lifeTime);
     }
 
-    void DebugDraw::draw_rect_2d(const Rectf rect, const f32 angle, const Vector4f colour, const i32 lifeTime)
+    void DebugDraw::draw_rect_2d(const rect rect, const f32 angle, const vec4 colour, const i32 lifeTime)
     {
         if (lines_.size() + 4 < LINE2D_MAX_COUNT) {
-            const auto min = Vector2f{ rect.x - rect.w / 2.0f, rect.y - rect.h / 2.0f };
-            const auto max = Vector2f{ rect.x + rect.w / 2.0f, rect.y + rect.h / 2.0f };
+            const auto min = vec2{ rect.x - rect.w / 2.0f, rect.y - rect.h / 2.0f };
+            const auto max = vec2{ rect.x + rect.w / 2.0f, rect.y + rect.h / 2.0f };
 
-            Vector2f lines[] = { { min.x, min.y }, { min.x, max.y }, { max.x, max.y }, { max.x, min.y } };
+            vec2 lines[] = { { min.x, min.y }, { min.x, max.y }, { max.x, max.y }, { max.x, min.y } };
 
             if (angle != 0.0f) {
                 for (auto& e : lines) {
-                    const auto origin = Vector2f{ rect.x, rect.y };
+                    const auto origin = vec2{ rect.x, rect.y };
                     e                 = glm::rotate((e - origin), math::to_radf(angle)) + origin;
                 }
             }
@@ -148,20 +147,20 @@ namespace codex::gfx {
         }
     }
 
-    void DebugDraw::draw_circle_2d(const Vector2f centrePos, const i32 radius, const f32 angle, const i32 segments,
-                                   const Vector4f colour, const i32 lifeTime)
+    void DebugDraw::draw_circle_2d(const vec2 centrePos, const i32 radius, const f32 angle, const i32 segments,
+                                   const vec4 colour, const i32 lifeTime)
     {
         if (lines_.size() + segments < LINE2D_MAX_COUNT) {
             const auto segment_angle   = 360.0f / segments;
-            auto       current_segment = glm::rotate(Vector2f{ 0.0f, radius }, -angle);
+            auto       current_segment = glm::rotate(vec2{ 0.0f, radius }, -angle);
             for (auto i = 0; i < segments; ++i) {
                 const auto src  = current_segment;
                 current_segment = glm::rotate(current_segment, math::to_radf(segment_angle));
                 lines_.emplace_back(centrePos + src, centrePos + current_segment, colour, lifeTime);
             }
 
-            lines_.emplace_back(centrePos, centrePos + glm::rotate(Vector2f{ radius, 0.0f }, math::to_radf(angle)),
-                                colour, lifeTime);
+            lines_.emplace_back(centrePos, centrePos + glm::rotate(vec2{ radius, 0.0f }, math::to_radf(angle)), colour,
+                                lifeTime);
         }
     }
 } // namespace codex::gfx

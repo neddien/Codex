@@ -2,6 +2,7 @@
 
 #include "icons_tabler.h"
 #include <editor.h>
+#include <editor_application.h>
 
 namespace codex::editor {
     namespace stdfs = std::filesystem;
@@ -18,6 +19,8 @@ namespace codex::editor {
             return ICON_TI_SPHERE;
         if (meta.type == "Scene")
             return ICON_TI_SPHERE;
+        if (meta.type == "Prefab")
+            return ICON_TI_PACKAGE;
         return ICON_TI_FILE;
     }
 
@@ -92,9 +95,10 @@ namespace codex::editor {
                 refresh(current_path_);
                 log(Info, "Cache refreshed");
                 content_init_done = true;
-            } else if (dirty_) {
+            } else if (dirty_ || last_registry_revision_ != d->asset_registry_revision.load()) {
                 std::scoped_lock guard{ mutex_ };
                 refresh_nolock(current_path_);
+                last_registry_revision_ = d->asset_registry_revision.load();
             }
         }
     }
@@ -155,7 +159,7 @@ namespace codex::editor {
         root_node_.children.clear();
 
         std::vector<std::string> dirlist =
-            d->vfs->list(root_path_, fs::ListOptions::DirsOnly | fs::ListOptions::Recursive);
+            EditorApplication::vfs().list(root_path_, fs::ListOptions::DirsOnly | fs::ListOptions::Recursive);
         std::sort(dirlist.begin(), dirlist.end());
 
         for (const std::string& e : dirlist) {

@@ -17,6 +17,7 @@ class NBConan(ConanFile):
         self.requires("magic_enum/0.9.7")
         self.requires("glm/1.0.1")
         self.requires("abseil/20260107.1")
+        self.requires("enet/1.3.18")
 
     def configure(self):
         self.options["fmt"].shared = True

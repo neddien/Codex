@@ -345,9 +345,9 @@ namespace codex {
         return s_buttons_down_[(usize)button];
     }
 
-    Vector2 Input::screen_mouse_pos() noexcept
+    ivec2 Input::screen_mouse_pos() noexcept
     {
-        Vector2 vec;
+        ivec2 vec;
         SDL_GetGlobalMouseState(&vec.x, &vec.y);
         return vec;
     }

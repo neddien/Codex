@@ -13,8 +13,8 @@
 namespace codex::opengl {
     // Forward declerations
     class Texture;
-    struct Rect;
-    struct Rectf;
+    struct irect;
+    struct rect;
 
     class CODEX_API Renderer
     {
@@ -33,6 +33,7 @@ namespace codex::opengl {
         void stencil_op(const Enum sfail, const Enum dpfail, const Enum dppass) noexcept;
         void stencil_fn(const Enum fn, const i32 ref, const u32 mask) noexcept;
         void colour_mask(const bool r, const bool g, const bool b, const bool a) noexcept;
+        void resize_viewport(u16 new_width, u16 new_height, u16 x = 0, u16 y = 0) noexcept;
 
     private:
         i32 width_;

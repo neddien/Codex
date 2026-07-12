@@ -109,7 +109,7 @@ endif()
 
 # Add sub projects.
 add_subdirectory("codex")
-add_subdirectory("runtime")
+add_subdirectory("codex-shipped")
 
 if(DEFINED CX_ENABLE_NETNT)
   add_subdirectory("NetNT")

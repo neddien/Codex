@@ -1,0 +1,16 @@
+{
+    "path": "sprites/mrgoose-Sheet.png",
+    "uuid": "0907-1e10-719a0b32",
+    "storage_path": "sprites/mrgoose-Sheet.png",
+    "type": "Texture2D",
+    "checksum": 1730116314,
+    "size": 3319,
+    "last_modified": 1783459903,
+    "dependencies": [],
+    "import_settings": {
+        "filter_mode": "Nearest",
+        "mipmap_mode": "None",
+        "wrap_mode": "Mirror",
+        "format": "None"
+    }
+}

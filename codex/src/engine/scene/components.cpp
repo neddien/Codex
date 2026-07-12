@@ -1,6 +1,7 @@
 #include "public/components.inl"
 
 #include <engine/core/engine.h>
+#include <engine/core/public/serialization_manager.h>
 #include <engine/core/window.h>
 #include <engine/graphics/debug_draw.h>
 #include <engine/native_behaviour/public/native_behaviour_manager.h>
@@ -22,14 +23,10 @@ namespace codex {
     }
 
     void TagComponent::archive_impl(Archive& ar)
-    {
-        ar("tag", tag);
-    }
+    { ar("tag", tag); }
 
-    TransformComponent::TransformComponent(const Vector3f position, const Vector3f rotation, const Vector3f scale)
-        : position{ position }
-        , rotation{ rotation }
-        , scale{ scale }
+    TransformComponent::TransformComponent(const math::transform& transform)
+        : math::transform{ transform }
     {
     }
 
@@ -46,9 +43,7 @@ namespace codex {
     }
 
     void SpriteRendererComponent::archive_impl(Archive& ar)
-    {
-        sprite_.archive(ar);
-    }
+    { sprite_.archive(ar); }
 
     NativeBehaviourComponent::NativeBehaviourComponent() noexcept = default;
 
@@ -61,9 +56,9 @@ namespace codex {
     NativeBehaviourComponent& NativeBehaviourComponent::operator=(NativeBehaviourComponent&& other) noexcept
     {
         if (this != &other) {
-            handle_        = other.handle_;
-            other.handle_  = Scene::BagHandle::invalid_id();
-            other.pending_ = std::move(other.pending_);
+            handle_       = other.handle_;
+            other.handle_ = Scene::BagHandle::invalid_id();
+            pending_      = std::move(other.pending_);
         }
         return *this;
     }
@@ -90,7 +85,7 @@ namespace codex {
     NativeBehaviour* NativeBehaviourComponent::attach(const std::string_view type_name) noexcept
     {
         if (!NBMan::is_type_registered(type_name)) {
-            pending_.emplace(type_name);
+            pending_.emplace(std::string{ type_name }, std::string{});
             log(Warn, "Behaviour {} not found in the reigstry, adding it to the pending list", type_name);
             return nullptr;
         }
@@ -120,6 +115,18 @@ namespace codex {
         const auto handles = scene()->behaviours(handle_);
         for (const auto handle : handles)
             scene()->dispose_behaviour(handle_, handle);
+    }
+
+    void NativeBehaviourComponent::dispose_and_save_attached_to_pending() noexcept
+    {
+        const auto handles = scene()->behaviours(handle_);
+        for (const auto handle : handles) {
+            NativeBehaviour* bh = scene()->behaviour(handle);
+            // Capture the behaviour's state so a script hot-reload restores its
+            // property values, not just the attachment.
+            pending_.insert_or_assign(std::string{ bh->type_info().name() }, SerializationManager::to_json(*bh));
+            scene()->dispose_behaviour(handle_, handle);
+        }
     }
 
     NativeBehaviour* NativeBehaviourComponent::behaviour(const std::string_view type_name) noexcept
@@ -160,20 +167,42 @@ namespace codex {
 
     void NativeBehaviourComponent::archive_impl(Archive& ar)
     {
+        // Scripts are stored as name -> serialized JSON state so property values
+        // (including asset references) survive scene saves and the play clone.
+        // Both `optional` slots are written on save so the binary stream stays
+        // symmetric; JSON simply omits absent keys.
+        IArchiveBackend& b = ar.backend();
+
         if (ar.saving()) {
-            std::vector<std::string> names;
-            for (auto handle : scene()->behaviours(handle_))
-                names.emplace_back(scene()->behaviour(handle)->type_info().name());
-            for (auto& type_name : std::exchange(pending_, {}))
-                names.emplace_back(type_name);
-            ar("attached_scripts", names);
+            std::unordered_map<std::string, std::string> scripts;
+            for (auto handle : scene()->behaviours(handle_)) {
+                NativeBehaviour* bh = scene()->behaviour(handle);
+                scripts.emplace(std::string{ bh->type_info().name() }, SerializationManager::to_json(*bh));
+            }
+            for (const auto& [type_name, state] : pending_)
+                scripts.emplace(type_name, state);
+
+            if (b.optional("scripts", true))
+                ar("scripts", scripts);
+            b.optional("attached_scripts", false); // legacy slot, no longer written
         } else {
-            std::vector<std::string> names;
-            ar("attached_scripts", names);
-            for (auto& name : names) {
-                // By default pend all behaviours, we cannot be sure that NBMan has been loaded yet.
-                log(Info, "Deser: Pending behaviour: {}", name);
-                pending_.emplace(name);
+            if (b.optional("scripts", false)) {
+                std::unordered_map<std::string, std::string> scripts;
+                ar("scripts", scripts);
+                for (auto& [name, state] : scripts) {
+                    // By default pend all behaviours, we cannot be sure that NBMan has been loaded yet.
+                    log(Info, "Deser: Pending behaviour: {}", name);
+                    pending_.emplace(name, std::move(state));
+                }
+            }
+            // Scenes saved before script state was serialized carry names only.
+            if (b.optional("attached_scripts", false)) {
+                std::vector<std::string> names;
+                ar("attached_scripts", names);
+                for (auto& name : names) {
+                    log(Info, "Deser: Pending behaviour (legacy): {}", name);
+                    pending_.emplace(std::move(name), std::string{});
+                }
             }
         }
     }
@@ -182,14 +211,25 @@ namespace codex {
     {
         log(Info, "Attaching pending behaviours: {}", pending_.size());
         auto pending = std::exchange(pending_, {});
-        for (const auto& type_name : pending) {
+        for (auto& [type_name, state] : pending) {
             if (!NBMan::is_type_registered(type_name)) {
                 // Re-pend this behaviour.
-                pending_.emplace(type_name);
+                pending_.emplace(type_name, std::move(state));
                 log(Warn, "Pending behaviour still hasn't been found: {}", type_name);
+                continue;
             }
 
-            scene()->create_behaviour(handle_, type_name);
+            const auto       handle = scene()->create_behaviour(handle_, type_name);
+            NativeBehaviour* bh     = scene()->behaviour(handle);
+            if (bh && !state.empty()) {
+                try {
+                    SerializationManager::from_json(*bh, state);
+                }
+                catch (const std::exception& ex) {
+                    // The script's fields likely changed since the state was saved; keep defaults.
+                    log(Warn, "Could not restore state of behaviour {}: {}", type_name, ex.what());
+                }
+            }
         }
     }
 
@@ -197,7 +237,7 @@ namespace codex {
     {
     }
 
-    void RigidBody2DComponent::apply_force(const Vector2f& force, const std::optional<Vector2f> point) noexcept
+    void RigidBody2DComponent::apply_force(const vec2& force, const std::optional<vec2> point) noexcept
     {
         auto* body = reinterpret_cast<b2Body*>(runtime_body);
         body->ApplyForce(util::to_b2_vec2(force), (point) ? util::to_b2_vec2(*point) : body->GetWorldCenter(), true);
@@ -220,7 +260,7 @@ namespace codex {
         body->ApplyTorque(torque, true);
     }
 
-    void RigidBody2DComponent::apply_linear_impulse(const Vector2f& impulse, const std::optional<Vector2f> point)
+    void RigidBody2DComponent::apply_linear_impulse(const vec2& impulse, const std::optional<vec2> point)
     {
         auto* body = reinterpret_cast<b2Body*>(runtime_body);
         body->ApplyLinearImpulse(util::to_b2_vec2(impulse), (point) ? util::to_b2_vec2(*point) : body->GetWorldCenter(),
@@ -233,11 +273,11 @@ namespace codex {
         body->ApplyAngularImpulse(torque, true);
     }
 
-    void TilemapComponent::add_tile([[maybe_unused]] const Vector3f pos, [[maybe_unused]] const i32 tileId)
+    void TilemapComponent::add_tile([[maybe_unused]] const vec3 pos, [[maybe_unused]] const i32 tileId)
     {
     }
 
-    void TilemapComponent::add_tile(const Vector3f pos, const Vector2f atlas)
+    void TilemapComponent::add_tile(const vec3 pos, const vec2 atlas)
     {
         if (auto it = std::find_if(tiles.begin(), tiles.end(),
                                    [&](auto& tile) { return tile.pos == pos && tile.layer == current_layer; });
@@ -248,7 +288,7 @@ namespace codex {
             tiles.push_back({ .pos = pos, .atlas = atlas, .layer = current_layer });
     }
 
-    void TilemapComponent::remove_tile(const Vector3f pos)
+    void TilemapComponent::remove_tile(const vec3 pos)
     {
         if (auto it = std::find_if(tiles.begin(), tiles.end(),
                                    [&](auto& tile) { return tile.pos == pos && tile.layer == current_layer; });
@@ -268,10 +308,13 @@ namespace codex {
         ar("current_layer", current_layer);
     }
 
-    void IDComponent::archive_impl(Archive& ar)
+    IDComponent::IDComponent(UUID uuid) noexcept
+        : uuid{ uuid }
     {
-        uuid.archive(ar);
     }
+
+    void IDComponent::archive_impl(Archive& ar)
+    { uuid.archive(ar); }
 
     void BoxCollider2DComponent::archive_impl(Archive& ar)
     {
@@ -298,6 +341,7 @@ namespace codex {
         ar("sprite", sprite);
         ar("grid_size", grid_size);
         ar("animations", animations);
+        ar.optional("active_animation", active_animation);
     }
 
     void AudioSourceComponent::archive_impl(Archive& ar)
@@ -317,5 +361,63 @@ namespace codex {
         ar("min_distance", min_distance);
         ar("max_distance", max_distance);
         ar.optional("parameters", parameters);
+    }
+
+    void HierarchyComponent::resolve_pending() noexcept
+    {
+        assert(parent_);
+        Scene* scene = parent_.scene();
+
+        children.clear();
+
+        if (pending_parent_) {
+            parent          = scene->entity_by_uuid(pending_parent_.value());
+            pending_parent_ = std::nullopt;
+        }
+
+        for (UUID uuid : pending_children_) {
+            Entity ent = scene->entity_by_uuid(uuid);
+            if (ent)
+                children.push_back(ent);
+        }
+
+        pending_children_.clear();
+    }
+
+    void HierarchyComponent::archive_impl(Archive& ar)
+    {
+        assert(parent_);
+
+        if (ar.saving()) {
+            if (parent)
+                ar.optional("parent", parent.get_component<IDComponent>().uuid);
+
+            usize count = children.size();
+            ar.backend().begin_array("children", count);
+            for (const Entity& e : children) {
+                assert(e.has_component<IDComponent>());
+                UUID uuid = e.get_component<IDComponent>().uuid;
+                ar("uuid", uuid);
+            }
+            ar.backend().end_array();
+        } else {
+            std::optional<UUID> uuid;
+            ar.optional("parent", uuid);
+
+            if (uuid) {
+                pending_parent_ = uuid;
+            }
+
+            pending_children_.clear();
+
+            usize count = 0;
+            ar.backend().begin_array("children", count);
+            for (usize i = 0; i < count; ++i) {
+                UUID uuid;
+                ar("uuid", uuid);
+                pending_children_.push_back(uuid);
+            }
+            ar.backend().end_array();
+        }
     }
 } // namespace codex

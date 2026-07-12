@@ -38,7 +38,16 @@ namespace codex::rf {
         Vector2f,
         Vector3f,
         Vector4f,
+        PrefabAsset,
         UserDefined,
+    };
+
+    // Customization point for property types that cannot be named in this header
+    // (e.g. asset handles). Specialize it next to the type's own definition.
+    template <typename T>
+    struct type_of_ext
+    {
+        static constexpr PropertyType value = PropertyType::None;
     };
 
     struct Property
@@ -137,19 +146,22 @@ namespace codex::rf {
             return F128;
         else if constexpr (std::is_same_v<T, bool>)
             return Boolean;
-        else if constexpr (std::is_same_v<T, codex::math::Vector3f>)
-            return Vector3f;
-        else if constexpr (std::is_same_v<T, codex::math::Vector2f>)
+        else if constexpr (std::is_same_v<T, codex::math::vec2>)
             return Vector2f;
-        else if constexpr (std::is_same_v<T, codex::math::Vector3>)
-            return Vector3;
-        else if constexpr (std::is_same_v<T, codex::math::Vector2>)
+        else if constexpr (std::is_same_v<T, codex::math::vec3>)
+            return Vector3f;
+        else if constexpr (std::is_same_v<T, codex::math::vec4>)
+            return Vector4f;
+        else if constexpr (std::is_same_v<T, codex::math::ivec2>)
             return Vector2;
+        else if constexpr (std::is_same_v<T, codex::math::ivec3>)
+            return Vector3;
+        else if constexpr (std::is_same_v<T, codex::math::ivec4>)
+            return Vector4;
         else if constexpr (std::is_same_v<T, std::string>)
             return String;
-
-        static_assert("Type not supported");
-        return None;
+        else
+            return type_of_ext<T>::value; // None unless specialized next to the type
     }
 
     template <typename T>

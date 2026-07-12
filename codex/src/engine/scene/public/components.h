@@ -17,9 +17,7 @@
                                                                                                                        \
 public:                                                                                                                \
     [[nodiscard]] std::string_view type_name() const noexcept override                                                 \
-    {                                                                                                                  \
-        return #type;                                                                                                  \
-    }
+    { return #type; }
 
 namespace codex {
     // Forward declarations
@@ -71,10 +69,7 @@ namespace codex {
 
     public:
         IDComponent() noexcept = default;
-        explicit IDComponent(UUID uuid) noexcept
-            : uuid(std::move(uuid))
-        {
-        }
+        explicit IDComponent(UUID uuid) noexcept;
 
     public:
         void archive_impl(Archive& ar) override;
@@ -95,33 +90,28 @@ namespace codex {
         void archive_impl(Archive& ar) override;
     };
 
-    struct CODEX_API TransformComponent : public Component
+    // Inherits math::transform so position/rotation/scale stay directly accessible
+    // and the whole pose can be assigned from a math::transform in one go.
+    struct CODEX_API TransformComponent : public Component, public math::transform
     {
         CX_COMPONENT(TransformComponent)
 
-    public:
-        Vector3f position;
-        Vector3f rotation;
-        Vector3f scale;
+        friend class Scene;
 
     public:
-        explicit TransformComponent(const Vector3f position = Vector3f{}, const Vector3f rotation = Vector3f{},
-                                    const Vector3f scale = Vector3f{ 1.0f, 1.0f, 1.0f });
+        explicit TransformComponent(const math::transform& transform = {});
 
     public:
-        [[nodiscard]] inline Matrix4f to_matrix() const noexcept
-        {
-            Matrix4f transform_mat = glm::identity<Matrix4f>();
-            transform_mat          = glm::translate(transform_mat, position);
-            transform_mat          = glm::rotate(transform_mat, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-            transform_mat          = glm::rotate(transform_mat, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-            transform_mat          = glm::rotate(transform_mat, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
-            transform_mat          = glm::scale(transform_mat, scale);
-            return transform_mat;
-        }
+        [[nodiscard]] mat4 world_mat() const noexcept { return world_; };
+        [[nodiscard]] mat4 local_mat() const noexcept { return local_; };
 
     public:
         void archive_impl(Archive& ar) override;
+
+    private:
+        // These are calculated one every frame by the Transform Pass in the scene
+        mat4 world_{ 1.0f };
+        mat4 local_{ 1.0f };
     };
 
     class CODEX_API SpriteRendererComponent : public Component
@@ -164,6 +154,7 @@ namespace codex {
         NativeBehaviour*              attach(const std::string_view type_name) noexcept;
         void                          detach(const std::string_view type_name) noexcept;
         void                          dispose_behaviours() noexcept;
+        void                          dispose_and_save_attached_to_pending() noexcept;
         NativeBehaviour*              behaviour(const std::string_view type_name) noexcept;
         std::vector<NativeBehaviour*> behaviours() noexcept;
         void                          dispose() noexcept;
@@ -176,8 +167,10 @@ namespace codex {
         void                 attach_pending() noexcept;
 
     private:
-        Scene::BagHandle                         handle_ = Scene::NBHandle::invalid_id();
-        mutable absl::flat_hash_set<std::string> pending_;
+        // Scripts waiting to be attached (NBMan not loaded yet, or freshly deserialized):
+        // type name -> serialized JSON state; an empty string means default state.
+        Scene::BagHandle                                      handle_ = Scene::NBHandle::invalid_id();
+        mutable absl::flat_hash_map<std::string, std::string> pending_;
     };
 
     struct CODEX_API CameraComponent : public Component
@@ -187,7 +180,7 @@ namespace codex {
     public:
         scene::Camera camera;
         bool          primary = true;
-        Vector3f      focal_point{ 0.0f };
+        vec3          focal_point{ 0.0f };
 
     public:
         void archive_impl(Archive& ar) override;
@@ -216,9 +209,9 @@ namespace codex {
         void*    runtime_body    = nullptr;
 
     public:
-        void apply_force(const Vector2f& force, const std::optional<Vector2f> point = std::nullopt) noexcept;
+        void apply_force(const vec2& force, const std::optional<vec2> point = std::nullopt) noexcept;
         void apply_torque(const f32 torque) noexcept;
-        void apply_linear_impulse(const Vector2f& impulse, const std::optional<Vector2f> point = std::nullopt);
+        void apply_linear_impulse(const vec2& impulse, const std::optional<vec2> point = std::nullopt);
         void apply_angular_impulse(const f32 torque);
 
     public:
@@ -230,8 +223,8 @@ namespace codex {
         CX_COMPONENT(BoxCollider2DComponent)
 
     public:
-        Vector2f                offset{ 0.0f, 0.0f };
-        Vector2f                size{ 32.0f, 32.0f };
+        vec2                    offset{ 0.0f, 0.0f };
+        vec2                    size{ 32.0f, 32.0f };
         phys::PhysicsMaterial2D physics_material;
         void*                   runtime_fixture = nullptr;
 
@@ -244,7 +237,7 @@ namespace codex {
         CX_COMPONENT(CircleCollider2DComponent)
 
     public:
-        Vector2f                offset{ 0.0f, 0.0f };
+        vec2                    offset{ 0.0f, 0.0f };
         f32                     radius = 32.0f;
         phys::PhysicsMaterial2D physics_material;
         void*                   runtime_fixture = nullptr;
@@ -258,8 +251,8 @@ namespace codex {
         CX_COMPONENT(GridRendererComponent)
 
     public:
-        Vector2f cell_size{ 64.0f, 64.0f };
-        Vector4f colour{ 1.0f, 1.0f, 1.0f, 0.3f };
+        vec2 cell_size{ 64.0f, 64.0f };
+        vec4 colour{ 1.0f, 1.0f, 1.0f, 0.3f };
 
     public:
         void archive_impl(Archive& ar) override;
@@ -277,9 +270,9 @@ namespace codex {
         };
         struct Tile
         {
-            Vector3f pos{ 0.0f, 0.0f, 0.0f };
-            Vector2f atlas{ 0.0f, 0.0f };
-            i32      layer = 0;
+            vec3 pos{ 0.0f, 0.0f, 0.0f };
+            vec2 atlas{ 0.0f, 0.0f };
+            i32  layer = 0;
 
             void archive(Archive& ar)
             {
@@ -292,16 +285,16 @@ namespace codex {
     public:
         Sprite            sprite;
         std::vector<Tile> tiles;
-        Vector2f          grid_size{ 64.0f, 64.0f };
-        Vector2f          tile_size{ 64.0f, 64.0f };
-        Vector2f          current_tile{};
+        vec2              grid_size{ 64.0f, 64.0f };
+        vec2              tile_size{ 64.0f, 64.0f };
+        vec2              current_tile{};
         State             current_state = State::Brush;
         i32               current_layer = 0;
 
     public:
-        void add_tile(const Vector3f pos, const i32 tile_id);
-        void add_tile(const Vector3f pos, const Vector2f atlas);
-        void remove_tile(const Vector3f pos);
+        void add_tile(const vec3 pos, const i32 tile_id);
+        void add_tile(const vec3 pos, const vec2 atlas);
+        void remove_tile(const vec3 pos);
 
     public:
         void archive_impl(Archive& ar) override;
@@ -315,10 +308,23 @@ namespace codex {
         struct Animation
         {
             std::string name;
-            Vector2f    starting_tile{ 0.0f, 0.0f };
-            u32         frame_count   = 0;
-            f32         frame_rate    = 24.0f;
-            u32         current_frame = 0;
+            vec2        starting_tile{ 0.0f, 0.0f };
+            u32         frame_count = 0;
+            f32         frame_rate  = 24.0f;
+
+            u32 current_frame = 0;
+            f32 accumulator   = 0.0f;
+            enum PlaybackMode : u8
+            {
+                kNormal = 1,
+                kReverse,
+                kPingPong,
+                kOneShot,
+                kOneShotReverse,
+
+                kPlaybackModeSize,
+            } playback_mode = kNormal;
+            bool reverse    = false;
 
             void archive(Archive& ar)
             {
@@ -326,13 +332,35 @@ namespace codex {
                 ar("starting_tile", starting_tile);
                 ar("frame_count", frame_count);
                 ar("frame_rate", frame_rate);
+
+                std::string play_mode;
+                if (ar.saving()) {
+                    play_mode = enum_name<PlaybackMode>(playback_mode);
+                    ar("playback_mode", play_mode);
+                } else {
+                    ar("playback_mode", play_mode);
+                    auto value = enum_from<PlaybackMode>(play_mode);
+                    if (value)
+                        playback_mode = *value;
+                }
             }
         };
 
     public:
         Sprite                 sprite;
-        Vector2f               grid_size{ 32.0f, 32.0f };
+        vec2                   grid_size{ 32.0f, 32.0f };
         std::vector<Animation> animations;
+        u32                    active_animation = 0;
+
+    public:
+        [[nodiscard]] Animation* active_anim() noexcept
+        {
+            if (animations.empty())
+                return nullptr;
+            if (active_animation >= animations.size())
+                active_animation = 0;
+            return &animations[active_animation];
+        }
 
     public:
         void archive_impl(Archive& ar) override;
@@ -362,5 +390,24 @@ namespace codex {
     struct AudioListenerComponent : public Component
     {
         CX_COMPONENT(AudioListenerComponent)
+    };
+
+    struct CODEX_API HierarchyComponent : public Component
+    {
+        CX_COMPONENT(HierarchyComponent)
+
+        friend class Scene;
+
+    public:
+        Entity              parent;
+        std::vector<Entity> children;
+
+    public:
+        void resolve_pending() noexcept;
+        void archive_impl(Archive& ar) override;
+
+    protected:
+        std::optional<UUID> pending_parent_;
+        std::vector<UUID>   pending_children_;
     };
 } // namespace codex

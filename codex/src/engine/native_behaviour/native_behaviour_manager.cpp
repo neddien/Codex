@@ -44,10 +44,18 @@ namespace codex {
     {
         auto& self = get();
         if (self.nb_instance_) {
-            if (save_to_pending && self.scene_) {
+            // Live behaviours hold vtables pointing into the module being unloaded, so
+            // they must be destroyed before the module is, whether or not their names
+            // are saved for re-attachment.
+            if (self.scene_) {
                 auto nbc_view = self.scene_->entities_with_component<NativeBehaviourComponent>();
-                // for (auto& e : nbc_view)
-                //     e.get_component<NativeBehaviourComponent>().save_attached_to_pending();
+                for (auto& e : nbc_view) {
+                    auto& nbc = e.get_component<NativeBehaviourComponent>();
+                    if (save_to_pending)
+                        nbc.dispose_and_save_attached_to_pending();
+                    else
+                        nbc.dispose_behaviours();
+                }
             }
 
             const auto path = self.nb_instance_->get_path().string();

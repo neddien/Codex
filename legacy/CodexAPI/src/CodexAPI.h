@@ -20,13 +20,11 @@ extern "C" {
 	// TODO: Organize this please.
 	namespace {
 
-		struct Vector2f
 		{
 		public:
 			float x, y;
 
 		public:
-			Vector2f(codex::Vector2f vec)
 			{
 				x = vec.x;
 				y = vec.y;
@@ -46,7 +44,6 @@ extern "C" {
 		{
 		public:
 			Texture2D texture;
-			codex::Rectf srcRect;
 		};
 
 		// Components
@@ -96,16 +93,12 @@ extern "C" {
 		struct TileInfo
 		{
 			int32_t layer;
-			codex::Vector2f tilePos;
-			codex::Vector2f worldPos;
 		};
 
 		struct DescriptorTilemapComponent
 		{
 		public:
 			const char* textureFilePath;
-			codex::Vector2f gridSize;
-			codex::Vector2f tileSize;
 			int32_t layer;
 			int32_t tileCount;
 
@@ -149,9 +142,6 @@ extern "C" {
 	CODEX_EXPORT int32_t CreateEntity(EntityDescriptor* desc);
 	CODEX_EXPORT void RemoveEntity(int32_t id);
 	CODEX_EXPORT void UpdateEntityFromDescriptor(int32_t id, EntityDescriptor* desc); // TODO: Obsolete function, remember to remove.
-	CODEX_EXPORT void SetSelectedTileCoord(codex::Vector2f newCoord);
-	CODEX_EXPORT codex::Vector2f GetSelectedTileCoord();
-	CODEX_EXPORT void GetMousePositionInWorld(codex::Vector2f& vec);
 	CODEX_EXPORT void SetActiveAction(codex::EditorAction newAction);
 	CODEX_EXPORT void SetSelectedEntityID(uint32_t id);
 

@@ -5,6 +5,7 @@
 #include <engine/concurrency/public/mutex.h>
 #include <engine/core/public/archive.h>
 #include <engine/core/public/common_third_party_libs.h>
+#include <engine/core/public/geometry.h>
 #include <engine/graphics/public/shader.h>
 #include <engine/memory/public/memory.h>
 #include <engine/scene/public/entity.h>
@@ -81,11 +82,11 @@ namespace codex {
         };
         struct PhysicsProperties
         {
-            i32      tick_rate           = 60;
-            u32      velocity_iterations = 6;
-            u32      position_iterations = 2;
-            f32      scaling_factor      = 1.0f / 64.0f;
-            Vector2f gravity             = { 0.0f, -9.8f };
+            i32  tick_rate           = 60;
+            u32  velocity_iterations = 6;
+            u32  position_iterations = 2;
+            f32  scaling_factor      = 1.0f / 64.0f;
+            vec2 gravity             = { 0.0f, -9.8f };
         };
         enum class State
         {
@@ -106,9 +107,7 @@ namespace codex {
         [[nodiscard]] inline State                    state() const noexcept { return state_.load(); }
         [[nodiscard]] inline PhysicsProperties&       physics_properties() noexcept { return physics_properties_; }
         [[nodiscard]] inline const PhysicsProperties& physics_properties() const noexcept
-        {
-            return physics_properties_;
-        }
+        { return physics_properties_; }
         [[nodiscard]] inline std::string_view name() const noexcept { return name_; }
         [[nodiscard]] u32                     entity_count() const noexcept;
         [[nodiscard]] bool                    is_valid(const Entity entity) const noexcept;
@@ -132,11 +131,18 @@ namespace codex {
         }
 
         void   copy_to(Scene& other) const noexcept;
-        void   clone_via_serialization(Scene& other) const noexcept;
-        Entity create_entity(const std::string_view tag = "default tag", UUID uuid = UUID{}) noexcept;
-        void   remove_entity(const Entity entity);
-        void   remove_entity(const u32 entity);
-        Entity instantiate_prefab(const scene::Prefab& prefab) noexcept;
+        void   clone_via_serialization(Scene& other) const;
+        Entity create_entity(std::string_view tag) noexcept;
+        Entity create_entity(const std::optional<math::transform>& transform = std::nullopt,
+                             const std::string_view tag = "default tag", UUID uuid = UUID{}) noexcept;
+        void   remove_entity(Entity entity);
+        void   remove_entity(u32 entity);
+        Entity instantiate_prefab(const scene::Prefab&                  prefab,
+                                  const std::optional<math::transform>& transform = std::nullopt,
+                                  std::string_view tag = "default tag", UUID uuid = UUID{}) noexcept;
+        void   enqueue_for_disposal(Entity entity) noexcept;
+        Entity entity_by_uuid(UUID uuid) noexcept;
+        void   set_parent(Entity parent, Entity child) noexcept;
 
         [[nodiscard]] BagHandle             create_behaviour_bag(Entity owner) noexcept;
         void                                dispose_behaviour_bag(BagHandle handle) noexcept;
@@ -156,21 +162,34 @@ namespace codex {
 
         void archive(Archive& archive) override;
 
+    public:
+        void attach_pending_behaviours() noexcept;
+
     private:
+        void        transform_pass();
         void        render_sprites();
         void        render_audio();
         void        construct_physics_bodies();
+        void        construct_physics_body(entt::registry& registry, const entt::entity entity);
+        void        destroy_physics_body(entt::registry& registry, entt::entity entity) noexcept;
         static void on_fixed_update(Scene& self) noexcept;
 
     private:
-        BehaviourBag                 bag_;
-        BehaviourList                behaviours_;
-        cc::Mutex<entt::registry>    registry_;
-        std::string                  name_          = "Default scene";
-        Box<b2World, B2WorldDeleter> physics_world_ = nullptr;
-        std::atomic<State>           state_         = State::Edit;
-        std::thread                  fixed_update_thread_;
-        PhysicsProperties            physics_properties_;
-        Box<Entity>                  primary_camera_entity_ = nullptr;
+        BehaviourBag                      bag_;
+        BehaviourList                     behaviours_;
+        cc::Mutex<entt::registry>         registry_;
+        std::string                       name_          = "Default scene";
+        Box<b2World, B2WorldDeleter>      physics_world_ = nullptr;
+        std::atomic<State>                state_         = State::Edit;
+        std::thread                       fixed_update_thread_;
+        PhysicsProperties                 physics_properties_;
+        Box<Entity>                       primary_camera_entity_ = nullptr;
+        std::vector<Entity>               entities_to_be_disposed_;
+        absl::flat_hash_map<UUID, Entity> uuid_to_entity_;
+        // Recursive: behaviour callbacks run under this lock and may re-enter
+        // scene methods that lock it again (spawning, disposal, ...).
+        mutable std::recursive_mutex mutex_;
     };
+
+    void serialize(Archive& ar, Entity& entity);
 } // namespace codex

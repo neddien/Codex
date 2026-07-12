@@ -99,8 +99,8 @@ namespace codex::gfx {
         std::fill(texture_list_.begin(), texture_list_.end(), nullptr);
     }
 
-    bool RenderBatch::upload_quad(Texture2D* texture, const Rectf& src_rect, const Matrix4f& transform,
-                                  const Vector4f& colour, const i32 entity_id)
+    bool RenderBatch::upload_quad(Texture2D* texture, const rect& src_rect, const mat4& transform, const vec4& colour,
+                                  const i32 entity_id)
     {
         u16 tex_id     = 0;
         f32 tex_width  = 0.0f;
@@ -119,14 +119,14 @@ namespace codex::gfx {
             tex_height = (f32)texture->height();
         }
 
-        Vector4f quad_verticies[4] = { { 0.5f, 0.5f, 0.0f, 1.0f },
-                                       { -0.5f, 0.5f, 0.0f, 1.0f },
-                                       { -0.5f, -0.5f, 0.0f, 1.0f },
-                                       { 0.5f, -0.5f, 0.0f, 1.0f } };
-        Vector2f tex_coords[4]     = { { src_rect.x + src_rect.w, src_rect.y + src_rect.h },
-                                       { src_rect.x, src_rect.y + src_rect.h },
-                                       { src_rect.x, src_rect.y },
-                                       { src_rect.x + src_rect.w, src_rect.y } };
+        vec4 quad_verticies[4] = { { 0.5f, 0.5f, 0.0f, 1.0f },
+                                    { -0.5f, 0.5f, 0.0f, 1.0f },
+                                    { -0.5f, -0.5f, 0.0f, 1.0f },
+                                    { 0.5f, -0.5f, 0.0f, 1.0f } };
+        vec2  tex_coords[4]     = { { src_rect.x + src_rect.w, src_rect.y + src_rect.h },
+                                    { src_rect.x, src_rect.y + src_rect.h },
+                                    { src_rect.x, src_rect.y },
+                                    { src_rect.x + src_rect.w, src_rect.y } };
 
         for (usize i = 0; i < QUAD2D_VERTEX_COUNT; ++i) {
             vertex_ptr_->model     = transform;

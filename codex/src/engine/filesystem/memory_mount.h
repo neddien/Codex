@@ -61,7 +61,7 @@ namespace codex::fs {
                 const bool recursive = false) noexcept override;
         bool mv(const std::string& src_rel_path, const std::string& dst_rel_path) noexcept override;
         [[nodiscard]] std::vector<std::string> list(const std::string& rel_path,
-                                                    ListOptions opts = ListOptions::None) const noexcept override;
+                                                    ListOptions        opts = ListOptions::None) const override;
         [[nodiscard]] bool                     directory(const std::string& rel_path) const noexcept override;
         [[nodiscard]] bool                     empty(const std::string& rel_path) const noexcept override;
 

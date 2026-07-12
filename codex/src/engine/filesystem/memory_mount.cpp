@@ -411,7 +411,7 @@ namespace codex::fs {
         return false;
     }
 
-    std::vector<std::string> MemoryMount::list(const std::string& rel_path, const ListOptions opts) const noexcept
+    std::vector<std::string> MemoryMount::list(const std::string& rel_path, const ListOptions opts) const
     {
         std::shared_lock lock{ mutex_ };
 

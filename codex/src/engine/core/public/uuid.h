@@ -20,10 +20,7 @@ namespace codex {
         void archive(Archive& archive) override;
 
     private:
-        u64                                       uuid_;
-        static std::random_device                 s_random_device_;
-        static std::mt19937_64                    s_generator_;
-        static std::uniform_int_distribution<u64> s_distribution_;
+        u64 uuid_;
     };
 } // namespace codex
 
@@ -32,9 +29,7 @@ namespace std {
     struct hash<codex::UUID>
     {
         [[nodiscard]] inline std::size_t operator()(const codex::UUID& uuid) const noexcept
-        {
-            return hash<codex::u64>{}(static_cast<codex::u64>(uuid));
-        }
+        { return hash<codex::u64>{}(static_cast<codex::u64>(uuid)); }
     };
 } // namespace std
 
@@ -43,8 +38,6 @@ namespace fmt {
     struct formatter<codex::UUID> : formatter<std::string_view>
     {
         auto format(const codex::UUID& uuid, format_context& ctx) const
-        {
-            return format_to(ctx.out(), "{}", uuid.to_string());
-        }
+        { return format_to(ctx.out(), "{}", uuid.to_string()); }
     };
 } // namespace fmt

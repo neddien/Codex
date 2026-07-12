@@ -10,12 +10,12 @@ namespace codex::editor {
         engine_project.boot_scene        = AssetPath{};
         engine_project.engine_properties = EngineProperties{
             .flags = EngineFlags::InitAll,
-            .window_properties =
-                WindowProperties{
-                    .title  = "Codex Application",
-                    .width  = 1920,
-                    .height = 1080,
-                    .vsync  = true,
+            .video_properties =
+                VideoProperties{
+                    .window_title  = "Codex Application",
+                    .window_width  = 1920,
+                    .window_height = 1080,
+                    .vsync         = true,
                 },
         };
     }

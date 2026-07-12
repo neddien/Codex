@@ -18,15 +18,4 @@ namespace codex {
     {
         return get_component<TransformComponent>();
     }
-
-    Component& Entity::first_component() noexcept
-    {
-        // For now IDComponent is always the first component.
-        return static_cast<Component&>(get_component<IDComponent>());
-    }
-
-    const Component& Entity::first_component() const noexcept
-    {
-        return const_cast<Entity*>(this)->first_component();
-    }
 } // namespace codex

@@ -265,54 +265,60 @@ namespace codex {
 
     // Built-in serialize() overloads for common engine types using ADL (the extension seam).
     // User types can also define their own overloads in their own namespaces and Archive will find them.
-    inline void serialize(Archive& ar, math::Vector2& v)
+    inline void serialize(Archive& ar, math::ivec2& v)
     {
         ar("x", v.x);
         ar("y", v.y);
     }
-    inline void serialize(Archive& ar, math::Vector2f& v)
+    inline void serialize(Archive& ar, math::vec2& v)
     {
         ar("x", v.x);
         ar("y", v.y);
     }
-    inline void serialize(Archive& ar, math::Vector3& v)
-    {
-        ar("x", v.x);
-        ar("y", v.y);
-        ar("z", v.z);
-    }
-    inline void serialize(Archive& ar, math::Vector3f& v)
+    inline void serialize(Archive& ar, math::ivec3& v)
     {
         ar("x", v.x);
         ar("y", v.y);
         ar("z", v.z);
     }
-    inline void serialize(Archive& ar, math::Vector4& v)
+    inline void serialize(Archive& ar, math::vec3& v)
     {
         ar("x", v.x);
         ar("y", v.y);
         ar("z", v.z);
-        ar("w", v.w);
     }
-    inline void serialize(Archive& ar, math::Vector4f& v)
+    inline void serialize(Archive& ar, math::ivec4& v)
     {
         ar("x", v.x);
         ar("y", v.y);
         ar("z", v.z);
         ar("w", v.w);
     }
-    inline void serialize(Archive& ar, math::Rect& v)
+    inline void serialize(Archive& ar, math::vec4& v)
+    {
+        ar("x", v.x);
+        ar("y", v.y);
+        ar("z", v.z);
+        ar("w", v.w);
+    }
+    inline void serialize(Archive& ar, math::irect& v)
+    {
+        ar("x", v.x);
+        ar("y", v.y);
+        ar("w", v.w);
+        ar("h", v.h);
+    }
+    inline void serialize(Archive& ar, math::rect& v)
     {
         ar("x", v.x);
         ar("y", v.y);
         ar("w", v.w);
         ar("h", v.h);
     }
-    inline void serialize(Archive& ar, math::Rectf& v)
+    inline void serialize(Archive& ar, transform& trans)
     {
-        ar("x", v.x);
-        ar("y", v.y);
-        ar("w", v.w);
-        ar("h", v.h);
+        ar("position", trans.position);
+        ar("rotation", trans.rotation);
+        ar("scale", trans.scale);
     }
 } // namespace codex

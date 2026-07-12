@@ -147,7 +147,6 @@ namespace CodexEditor.ViewModel.Editors
 						SrcCoords = new Vector2(x, y),
 						Image = new CroppedBitmap(
 							_image,
-							new Int32Rect(
 								(int)((x * (int)_tileSize.X) + offset.X),
 								(int)((y * (int)_tileSize.Y) + offset.Y),
 								(int)(_tileSize.X - offset.X),

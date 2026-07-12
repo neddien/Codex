@@ -54,6 +54,22 @@
 
 #define CX_MACRO_STRINGFY(x) #x
 
+#define CX_DEFAULT_LOGGER(name)                                                                                        \
+    using __cx_intrinsics_logger = codex::Loggable<name>;                                                              \
+    using __cx_intrinsics_logger::log;                                                                                 \
+    using __cx_intrinsics_logger::info;                                                                                \
+    using __cx_intrinsics_logger::warn;                                                                                \
+    using __cx_intrinsics_logger::error;                                                                               \
+    using __cx_intrinsics_logger::fatal;                                                                               \
+    using __cx_intrinsics_logger::debug;                                                                               \
+    using __cx_intrinsics_logger::trace;                                                                               \
+    using __cx_intrinsics_logger::Info;                                                                                \
+    using __cx_intrinsics_logger::Warn;                                                                                \
+    using __cx_intrinsics_logger::Error;                                                                               \
+    using __cx_intrinsics_logger::Fatal;                                                                               \
+    using __cx_intrinsics_logger::Verbose;                                                                             \
+    using __cx_intrinsics_logger::Debug;
+
 namespace codex {
     using usize   = std::size_t;
     using intptr  = std::intptr_t;
@@ -128,27 +144,27 @@ namespace codex {
 
 namespace std {
     template <>
-    struct hash<codex::math::Vector2f>
+    struct hash<codex::math::vec2>
     {
-        [[nodiscard]] std::size_t operator()(const codex::math::Vector2f& vec) const noexcept
+        [[nodiscard]] std::size_t operator()(const codex::math::vec2& vec) const noexcept
         {
             return hash<codex::f32>()(vec.x) ^ hash<codex::f32>()(vec.y);
         }
     };
 
     template <>
-    struct hash<codex::math::Vector3f>
+    struct hash<codex::math::vec3>
     {
-        [[nodiscard]] std::size_t operator()(const codex::math::Vector3f& vec) const noexcept
+        [[nodiscard]] std::size_t operator()(const codex::math::vec3& vec) const noexcept
         {
             return hash<codex::f32>()(vec.x) ^ hash<codex::f32>()(vec.y) ^ hash<codex::f32>()(vec.z);
         }
     };
 
     template <>
-    struct hash<codex::math::Vector4f>
+    struct hash<codex::math::vec4>
     {
-        [[nodiscard]] std::size_t operator()(const codex::math::Vector4f& vec) const noexcept
+        [[nodiscard]] std::size_t operator()(const codex::math::vec4& vec) const noexcept
         {
             return hash<codex::f32>()(vec.x) ^ hash<codex::f32>()(vec.y) ^ hash<codex::f32>()(vec.z) ^
                    hash<codex::f32>()(vec.w);
@@ -156,9 +172,9 @@ namespace std {
     };
 
     template <>
-    struct hash<codex::math::Rectf>
+    struct hash<codex::math::rect>
     {
-        [[nodiscard]] std::size_t operator()(const codex::math::Rectf& rect) const noexcept
+        [[nodiscard]] std::size_t operator()(const codex::math::rect& rect) const noexcept
         {
             return hash<codex::f32>()(rect.x) ^ hash<codex::f32>()(rect.y) ^ hash<codex::f32>()(rect.w) ^
                    hash<codex::f32>()(rect.h);
@@ -168,65 +184,65 @@ namespace std {
 
 namespace fmt {
     template <>
-    struct formatter<codex::math::Vector2f> : formatter<std::string_view>
+    struct formatter<codex::math::vec2> : formatter<std::string_view>
     {
-        auto format(const codex::math::Vector2f& vec, format_context& ctx) const
+        auto format(const codex::math::vec2& vec, format_context& ctx) const
         {
             return format_to(ctx.out(), "({}, {})", vec.x, vec.y);
         }
     };
     template <>
-    struct formatter<codex::math::Vector2> : formatter<std::string_view>
+    struct formatter<codex::math::ivec2> : formatter<std::string_view>
     {
-        auto format(const codex::math::Vector2& vec, format_context& ctx) const
+        auto format(const codex::math::ivec2& vec, format_context& ctx) const
         {
             return format_to(ctx.out(), "({}, {})", vec.x, vec.y);
         }
     };
     template <>
-    struct formatter<codex::math::Vector3f> : formatter<std::string_view>
+    struct formatter<codex::math::vec3> : formatter<std::string_view>
     {
-        auto format(const codex::math::Vector3f& vec, format_context& ctx) const
+        auto format(const codex::math::vec3& vec, format_context& ctx) const
         {
             return format_to(ctx.out(), "({}, {}, {})", vec.x, vec.y, vec.z);
         }
     };
     template <>
-    struct formatter<codex::math::Vector3> : formatter<std::string_view>
+    struct formatter<codex::math::ivec3> : formatter<std::string_view>
     {
-        auto format(const codex::math::Vector3& vec, format_context& ctx) const
+        auto format(const codex::math::ivec3& vec, format_context& ctx) const
         {
             return format_to(ctx.out(), "({}, {}, {})", vec.x, vec.y, vec.z);
         }
     };
     template <>
-    struct formatter<codex::math::Vector4f> : formatter<std::string_view>
+    struct formatter<codex::math::vec4> : formatter<std::string_view>
     {
-        auto format(const codex::math::Vector4f& vec, format_context& ctx) const
+        auto format(const codex::math::vec4& vec, format_context& ctx) const
         {
             return format_to(ctx.out(), "({}, {}, {}, {})", vec.x, vec.y, vec.z, vec.w);
         }
     };
     template <>
-    struct formatter<codex::math::Vector4> : formatter<std::string_view>
+    struct formatter<codex::math::ivec4> : formatter<std::string_view>
     {
-        auto format(const codex::math::Vector4& vec, format_context& ctx) const
+        auto format(const codex::math::ivec4& vec, format_context& ctx) const
         {
             return format_to(ctx.out(), "({}, {}, {}, {})", vec.x, vec.y, vec.z, vec.w);
         }
     };
     template <>
-    struct formatter<codex::math::Rectf> : formatter<std::string_view>
+    struct formatter<codex::math::rect> : formatter<std::string_view>
     {
-        auto format(const codex::math::Rectf& rect, format_context& ctx) const
+        auto format(const codex::math::rect& rect, format_context& ctx) const
         {
             return format_to(ctx.out(), "({}, {}, {}, {})", rect.x, rect.y, rect.w, rect.h);
         }
     };
     template <>
-    struct formatter<codex::math::Rect> : formatter<std::string_view>
+    struct formatter<codex::math::irect> : formatter<std::string_view>
     {
-        auto format(const codex::math::Rect& rect, format_context& ctx) const
+        auto format(const codex::math::irect& rect, format_context& ctx) const
         {
             return format_to(ctx.out(), "({}, {}, {}, {})", rect.x, rect.y, rect.w, rect.h);
         }

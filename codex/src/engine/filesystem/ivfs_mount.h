@@ -33,7 +33,7 @@ namespace codex::fs {
         }
         virtual bool mv(const std::string& src_rel_path, const std::string& dst_rel_path) noexcept { return false; }
         [[nodiscard]] virtual std::vector<std::string> list(const std::string& rel_path,
-                                                            const ListOptions  opts = ListOptions::None) const noexcept
+                                                            const ListOptions  opts = ListOptions::None) const
         {
             return {};
         }

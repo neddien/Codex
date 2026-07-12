@@ -1,16 +1,16 @@
 #pragma once
 
 namespace codex::opengl {
-    struct Rect;
-    struct Rectf;
+    struct irect;
+    struct rect;
 
-    struct Rect
+    struct irect
     {
     public:
         int x, y, w, h;
 
     public:
-        constexpr Rect(const int x = 0, const int y = 0, const int w = 0, const int h = 0) noexcept
+        constexpr irect(const int x = 0, const int y = 0, const int w = 0, const int h = 0) noexcept
             : x{ x }
             , y{ y }
             , w{ w }
@@ -18,7 +18,7 @@ namespace codex::opengl {
         {
         }
         /*
-        constexpr Rect(const Rectf& rectf) noexcept
+        constexpr irect(const rect& rectf) noexcept
             : x{ rectf.x }
             , y{ rectf.y }
             , w{ rectf.w }
@@ -28,13 +28,13 @@ namespace codex::opengl {
         */
     };
 
-    struct Rectf
+    struct rect
     {
     public:
         float x, y, w, h;
 
     public:
-        constexpr Rectf(const float x = 0.0f, const float y = 0.0f, const float w = 0.0f, const float h = 0.0f) noexcept
+        constexpr rect(const float x = 0.0f, const float y = 0.0f, const float w = 0.0f, const float h = 0.0f) noexcept
             : x{ x }
             , y{ y }
             , w{ w }
@@ -42,7 +42,7 @@ namespace codex::opengl {
         {
         }
         /*
-        constexpr Rectf(const Rect& rect) noexcept
+        constexpr rect(const irect& rect) noexcept
             : x{ rect.x }
             , y{ rect.y }
             , w{ rect.w }

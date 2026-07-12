@@ -26,18 +26,15 @@ namespace codex::sys {
     void POSIXProcess::launch()
     {
         // Create pipes BEFORE fork so both parent and child inherit the fds.
-        if (info_.redirect_stdout)
-        {
+        if (info_.redirect_stdout) {
             if (pipe(stdout_pipe_) < 0)
                 throw ProcessException("Failed to create stdout pipe: {}", std::strerror(errno));
         }
-        if (info_.redirect_stderr)
-        {
+        if (info_.redirect_stderr) {
             if (pipe(stderr_pipe_) < 0)
                 throw ProcessException("Failed to create stderr pipe: {}", std::strerror(errno));
         }
-        if (info_.redirect_stdin)
-        {
+        if (info_.redirect_stdin) {
             if (pipe(stdin_pipe_) < 0)
                 throw ProcessException("Failed to create stdin pipe: {}", std::strerror(errno));
         }
@@ -46,39 +43,33 @@ namespace codex::sys {
         if (pid_ == -1)
             throw ProcessException("POSIX: Failed to fork process: {}", std::strerror(errno));
 
-        if (pid_ == 0)
-        {
+        if (pid_ == 0) {
             // ---- Child process ----
 
             // Redirect stdout: child writes to the write end of the stdout pipe.
-            if (info_.redirect_stdout)
-            {
+            if (info_.redirect_stdout) {
                 close(stdout_pipe_[0]); // Child doesn't read from stdout pipe.
                 dup2(stdout_pipe_[1], STDOUT_FILENO);
                 close(stdout_pipe_[1]);
             }
 
             // Redirect stderr: child writes to the write end of the stderr pipe.
-            if (info_.redirect_stderr)
-            {
+            if (info_.redirect_stderr) {
                 close(stderr_pipe_[0]); // Child doesn't read from stderr pipe.
                 dup2(stderr_pipe_[1], STDERR_FILENO);
                 close(stderr_pipe_[1]);
             }
 
             // Redirect stdin: child reads from the read end of the stdin pipe.
-            if (info_.redirect_stdin)
-            {
+            if (info_.redirect_stdin) {
                 close(stdin_pipe_[1]); // Child doesn't write to stdin pipe.
                 dup2(stdin_pipe_[0], STDIN_FILENO);
                 close(stdin_pipe_[0]);
             }
 
             // Change working directory if requested.
-            if (info_.cwd)
-            {
-                if (chdir(info_.cwd->c_str()) != 0)
-                {
+            if (info_.cwd) {
+                if (chdir(info_.cwd->c_str()) != 0) {
                     perror("chdir");
                     std::exit(EXIT_FAILURE);
                 }
@@ -90,8 +81,7 @@ namespace codex::sys {
             char*       args[Process::MAX_ARG_COUNT];
             char*       token = std::strtok(cmd_copy.data(), " ");
             u32         i     = 0;
-            while (token && i < Process::MAX_ARG_COUNT - 1)
-            {
+            while (token && i < Process::MAX_ARG_COUNT - 1) {
                 args[i++] = token;
                 token     = std::strtok(nullptr, " ");
             }
@@ -135,15 +125,13 @@ namespace codex::sys {
 
                 // Spawn reader threads so stdout and stderr are drained concurrently.
                 // This prevents deadlocks when the child writes to both streams.
-                if (p->info_.redirect_stdout)
-                {
+                if (p->info_.redirect_stdout) {
                     p->stdout_thread_ = std::thread(
                         [p]()
                         {
                             char    buffer[Process::READ_BUFFER_SIZE];
                             ssize_t bytes_read = 0;
-                            while ((bytes_read = read(p->stdout_pipe_[0], buffer, sizeof(buffer) - 1)) > 0)
-                            {
+                            while ((bytes_read = read(p->stdout_pipe_[0], buffer, sizeof(buffer) - 1)) > 0) {
                                 buffer[bytes_read] = '\0';
                                 if (p->on_out_data_received)
                                     p->on_out_data_received(buffer, static_cast<usize>(bytes_read));
@@ -153,15 +141,13 @@ namespace codex::sys {
                         });
                 }
 
-                if (p->info_.redirect_stderr)
-                {
+                if (p->info_.redirect_stderr) {
                     p->stderr_thread_ = std::thread(
                         [p]()
                         {
                             char    buffer[Process::READ_BUFFER_SIZE];
                             ssize_t bytes_read = 0;
-                            while ((bytes_read = read(p->stderr_pipe_[0], buffer, sizeof(buffer) - 1)) > 0)
-                            {
+                            while ((bytes_read = read(p->stderr_pipe_[0], buffer, sizeof(buffer) - 1)) > 0) {
                                 buffer[bytes_read] = '\0';
                                 if (p->on_err_data_received)
                                     p->on_err_data_received(buffer, static_cast<usize>(bytes_read));
@@ -170,23 +156,26 @@ namespace codex::sys {
                             p->stderr_pipe_[0] = -1;
                         });
                 }
+                if (!p->info_.detached) {
+                    // Wait for the child to exit.
+                    i32 status = 0;
+                    waitpid(p->pid_, &status, 0);
+                    if (WIFEXITED(status)) {
+                        p->exit_code_ = WEXITSTATUS(status);
+                        p->running_   = false;
 
-                // Wait for the child to exit.
-                i32 status = 0;
-                waitpid(p->pid_, &status, 0);
-                if (WIFEXITED(status))
-                {
-                    p->exit_code_ = WEXITSTATUS(status);
-                    p->running_   = false;
+                        if (p->info_.on_exit)
+                            p->info_.on_exit(p->exit_code_);
+                    } else {
+                        p->exit_code_ = -1;
+                        p->running_   = false;
 
-                    if (p->info_.on_exit)
-                        p->info_.on_exit(p->exit_code_);
+                        if (p->info_.on_exit)
+                            p->info_.on_exit(p->exit_code_);
+                    }
                 } else {
-                    p->exit_code_ = -1;
-                    p->running_   = false;
-
-                    if (p->info_.on_exit)
-                        p->info_.on_exit(p->exit_code_);
+                    p->running_ = false;
+                    p->pid_     = -1;
                 }
             })
             .detach();
@@ -194,8 +183,7 @@ namespace codex::sys {
 
     i32 POSIXProcess::wait_for_exit()
     {
-        if (pid_ != -1)
-        {
+        if (pid_ != -1) {
             while (running_)
                 std::this_thread::yield();
             return exit_code_;
@@ -205,8 +193,7 @@ namespace codex::sys {
 
     void POSIXProcess::write_line(const std::string_view msg)
     {
-        if (stdin_pipe_[1] != -1)
-        {
+        if (stdin_pipe_[1] != -1) {
             write(stdin_pipe_[1], msg.data(), msg.size());
             write(stdin_pipe_[1], "\n", 1);
         }

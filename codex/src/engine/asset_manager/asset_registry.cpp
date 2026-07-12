@@ -11,6 +11,7 @@ namespace codex {
     namespace stdfs = std::filesystem;
 
     namespace {
+        // TODO: These utility functions need to be consolidated.
         stdfs::path remove_prefix(const stdfs::path& path, const stdfs::path& prefix)
         {
             auto [p, pre] = std::mismatch(path.begin(), path.end(), prefix.begin(), prefix.end());
@@ -418,6 +419,10 @@ namespace codex {
 
         // TODO: Threaded Parallel range based loop
         // Drop the const here cause we're only serializing.
+        usize meta_count = std::accumulate(metas_.begin(), metas_.end(), 0, [](u64 acc, const Box<AssetMetadata>& meta)
+                                           { return (meta and not meta->null_asset) ? ++acc : acc; });
+
+        binsd.begin_array("metadatas", meta_count);
         for (Box<AssetMetadata>& e : const_cast<AssetRegistry*>(this)->metas_) {
             if (!e->null_asset) {
                 auto cpy = Box<AssetMetadata>::make(*e);
@@ -428,6 +433,7 @@ namespace codex {
                 cpy->archive(ar);
             }
         }
+        binsd.end_array();
 
         std::vector<u8> buffer = binsd.take_buffer();
         auto            fh = vfs_.open(vfs_path, { fs::FileMode::Create | fs::FileMode::Write | fs::FileMode::Trunc });
@@ -471,6 +477,39 @@ namespace codex {
                     co_return;
                 }
             }
+        }
+    }
+
+    void AssetRegistry::from_manifest(const std::string& path) noexcept
+    {
+        std::scoped_lock guard{ mutex_ };
+
+        if (!vfs_.exists(path)) {
+            if (vfs_.is_directory(path)) {
+                log(Error, "{}: is a directory not a manifest file");
+            }
+        }
+
+        if (auto fh = vfs_.open(path, { fs::FileMode::Read }); fh) {
+            std::vector<u8> buf(fh->size());
+
+            fh->read(buf.data(), buf.size());
+
+            BinaryArchiveBackend binsd{ buf };
+            Archive              ar{ binsd };
+
+            usize meta_count;
+            binsd.begin_array("metadatas", meta_count);
+            for (usize i = 0; i < meta_count; ++i) {
+                AssetMetadata meta;
+                meta.archive(ar);
+                append_meta_nolock(std::move(meta));
+            }
+            binsd.end_array();
+
+            log(Info, "Asset registry loaded from manifest");
+        } else {
+            log(Error, "Failed to create registry from manifest file: {}", path);
         }
     }
 

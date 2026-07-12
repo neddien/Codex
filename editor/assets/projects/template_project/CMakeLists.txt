@@ -16,6 +16,7 @@ find_package(EnTT REQUIRED)
 find_package(glm REQUIRED)
 find_package(magic_enum REQUIRED)
 find_package(absl REQUIRED)
+find_package(enet REQUIRED)
 
 # For LSPs.
 set(CMAKE_EXPORT_COMPILE_COMMANDS on)
@@ -80,7 +81,7 @@ add_custom_command(
     OUTPUT ${CODEGEN_SOURCES} "${CODEGEN_DIR}/refl.stamp"
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CODEGEN_DIR}
-    COMMAND ${Python3_EXECUTABLE} ${REFLECTOR} ${HEADER_FILES} -o ${CODEGEN_DIR} --compile-commands=${CMAKE_BINARY_DIR} ${REFLECTOR_DEFINES}
+    COMMAND ${Python3_EXECUTABLE} ${REFLECTOR} ${HEADER_FILES} ${SOURCE_FILES} -o ${CODEGEN_DIR} --compile-commands=${CMAKE_BINARY_DIR} ${REFLECTOR_DEFINES}
     COMMAND ${CMAKE_COMMAND} -E touch "${CODEGEN_DIR}/refl.stamp"
     DEPENDS ${HEADER_FILES}
     COMMENT "Generating reflection code for native behaviour scripts..."
@@ -163,6 +164,17 @@ else()
   target_compile_definitions(NBMan PUBLIC CX_WORD_SIZE_32)
 endif()
 
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  # GCC emits STB_GNU_UNIQUE symbols for inline statics (the engine headers pull
+  # plenty of these in: System<T>::get() instances, entt type-index counters...),
+  # and glibc marks any DSO exporting such symbols as NODELETE. dlclose() then
+  # becomes a permanent no-op, so the editor's script hot-reload silently reuses
+  # the old module image and its static registrars never re-run. Clang and MSVC
+  # do not emit these symbols. NOTE: if another library is ever linked INTO this
+  # module, its sources need this flag as well.
+  target_compile_options(NBMan PRIVATE -fno-gnu-unique)
+endif()
+
 # Print the platform information
 message(":: Platform OS: ${CMAKE_SYSTEM_NAME}")
 message(":: Platform Compiler: ${CMAKE_CXX_COMPILER_ID}")
@@ -174,6 +186,16 @@ add_custom_command(
   POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_SOURCE_DIR}/lib"
   COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:NBMan> "${CMAKE_CURRENT_SOURCE_DIR}/lib/"
+)
+
+# Installing a project must also restore its native behaviour module under the
+# project root. An absolute destination is intentional here: this is mutable
+# project output consumed by the editor, not part of the toolchain install
+# prefix. CMake creates the directory when it does not exist.
+install(
+  TARGETS NBMan
+  RUNTIME DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}/lib"
+  LIBRARY DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}/lib"
 )
 
 # Expose Codex's dependencies.
@@ -188,7 +210,7 @@ target_include_directories(NBMan PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/engine/src/
 # Libraries - Shared libraries will have only their headers included while static libraries will be linked
 target_include_directories(NBMan PUBLIC
       $<TARGET_PROPERTY:fmt::fmt,INTERFACE_INCLUDE_DIRECTORIES>)
-target_link_libraries(NBMan PUBLIC EnTT::EnTT glm::glm magic_enum::magic_enum abseil::abseil)
+target_link_libraries(NBMan PUBLIC EnTT::EnTT glm::glm magic_enum::magic_enum abseil::abseil enet::enet)
 
 # TODO: Fix glad issue
 #target_include_directories(NBMan PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/engine/vendor")

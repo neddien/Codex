@@ -13,13 +13,13 @@ namespace codex::gfx {
     constexpr auto QUAD2D_VERTEX_COUNT = 4; // How many vertices does the buffer have?
 
     CX_PACKED(struct QuadVertex {
-        Matrix4f model;
-        Vector4f vertex;
-        Vector4f colour;
-        Vector2f tex_coord;
-        Vector2f tex_size;
-        i32      tex_id;
-        i32      entity_id;
+        mat4 model;
+        vec4 vertex;
+        vec4 colour;
+        vec2 tex_coord;
+        vec2 tex_size;
+        i32  tex_id;
+        i32  entity_id;
     });
 
     class CODEX_API RenderBatch
@@ -58,7 +58,7 @@ namespace codex::gfx {
             std::swap(current_tex_index_, other.current_tex_index_);
         }
         void flush();
-        bool upload_quad(Texture2D* texture, const Rectf& src_rect, const Matrix4f& transform, const Vector4f& colour,
+        bool upload_quad(Texture2D* texture, const rect& src_rect, const mat4& transform, const vec4& colour,
                          const i32 entity_id);
         std::vector<u32> generate_indices(u32& size);
         void             render();

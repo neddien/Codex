@@ -199,6 +199,13 @@ namespace codex {
         detail::dispatch_log(LogLevel::Debug, msg);
     }
 
+    // TODO: Is it possible to turn off debug/trace messages at compile time?
+    template <typename... TArgs>
+    constexpr void debug(const std::string_view fmt, TArgs&&... args)
+    {
+        log(LogLevel::Debug, fmt, std::forward<TArgs>(args)...);
+    }
+
     template <FixedString Tag>
     class Loggable
     {
@@ -242,6 +249,11 @@ namespace codex {
                 fmt::runtime("{} {}:{}: {}"), std::filesystem::path(loc.file_name()).filename().string(),
                 loc.function_name(), loc.line(), fmt::format(fmt::runtime(fmt_spec.fmt), std::forward<TArgs>(args)...));
             detail::dispatch_log(LogLevel::Debug, util::crypto::fnv1a(Tag), msg);
+        }
+        template <typename... TArgs>
+        constexpr void debug(const std::string_view fmt, TArgs&&... args) const noexcept
+        {
+            log(LogLevel::Debug, fmt, std::forward<TArgs>(args)...);
         }
     };
 } // namespace codex

@@ -182,7 +182,7 @@ namespace codex::fs {
             return true;
 
         // Check files: binary search by hash, then verify string to handle collisions.
-        const u64 hash = util::crypto::djb2_hash(npath);
+        const u64 hash = util::crypto::fnv1a(npath);
         auto      it   = std::lower_bound(entries_.begin(), entries_.end(), hash,
                                           [](const PakEntry& e, u64 h) { return e.path_hash < h; });
         while (it != entries_.end() && it->path_hash == hash) {
@@ -199,7 +199,7 @@ namespace codex::fs {
     Shared<FileHandle> PakMount::open(const std::string& path, const FileProperties props) noexcept
     {
         const auto npath = normalize(path);
-        const u64  hash  = util::crypto::djb2_hash(npath);
+        const u64  hash  = util::crypto::fnv1a(npath);
         auto       it    = std::lower_bound(entries_.begin(), entries_.end(), hash,
                                             [](const PakEntry& e, u64 h) { return e.path_hash < h; });
         while (it != entries_.end() && it->path_hash == hash) {
@@ -223,7 +223,7 @@ namespace codex::fs {
         return false;
     }
 
-    std::vector<std::string> PakMount::list(const std::string& rel_path, const ListOptions opts) const noexcept
+    std::vector<std::string> PakMount::list(const std::string& rel_path, const ListOptions opts) const
     {
         const auto npath      = normalize(rel_path);
         const auto prefix     = npath.empty() ? std::string{} : npath + '/';
