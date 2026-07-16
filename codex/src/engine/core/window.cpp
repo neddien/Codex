@@ -466,8 +466,7 @@ namespace codex {
             switch (sdl_event_.type) {
                 case SDL_QUIT: {
                     Engine::get().stop();
-                    break;
-                }
+                } break;
                 case SDL_WINDOWEVENT: {
                     switch (sdl_event_.window.event) {
                         case SDL_WINDOWEVENT_CLOSE: {
@@ -487,53 +486,47 @@ namespace codex {
                             break;
                         }
                     }
-                }
+                } break;
                 case SDL_MOUSEMOTION: {
                     MouseMoveEvent e{ FromSDLMouse(sdl_event_.button.button), sdl_event_.motion.x,
                                       sdl_event_.motion.y };
                     if (event_callback_) {
                         event_callback_(e);
                     }
-                    break;
-                }
+                } break;
                 case SDL_MOUSEBUTTONDOWN: {
                     MouseDownEvent e{ FromSDLMouse(sdl_event_.button.button), sdl_event_.motion.x,
                                       sdl_event_.motion.y };
                     if (event_callback_) {
                         event_callback_(e);
                     }
-                    break;
-                }
+                } break;
                 case SDL_MOUSEBUTTONUP: {
                     MouseUpEvent e{ FromSDLMouse(sdl_event_.button.button), sdl_event_.motion.x, sdl_event_.motion.y };
                     if (event_callback_) {
                         event_callback_(e);
                     }
-                    break;
-                }
+                } break;
                 case SDL_MOUSEWHEEL: {
                     MouseScrollEvent e{ FromSDLMouse(sdl_event_.button.button - 1), sdl_event_.motion.x,
                                         sdl_event_.motion.y, sdl_event_.wheel.x, sdl_event_.wheel.y };
                     if (event_callback_) {
                         event_callback_(e);
                     }
-                    break;
-                }
+                } break;
                 case SDL_KEYDOWN: {
                     KeyDownEvent e{ FromSDLKeycode(sdl_event_.key.keysym.sym),
                                     static_cast<bool>(sdl_event_.key.repeat) };
                     if (event_callback_) {
                         event_callback_(e);
                     }
-                    break;
-                }
+                } break;
                 case SDL_KEYUP: {
                     KeyUpEvent e{ FromSDLKeycode(sdl_event_.key.keysym.sym) };
                     if (event_callback_) {
                         event_callback_(e);
                     }
-                    break;
-                }
+                } break;
             }
         }
     }

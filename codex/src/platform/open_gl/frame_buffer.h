@@ -34,7 +34,7 @@ namespace codex::opengl {
         [[nodiscard]] inline FrameBufferProperties properties() const { return props_; }
         [[nodiscard]] inline u32                   colour_attachment_id_at(const u32 index = 0) const
         {
-            CX_ASSERT(index < colour_attachment_ids_.size(), "Index outside bounds of colour attachments.");
+            cxassert(index < colour_attachment_ids_.size(), "Index outside bounds of colour attachments.");
             return colour_attachment_ids_[index];
         }
         [[nodiscard]] inline u32 depth_attachment_id() const { return depth_attachment_id_; }

@@ -26,7 +26,7 @@ namespace codex {
     } // namespace scene
     class NativeBehaviour;
 
-    class CODEX_API Component : public ISerializable
+    struct CODEX_API Component : public ISerializable
     {
         friend class Entity;
         friend class Scene;
@@ -54,7 +54,7 @@ namespace codex {
         }
 
     protected:
-        virtual void archive_impl(Archive& ar) {}
+        virtual void archive_impl([[maybe_unused]] Archive& ar) {}
 
     protected:
         mutable Entity parent_;
@@ -100,6 +100,7 @@ namespace codex {
 
     public:
         explicit TransformComponent(const math::transform& transform = {});
+        TransformComponent& operator=(const math::transform& transform) noexcept;
 
     public:
         [[nodiscard]] mat4 world_mat() const noexcept { return world_; };
@@ -114,7 +115,7 @@ namespace codex {
         mat4 local_{ 1.0f };
     };
 
-    class CODEX_API SpriteRendererComponent : public Component
+    struct CODEX_API SpriteRendererComponent : public Component
     {
         CX_COMPONENT(SpriteRendererComponent)
 
@@ -137,7 +138,7 @@ namespace codex {
     CX_CUSTOM_EXCEPTION(ScriptException, "An unknown behaviour exception occured.")
     CX_CUSTOM_EXCEPTION(DuplicateBehaviourException, "Cannot have more than one type of behaviour on a single entity.")
 
-    class NativeBehaviourComponent : public Component, public Loggable<"NativeBehaviourComponent">
+    struct NativeBehaviourComponent : public Component, public Loggable<"NativeBehaviourComponent">
     {
         CX_COMPONENT(NativeBehaviourComponent)
 

@@ -13,7 +13,7 @@ namespace codex::gfx {
     CX_CUSTOM_EXCEPTION(ShaderException, "Bad shader.")
     CX_CUSTOM_EXCEPTION(ShaderNotFoundException, "Shader file was not found.")
 
-    class CODEX_API Shader : public IAsset
+    class CODEX_API Shader final : public IAsset
     {
         CX_ASSET(Shader)
 
@@ -35,7 +35,7 @@ namespace codex::gfx {
     public:
         Shader() = default;
         explicit Shader(std::string source, const ImportSettings& settings = {});
-        ~Shader();
+        ~Shader() override;
 
         Shader(const Shader&)            = delete;
         Shader& operator=(const Shader&) = delete;
@@ -64,7 +64,7 @@ namespace codex::gfx {
         Box<opengl::Shader> raw_shader_;
     };
 
-    class ShaderLoader : public AssetLoaderBase<Shader, Shader::ImportSettings>
+    class ShaderLoader final : public AssetLoaderBase<Shader, Shader::ImportSettings>
     {
         [[nodiscard]] Shared<Shader> load(Shared<fs::FileHandle>        fh,
                                           const Shader::ImportSettings& settings) const noexcept override;

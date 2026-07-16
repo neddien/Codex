@@ -8,7 +8,7 @@
 #include <engine/scene/public/scene.h>
 
 namespace codex::scene {
-    Prefab::Prefab(Entity entity)
+    Prefab::Prefab(Entity entity) noexcept
     {
         if (entity) {
             BinaryArchiveBackend binsd{}; // Automatically save mode (ie saving_ = false)

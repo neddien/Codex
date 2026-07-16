@@ -153,7 +153,7 @@ namespace codex::fs {
         return false;
     }
 
-    bool VirtualFilesystem::mkdir_nolock(const std::string& path, const bool recursive) noexcept
+    bool VirtualFilesystem::mkdir_nolock(const std::string& path) noexcept
     {
         const auto npath      = normalize(path);
         auto       components = util::str::split(npath, '/');
@@ -213,7 +213,7 @@ namespace codex::fs {
         return true;
     }
 
-    bool VirtualFilesystem::rm_nolock(const std::string& path, const bool recursive) noexcept
+    bool VirtualFilesystem::rm_nolock(const std::string& path) noexcept
     {
         const auto npath      = normalize(path);
         auto       components = util::str::split(npath, '/');
@@ -360,13 +360,13 @@ namespace codex::fs {
         if (!cp_nolock(src_npath, dst_npath, recursive))
             return false;
 
-        return rm_nolock(src_npath, recursive);
+        return rm_nolock(src_npath);
     }
 
-    bool VirtualFilesystem::mkdir(const std::string& path, const bool recursive) noexcept
+    bool VirtualFilesystem::mkdir(const std::string& path, [[maybe_unused]] const bool recursive) noexcept
     {
         std::scoped_lock lock{ mutex_ };
-        return mkdir_nolock(path, recursive);
+        return mkdir_nolock(path);
     }
 
     bool VirtualFilesystem::ensure_mount_point(const std::string& path, const bool recursive) noexcept
@@ -375,10 +375,10 @@ namespace codex::fs {
         return ensure_mount_point_nolock(path, recursive);
     }
 
-    bool VirtualFilesystem::rm(const std::string& path, const bool recursive) noexcept
+    bool VirtualFilesystem::rm(const std::string& path, [[maybe_unused]] const bool recursive) noexcept
     {
         std::scoped_lock lock{ mutex_ };
-        return rm_nolock(path, recursive);
+        return rm_nolock(path);
     }
 
     bool VirtualFilesystem::cp(const std::string& src_path, const std::string& dst_path, const bool recursive) noexcept
@@ -556,11 +556,8 @@ namespace codex::fs {
             Shared<FileHandle> handle;
         };
 
-        const auto         npath       = normalize(root);
-        u64                offset_idx  = 0;
-        u64                entry_count = 0;
-        u64                data_offset = 0;
-        u64                data_size   = 0;
+        const auto         npath      = normalize(root);
+        u64                offset_idx = 0;
         std::vector<entry> entries;
 
         resolved_node rslvd = resolve_mount_nolock(npath);

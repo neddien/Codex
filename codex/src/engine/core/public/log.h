@@ -1,7 +1,5 @@
 #pragma once
 
-#include <sdafx.h>
-
 #include <engine/core/public/common_def.h>
 #include <engine/core/public/common_third_party_libs.h>
 #include <engine/utils/public/util.h>
@@ -166,44 +164,49 @@ namespace codex {
 
     template <typename... TArgs>
     constexpr void log(const LogLevel level, const std::string_view fmt, TArgs&&... args)
-    {
-        detail::dispatch_log(level, fmt::format(fmt::runtime(fmt), std::forward<TArgs>(args)...));
-    }
+    { detail::dispatch_log(level, fmt::format(fmt::runtime(fmt), std::forward<TArgs>(args)...)); }
     template <typename... TArgs>
     constexpr void info(const std::string_view fmt, TArgs&&... args)
-    {
-        log(LogLevel::Info, fmt, std::forward<TArgs>(args)...);
-    }
+    { log(LogLevel::Info, fmt, std::forward<TArgs>(args)...); }
     template <typename... TArgs>
     constexpr void warn(const std::string_view fmt, TArgs&&... args)
-    {
-        log(LogLevel::Warn, fmt, std::forward<TArgs>(args)...);
-    }
+    { log(LogLevel::Warn, fmt, std::forward<TArgs>(args)...); }
     template <typename... TArgs>
     constexpr void error(const std::string_view fmt, TArgs&&... args)
-    {
-        log(LogLevel::Error, fmt, std::forward<TArgs>(args)...);
-    }
+    { log(LogLevel::Error, fmt, std::forward<TArgs>(args)...); }
     template <typename... TArgs>
     constexpr void fatal(const std::string_view fmt, TArgs&&... args)
-    {
-        log(LogLevel::Fatal, fmt, std::forward<TArgs>(args)...);
-    }
+    { log(LogLevel::Fatal, fmt, std::forward<TArgs>(args)...); }
     template <typename... TArgs>
     constexpr void trace(TraceLocation fmt_spec, TArgs&&... args)
     {
         const auto& loc = fmt_spec.loc;
-        const auto  msg = fmt::format(fmt::runtime("{} {}:{}: {}"),
-                                      std::filesystem::path{ loc.file_name() }.filename().string(), loc.function_name(),
-                                      loc.line(), fmt::format(fmt::runtime(fmt_spec.fmt), std::forward<TArgs>(args)...));
+        const auto msg = fmt::format(fmt::runtime("{} {}:{}: {}"),
+                                     std::filesystem::path{ loc.file_name() }.filename().string(), loc.function_name(),
+                                     loc.line(), fmt::format(fmt::runtime(fmt_spec.fmt), std::forward<TArgs>(args)...));
         detail::dispatch_log(LogLevel::Debug, msg);
     }
 
     // TODO: Is it possible to turn off debug/trace messages at compile time?
     template <typename... TArgs>
     constexpr void debug(const std::string_view fmt, TArgs&&... args)
+    { log(LogLevel::Debug, fmt, std::forward<TArgs>(args)...); }
+
+    // Same as cxassert(x) basically except this one never collapses on Release/Shipping builds.
+    template <typename... TArgs>
+    constexpr void cxensure(const bool condition, TraceLocation fmt_spec, TArgs&&... args)
     {
-        log(LogLevel::Debug, fmt, std::forward<TArgs>(args)...);
+        if (condition) [[likely]]
+            return;
+
+        const auto& loc = fmt_spec.loc;
+        const auto  msg =
+            fmt::format(fmt::runtime("Assertion failed: {} ({}:{}, in {})"),
+                        fmt::format(fmt::runtime(fmt_spec.fmt), std::forward<TArgs>(args)...),
+                        std::filesystem::path{ loc.file_name() }.filename().string(), loc.line(), loc.function_name());
+        detail::dispatch_log(LogLevel::Fatal, msg);
+        CX_DEBUG_TRAP();
+        std::abort();
     }
 
     template <FixedString Tag>
@@ -223,24 +226,16 @@ namespace codex {
         }
         template <typename... TArgs>
         constexpr void info(const std::string_view fmt, TArgs&&... args) const noexcept
-        {
-            log(LogLevel::Info, fmt, std::forward<TArgs>(args)...);
-        }
+        { log(LogLevel::Info, fmt, std::forward<TArgs>(args)...); }
         template <typename... TArgs>
         constexpr void warn(const std::string_view fmt, TArgs&&... args) const noexcept
-        {
-            log(LogLevel::Warn, fmt, std::forward<TArgs>(args)...);
-        }
+        { log(LogLevel::Warn, fmt, std::forward<TArgs>(args)...); }
         template <typename... TArgs>
         constexpr void error(const std::string_view fmt, TArgs&&... args) const noexcept
-        {
-            log(LogLevel::Error, fmt, std::forward<TArgs>(args)...);
-        }
+        { log(LogLevel::Error, fmt, std::forward<TArgs>(args)...); }
         template <typename... TArgs>
         constexpr void fatal(const std::string_view fmt, TArgs&&... args) const noexcept
-        {
-            log(LogLevel::Fatal, fmt, std::forward<TArgs>(args)...);
-        }
+        { log(LogLevel::Fatal, fmt, std::forward<TArgs>(args)...); }
         template <typename... TArgs>
         constexpr void trace(const TraceLocation fmt_spec, TArgs&&... args) const noexcept
         {
@@ -252,8 +247,6 @@ namespace codex {
         }
         template <typename... TArgs>
         constexpr void debug(const std::string_view fmt, TArgs&&... args) const noexcept
-        {
-            log(LogLevel::Debug, fmt, std::forward<TArgs>(args)...);
-        }
+        { log(LogLevel::Debug, fmt, std::forward<TArgs>(args)...); }
     };
 } // namespace codex

@@ -21,21 +21,17 @@ public:                                                                         
     }
 
 namespace codex {
-    // Captures a format string and source_location at the call site.
-    // Because source_location::current() is a default argument on this struct's
-    // constructor, it evaluates where the struct is implicitly constructed —
-    // i.e. at the throw site, not inside CodexException's constructor body.
-    // Using a non-template struct with a template ctor avoids the two-step
-    // implicit-conversion chain that would occur with FmtStringWithLoc<TArgs...>.
+    // This wraps argument pack for fmt::format and also implicitly constructs a
+    // std::source_location at ctor call site without using any macros which is pretty cool.
     struct FmtStringWithLoc
     {
         fmt::string_view     fmt;
         std::source_location loc;
 
         template <typename S>
-        FmtStringWithLoc(const S& s, std::source_location loc = std::source_location::current()) noexcept
-            : fmt(s)
-            , loc(loc)
+        FmtStringWithLoc(const S& s, std::source_location location = std::source_location::current()) noexcept
+            : fmt{ s }
+            , loc{ location }
         {
         }
     };
@@ -49,8 +45,8 @@ namespace codex {
 
         template <typename... TArgs>
         CodexException(FmtStringWithLoc fmt_loc, TArgs&&... args) noexcept
-            : message_(fmt::vformat(fmt_loc.fmt, fmt::make_format_args(args...)))
-            , location_(fmt_loc.loc)
+            : message_{ fmt::vformat(fmt_loc.fmt, fmt::make_format_args(args...)) }
+            , location_{ fmt_loc.loc }
         {
         }
 
@@ -104,7 +100,7 @@ namespace codex {
     class CODEX_API NativeBehaviourException : public CodexException
     {
         // friend class NativeBehaviour; // TODO: Might be redundant.
-        friend class NativeBehaviourComponent;
+        friend struct NativeBehaviourComponent;
 
     private:
         CodexException inner_exception_;

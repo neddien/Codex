@@ -7,7 +7,7 @@ using namespace codex;
 struct NetworkedEntityDescriptor
 {
     NetId     entity;
-    transform transform;
+    transform trans;
 };
 
 class GameNetworkManager

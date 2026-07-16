@@ -1,15 +1,12 @@
 #shader_type vertex
 
-layout (location = 0) in vec4 a_MatCol0;
-layout (location = 1) in vec4 a_MatCol1;
-layout (location = 2) in vec4 a_MatCol2;
-layout (location = 3) in vec4 a_MatCol3;
-layout (location = 4) in vec4 a_Vertex;
-layout (location = 5) in vec4 a_Colour;
-layout (location = 6) in vec2 a_TexCoord;
-layout (location = 7) in vec2 a_TexDim;
-layout (location = 8) in int a_TexId;
-layout (location = 9) in int a_EntityId;
+layout (location = 0) in vec4 a_Vertex;
+layout (location = 1) in vec4 a_Colour;
+layout (location = 2) in vec3 a_Centre;
+layout (location = 3) in vec2 a_TexCoord;
+layout (location = 4) in vec2 a_TexDim;
+layout (location = 5) in int a_TexId;
+layout (location = 6) in int a_EntityId;
 
 out vec4 o_Colour;
 out vec2 o_TexCoord;
@@ -21,18 +18,12 @@ uniform mat4 u_Proj;
 
 void main()
 {
-	mat4 model = mat4(
-		a_MatCol0,
-		a_MatCol1,
-		a_MatCol2,
-		a_MatCol3
-);
 	o_Colour = a_Colour;
 	//o_TexCoord = vec2(a_TexCoord.x / a_TexDim.x, 1.0 - (a_TexCoord.y / a_TexDim.y));
 	o_TexCoord = vec2(a_TexCoord.x / a_TexDim.x, a_TexCoord.y / a_TexDim.y);
     o_TexId = a_TexId;
 	o_EntityId = a_EntityId;
-	gl_Position = u_Proj * u_View * model * a_Vertex;
+	gl_Position = u_Proj * u_View * a_Vertex;
 }
 
 #shader_type fragment

@@ -9,13 +9,13 @@
             {
                 "type": "TransformComponent",
                 "position": {
-                    "x": -50.99994659423828,
-                    "y": -73.99991607666016,
+                    "x": 315.0003662109375,
+                    "y": -79.9996566772461,
                     "z": 0.0
                 },
                 "rotation": {
                     "x": 0.0,
-                    "y": 0.0,
+                    "y": -0.0,
                     "z": 0.0
                 },
                 "scale": {
@@ -70,6 +70,13 @@
                     }
                 ],
                 "active_animation": 0
+            },
+            {
+                "type": "HierarchyComponent",
+                "parent": {
+                    "uuid": "e83f-6cfd-bce28950"
+                },
+                "children": []
             }
         ],
         [
@@ -246,6 +253,14 @@
             },
             {
                 "type": "AudioListenerComponent"
+            },
+            {
+                "type": "HierarchyComponent",
+                "children": [
+                    {
+                        "uuid": "706b-5d74-fbd3aa64"
+                    }
+                ]
             }
         ],
         [

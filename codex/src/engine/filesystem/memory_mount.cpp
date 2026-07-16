@@ -24,12 +24,12 @@ namespace codex::fs {
     public:
         MemoryFileHandle(const std::string_view path, MemoryMount::FileEntry& entry, std::shared_mutex& data_mutex,
                          Shared<MemoryMount> owner, const FileProperties props = FileProperties{})
-            : path_{ normalize(std::string{ path }) }
-            , props_{ props }
-            , entry_{ entry }
-            , cursor_{ 0 }
+            : entry_{ entry }
             , data_mutex_{ data_mutex }
             , mutex_{}
+            , path_{ normalize(std::string{ path }) }
+            , props_{ props }
+            , cursor_{ 0 }
             , owner_{ std::move(owner) }
         {
         }
@@ -92,7 +92,6 @@ namespace codex::fs {
                 std::memcpy(dest, entry_.desc.buffer.data() + offset, read_len);
             return read_len;
         }
-
         usize write_at(const void* src, const usize len, const usize offset) noexcept override
         {
             std::scoped_lock data_lock{ data_mutex_ };
@@ -109,7 +108,6 @@ namespace codex::fs {
 
             return len;
         }
-
         void seek(const usize offset) noexcept override
         {
             std::scoped_lock handle_lock{ mutex_ };
@@ -493,5 +491,7 @@ namespace codex::fs {
             std::shared_lock guard{ entry.mutex };
             return entry.desc.buffer.empty();
         }
+
+        return true;
     }
 } // namespace codex::fs

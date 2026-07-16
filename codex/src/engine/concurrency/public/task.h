@@ -23,7 +23,7 @@ namespace codex::cc {
 
             T get()
             {
-                CX_ASSERT(value_.has_value(), "Task result consumed without a co_return value.");
+                cxassert(value_.has_value(), "Task result consumed without a co_return value.");
                 return std::move(*value_);
             }
         };

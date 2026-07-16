@@ -57,7 +57,7 @@ void GameNetworkManager::on_update(f32 dt)
         packet.reliable = true;
         packet.data.resize(sizeof(desc));
         *(NetworkedEntityDescriptor*)packet.data.data() = desc;
-        desc.transform                                  = trans;
+        desc.trans                                  = trans;
 
         net_.send(std::move(packet));
     }
@@ -103,7 +103,7 @@ void GameNetworkManager::handle_incoming_packet(IncomingPacket&& packet)
             Entity                     entity = net_to_local_[packet.source];
             NetworkedEntityDescriptor* desc   = (NetworkedEntityDescriptor*)packet.data.data();
 
-            entity.get_component<TransformComponent>() = desc->transform;
+            entity.get_component<TransformComponent>() = (transform)desc->trans;
         } break;
         case ClientJoin: {
         } break;

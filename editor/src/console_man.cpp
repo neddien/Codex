@@ -14,7 +14,7 @@ namespace codex::editor {
     {
     }
 
-    void ConsoleMan::on_update(const f32 deltaTime)
+    void ConsoleMan::on_update([[maybe_unused]] const f32 deltaTime)
     {
     }
 

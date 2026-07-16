@@ -9,6 +9,8 @@ namespace codex::editor {
         // which will ship with all editor projects
         engine_project.boot_scene        = AssetPath{};
         engine_project.engine_properties = EngineProperties{
+            .cwd   = {},
+            .args  = {},
             .flags = EngineFlags::InitAll,
             .video_properties =
                 VideoProperties{

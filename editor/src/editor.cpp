@@ -117,7 +117,7 @@ namespace codex::editor {
         scene_editor_view_->on_event(e);
     }
 
-    bool Editor::on_key_down_event(events::KeyDownEvent& e)
+    bool Editor::on_key_down_event([[maybe_unused]] events::KeyDownEvent& e)
     {
         /*
         switch (e.GetKey())

@@ -64,9 +64,9 @@ namespace codex::fs {
         };
         resolved_node resolve_mount_nolock(const std::string& path, bool existing_only = false) const noexcept;
         Node*         walk_to(const std::string& path, Node** const previous_node = nullptr) noexcept;
-        bool          mkdir_nolock(const std::string& path, const bool recursive) noexcept;
+        bool          mkdir_nolock(const std::string& path) noexcept;
         bool          ensure_mount_point_nolock(const std::string& path, const bool recursive = false) noexcept;
-        bool          rm_nolock(const std::string& path, const bool recursive) noexcept;
+        bool          rm_nolock(const std::string& path) noexcept;
         bool cp_nolock(const std::string& src_path, const std::string& dst_path, const bool recursive = false) noexcept;
         bool mv_nolock(const std::string& src_path, const std::string& dst_path) noexcept;
         [[nodiscard]] std::vector<std::string> list_nolock(const std::string& dir,

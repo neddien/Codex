@@ -2,6 +2,7 @@
 
 #include <engine/audio/audio_manager.h>
 #include <engine/scene/public/components.inl>
+#include <engine/scene/public/entity.inl>
 
 namespace codex {
     TransformComponent& NativeBehaviour::transform() noexcept
@@ -58,7 +59,7 @@ namespace codex {
             parent_.scene_->enqueue_for_disposal(parent_);
     }
 
-    void NativeBehaviour::archive(Archive& ar)
+    void NativeBehaviour::archive([[maybe_unused]] Archive& ar)
     {
     }
 } // namespace codex

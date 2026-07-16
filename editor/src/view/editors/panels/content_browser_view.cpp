@@ -35,9 +35,7 @@ namespace codex::editor {
     }
 
     void ContentBrowserView::on_init()
-    {
-        log(Info, "Waiting for asset registry to complete scan...");
-    }
+    { log(Info, "Waiting for asset registry to complete scan..."); }
 
     void ContentBrowserView::on_imgui_render()
     {
@@ -80,11 +78,11 @@ namespace codex::editor {
         ImGui::End();
     }
 
-    void ContentBrowserView::on_update(const f32 dt)
+    void ContentBrowserView::on_update([[maybe_unused]] const f32 dt)
     {
         auto d = get_descriptor().lock();
 
-        assert(d);
+        cxensure(d, "descriptor should not be null while updating content browser");
 
         if (d->registry_state == AssetRegistryState::Succeeded) {
             static bool content_init_done = false;
@@ -115,10 +113,10 @@ namespace codex::editor {
         chdir_nolock(path);
     }
 
-    void ContentBrowserView::refresh_nolock(const std::string& path)
+    void ContentBrowserView::refresh_nolock([[maybe_unused]] const std::string& path)
     {
         auto desc_ref = get_descriptor();
-        assert(!desc_ref.expired());
+        cxensure(!desc_ref.expired(), "descriptor should not have expired while refreshing content browser");
         auto desc = desc_ref.lock();
 
         if (desc->registry_state == AssetRegistryState::Succeeded) {
@@ -153,7 +151,7 @@ namespace codex::editor {
         std::scoped_lock guard{ mutex_ };
         auto             d = get_descriptor().lock();
 
-        assert(d);
+        cxensure(d, "descriptor should not be null while rebuilding content browser tree");
 
         root_node_.name.clear();
         root_node_.children.clear();
@@ -176,13 +174,13 @@ namespace codex::editor {
                     cur_node = &it->second;
                 } else {
                     auto node = TreeNode{
-                        .name = c,
+                        .name     = c,
+                        .children = {},
                     };
-                    auto [child_it, did_insert] = cur_node->children.insert_or_assign(c, std::move(node));
 
-                    assert(did_insert);
+                    cur_node->children[c] = std::move(node);
 
-                    cur_node = &child_it->second;
+                    cur_node = &cur_node->children[c];
                 }
             }
         }
@@ -304,14 +302,14 @@ namespace codex::editor {
             else {
                 asset = AssetManager::load<gfx::Texture2D>(meta.path).as_shared();
                 if (asset) {
-                    auto [_, did_insert] = asset_cache_.try_emplace(meta.path.uuid(), asset.as<void>());
-                    assert(did_insert);
+                    asset_cache_[meta.path.uuid()] = asset.as<void>();
                 }
             }
 
             if (asset) {
                 ImGui::SetCursorScreenPos({ screen_pos.x + (0) * 0.5f, screen_pos.y + (0) * 0.5f });
-                ImGui::Image((ImTextureID)asset->gl_id(), { icon_size_, icon_size_ }, { 0, 1 }, { 1, 0 });
+                ImGui::Image(reinterpret_cast<ImTextureID>(asset->gl_id()), { icon_size_, icon_size_ }, { 0, 1 },
+                             { 1, 0 });
                 return;
             }
         }

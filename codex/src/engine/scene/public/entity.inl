@@ -21,7 +21,7 @@ namespace codex {
         requires(std::is_base_of_v<Component, T>)
     T& Entity::add_component(TArgs&&... args)
     {
-        CX_ASSERT(!scene_->registry_->all_of<T>(handle_), "Entity already has that component.");
+        cxassert(!scene_->registry_->all_of<T>(handle_), "Entity already has that component.");
 
         auto& c   = scene_->registry_->emplace<T>(handle_, std::forward<TArgs>(args)...);
         c.parent_ = *this;
@@ -49,7 +49,7 @@ namespace codex {
         requires(std::is_base_of_v<Component, T>)
     void Entity::remove_component()
     {
-        CX_ASSERT(scene_->registry_->all_of<T>(handle_), "Entity does not have the component to remove.");
+        cxassert(scene_->registry_->all_of<T>(handle_), "Entity does not have the component to remove.");
         scene_->registry_->remove<T>(handle_);
     }
 
@@ -57,7 +57,7 @@ namespace codex {
         requires(std::is_base_of_v<Component, T>)
     T& Entity::get_component()
     {
-        CX_ASSERT(scene_->registry_->all_of<T>(handle_), "Entity does not have the component to retrieve.");
+        cxassert(scene_->registry_->all_of<T>(handle_), "Entity does not have the component to retrieve.");
         return scene_->registry_->get<T>(handle_);
     }
 

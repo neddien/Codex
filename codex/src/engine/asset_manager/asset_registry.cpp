@@ -61,6 +61,8 @@ namespace codex {
     void AssetRegistry::move_asset(const AssetPath& path, const std::string& new_path)
     {
         std::scoped_lock guard{ mutex_ };
+        (void)path;
+        (void)new_path;
     }
 
     void AssetRegistry::repath(const AssetPath& path, const std::string& new_path)

@@ -1,5 +1,3 @@
-#pragma once
-
 #include "public/cooperative_executor.h"
 
 namespace codex::cc {
@@ -29,7 +27,5 @@ namespace codex::cc {
     }
 
     CooperativeExecutor::Awaiter CooperativeExecutor::operator co_await()
-    {
-        return Awaiter{ *this };
-    }
+    { return Awaiter{ *this }; }
 } // namespace codex::cc

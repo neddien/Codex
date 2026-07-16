@@ -24,7 +24,7 @@ namespace codex::editor {
                     ImGui::SetColumnWidth(0, 300);
                     ImGui::Text("Tick Rate");
                     ImGui::NextColumn();
-                    ImGui::SliderInt("###tick_rate", reinterpret_cast<i32*>(&physics_props.tick_rate), 0, 120);
+                    ImGui::SliderInt("###tick_rate", &physics_props.tick_rate, 0, 120);
                     ImGui::Columns(1);
                 }
 

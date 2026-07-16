@@ -79,46 +79,30 @@ namespace codex::gfx {
     }
 
     Texture2D& Texture2D::operator=(const Texture2D& other)
-    {
-        return Texture2D{ other }.swap(*this);
-    }
+    { return Texture2D{ other }.swap(*this); }
 
     Texture2D& Texture2D::operator=(Texture2D&& other) noexcept
-    {
-        return Texture2D{ std::move(other) }.swap(*this);
-    }
+    { return Texture2D{ std::move(other) }.swap(*this); }
 
     Texture2D::~Texture2D() = default;
 
     Texture2D::operator bool() const noexcept
-    {
-        return (bool)raw_texture_;
-    }
+    { return (bool)raw_texture_; }
 
     u32 Texture2D::gl_id() const noexcept
-    {
-        return raw_texture_->gl_id();
-    }
+    { return raw_texture_->gl_id(); }
 
     u32 Texture2D::slot() const
-    {
-        return raw_texture_->slot();
-    }
+    { return raw_texture_->slot(); }
 
     i32 Texture2D::width() const
-    {
-        return raw_texture_->width();
-    }
+    { return raw_texture_->width(); }
 
     i32 Texture2D::height() const
-    {
-        return raw_texture_->height();
-    }
+    { return raw_texture_->height(); }
 
     const TextureProperties& Texture2D::properties() const noexcept
-    {
-        return props_;
-    }
+    { return props_; }
 
     Texture2D& Texture2D::swap(Texture2D& other) noexcept
     {
@@ -130,14 +114,10 @@ namespace codex::gfx {
     }
 
     void Texture2D::bind(const u32 slot)
-    {
-        raw_texture_->bind(slot);
-    }
+    { raw_texture_->bind(slot); }
 
     void Texture2D::unbind() const
-    {
-        raw_texture_->unbind();
-    }
+    { raw_texture_->unbind(); }
 
     void Texture2D::create(const u8* buf, const usize len, const ImportSettings& import_settings)
     {
@@ -151,7 +131,7 @@ namespace codex::gfx {
                                                           const Texture2D::ImportSettings& params) const noexcept
     {
         std::vector<u8> buf(fh->size());
-        auto            read_len = fh->read(buf.data(), fh->size());
+        fh->read(buf.data(), fh->size());
         return Shared<Texture2D>::make(buf.data(), buf.size(), params);
     }
 

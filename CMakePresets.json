@@ -6,7 +6,6 @@
             "hidden": true,
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/builds/${presetName}",
-            "toolchainFile": "${sourceDir}/builds/conan/conan_toolchain.cmake",
             "cacheVariables": {
                 "CMAKE_POLICY_VERSION_MINIMUM": "3.5",
                 "CMAKE_C_COMPILER": "cl.exe",
@@ -27,7 +26,6 @@
             "binaryDir": "${sourceDir}/builds/${presetName}",
             "installDir": "C:/Program Files/Carbine/CEditor",
             "displayName": "vs2022",
-            "toolchainFile": "${sourceDir}/builds/conan/conan_toolchain.cmake",
             "cacheVariables": {
                 "CMAKE_POLICY_VERSION_MINIMUM": "3.5",
                 "CMAKE_PRESET_NAME": "${presetName}",
@@ -44,7 +42,6 @@
             "hidden": true,
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/builds/${presetName}",
-            "toolchainFile": "${sourceDir}/builds/conan/conan_toolchain.cmake",
             "cacheVariables": {
                 "CMAKE_POLICY_VERSION_MINIMUM": "3.5",
                 "CMAKE_C_COMPILER": "clang.exe",
@@ -64,7 +61,6 @@
             "hidden": true,
             "generator": "Unix Makefiles",
             "binaryDir": "${sourceDir}/builds/${presetName}",
-            "toolchainFile": "${sourceDir}/builds/conan/conan_toolchain.cmake",
             "cacheVariables": {
                 "CMAKE_POLICY_VERSION_MINIMUM": "3.5",
                 "CMAKE_PRESET_NAME": "${presetName}",
@@ -81,7 +77,6 @@
             "hidden": true,
             "generator": "Unix Makefiles",
             "binaryDir": "${sourceDir}/builds/${presetName}",
-            "toolchainFile": "${sourceDir}/builds/conan/conan_toolchain.cmake",
             "cacheVariables": {
                 "CMAKE_POLICY_VERSION_MINIMUM": "3.5",
                 "CMAKE_PRESET_NAME": "${presetName}",
@@ -98,6 +93,7 @@
             "displayName": "any Debug",
             "installDir": "${sourceDir}/installs/${presetName}",
             "inherits": "windows-msvc",
+            "toolchainFile": "${sourceDir}/builds/conan-debug/conan_toolchain.cmake",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CX_ENABLE_TESTWORK": "1"
@@ -108,6 +104,7 @@
             "displayName": "any Debug",
             "installDir": "${sourceDir}/installs/${presetName}",
             "inherits": "windows-llvm",
+            "toolchainFile": "${sourceDir}/builds/conan-debug/conan_toolchain.cmake",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
 		            "CX_ENABLE_TESTGAME": "1"
@@ -118,6 +115,7 @@
             "displayName": "any Release",
             "installDir": "${sourceDir}/installs/${presetName}",
             "inherits": "windows-llvm-any-debug",
+            "toolchainFile": "${sourceDir}/builds/conan-release/conan_toolchain.cmake",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release"
             }
@@ -127,6 +125,7 @@
             "displayName": "any Shipping",
             "installDir": "C:/Program Files/Carbine/CEditor",
             "inherits": "windows-llvm-any-debug",
+            "toolchainFile": "${sourceDir}/builds/conan-release/conan_toolchain.cmake",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Shipping"
             }
@@ -136,6 +135,7 @@
             "displayName": "any Release",
             "installDir": "${sourceDir}/installs/${presetName}",
             "inherits": "windows-msvc-any-debug",
+            "toolchainFile": "${sourceDir}/builds/conan-release/conan_toolchain.cmake",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
                 "CMAKE_CXX_FLAGS": "/fsanitize=address",
@@ -147,6 +147,7 @@
             "displayName": "any Shipping",
             "installDir": "C:/Program Files/Carbine/Codex Editor",
             "inherits": "windows-msvc-any-debug",
+            "toolchainFile": "${sourceDir}/builds/conan-release/conan_toolchain.cmake",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Shipping"
             }
@@ -156,10 +157,11 @@
             "displayName": "any Debug",
             "installDir": "${sourceDir}/installs/${presetName}",
             "inherits": "linux-base",
+            "toolchainFile": "${sourceDir}/builds/conan-debug/conan_toolchain.cmake",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
-                "CMAKE_CXX_FLAGS": "-O0 -g",
-                "CMAKE_C_FLAGS": "-O0 -g",
+                "CMAKE_CXX_FLAGS": "-O0 -g -fno-omit-frame-pointer",
+                "CMAKE_C_FLAGS": "-O0 -g -fno-omit-frame-pointer",
                 "CX_ENABLE_TESTWORK": "1"
             }
         },
@@ -168,10 +170,11 @@
             "displayName": "any Release",
             "installDir": "${sourceDir}/installs/${presetName}",
             "inherits": "linux-any-debug",
+            "toolchainFile": "${sourceDir}/builds/conan-release/conan_toolchain.cmake",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
-                "CMAKE_CXX_FLAGS": "-fsanitize=address -fno-omit-frame-pointer -fsanitize=undefined",
-                "CMAKE_C_FLAGS": "-fsanitize=address -fno-omit-frame-pointer -fsanitize=undefined"
+                "CMAKE_CXX_FLAGS": "-fno-omit-frame-pointer -fsanitize=undefined",
+                "CMAKE_C_FLAGS": "-fno-omit-frame-pointer -fsanitize=undefined"
             }
         },
         {
@@ -179,6 +182,7 @@
             "displayName": "any Shipping",
             "installDir": "/usr/local",
             "inherits": "linux-any-debug",
+            "toolchainFile": "${sourceDir}/builds/conan-release/conan_toolchain.cmake",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Shipping"
             }
@@ -188,6 +192,7 @@
             "displayName": "any Debug",
             "installDir": "${sourceDir}/installs/${presetName}",
             "inherits": "osx-base",
+            "toolchainFile": "${sourceDir}/builds/conan-debug/conan_toolchain.cmake",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CX_ENABLE_TESTWORK": "1"
@@ -198,6 +203,7 @@
             "displayName": "any Release",
             "installDir": "${sourceDir}/installs/${presetName}",
             "inherits": "osx-any-debug",
+            "toolchainFile": "${sourceDir}/builds/conan-release/conan_toolchain.cmake",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
                 "CMAKE_CXX_FLAGS": "-fsanitize=address -fno-omit-frame-pointer -fsanitize=undefined", "CMAKE_C_FLAGS": "-fsanitize=address -fno-omit-frame-pointer -fsanitize=undefined" }
@@ -207,6 +213,7 @@
             "displayName": "any Shipping",
             "installDir": "/usr/local",
             "inherits": "osx-any-debug",
+            "toolchainFile": "${sourceDir}/builds/conan-debug/conan_toolchain.cmake",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Shipping"
             }

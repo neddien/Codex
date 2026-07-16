@@ -10,8 +10,8 @@ namespace codex::scene {
 
     public:
         [[nodiscard]] inline vec3 pos() const noexcept { return pos_; }
-        inline void                set_pos(vec3 new_pos) noexcept { pos_ = std::move(new_pos); }
-        [[nodiscard]] inline mat4  view_matrix() const noexcept
+        inline void               set_pos(vec3 new_pos) noexcept { pos_ = std::move(new_pos); }
+        [[nodiscard]] inline mat4 view_matrix() const noexcept
         {
             const auto camera_front = vec3(0.0f, 0.0f, -1.0f);
             const auto camera_up    = vec3(0.0f, 1.0f, 0.0f);
@@ -24,6 +24,6 @@ namespace codex::scene {
         // TODO: Uncomment for perspective camera.
         // vec3         rotation_    = vec3(0.0f);
         // vec3         focal_point_ = vec3(0.0f);
-        mutable mat4 view_mat_;
+        mutable mat4 view_mat_{};
     };
 } // namespace codex::scene

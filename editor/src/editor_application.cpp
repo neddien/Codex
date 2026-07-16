@@ -37,7 +37,7 @@ namespace codex::editor {
         s_app_data_path_ = stdfs::path(CE_INSTALL_DIR) / stdfs::path("bin");
 #endif
         s_var_app_data_path_ =
-            stdfs::path(fs::get_special_folder(fs::SpecialFolder::UserApplicationData)) / stdfs::path("CEditor/");
+            fs::get_special_folder(fs::SpecialFolder::UserApplicationData) / stdfs::path("CEditor/");
 
         stdfs::current_path(s_app_data_path_);
 

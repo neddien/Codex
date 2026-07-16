@@ -30,6 +30,12 @@ namespace codex {
     {
     }
 
+    TransformComponent& TransformComponent::operator=(const math::transform& transform) noexcept
+    {
+        *this = TransformComponent{ transform };
+        return *this;
+    }
+
     void TransformComponent::archive_impl(Archive& ar)
     {
         ar("position", position);
@@ -184,7 +190,7 @@ namespace codex {
 
             if (b.optional("scripts", true))
                 ar("scripts", scripts);
-            b.optional("attached_scripts", false); // legacy slot, no longer written
+            (void)b.optional("attached_scripts", false); // legacy slot, no longer written
         } else {
             if (b.optional("scripts", false)) {
                 std::unordered_map<std::string, std::string> scripts;
@@ -233,7 +239,7 @@ namespace codex {
         }
     }
 
-    void CameraComponent::archive_impl(Archive& ar)
+    void CameraComponent::archive_impl([[maybe_unused]] Archive& ar)
     {
     }
 
@@ -365,7 +371,7 @@ namespace codex {
 
     void HierarchyComponent::resolve_pending() noexcept
     {
-        assert(parent_);
+        cxassert(parent_, "invalid component: invalid parent entity");
         Scene* scene = parent_.scene();
 
         children.clear();
@@ -386,25 +392,29 @@ namespace codex {
 
     void HierarchyComponent::archive_impl(Archive& ar)
     {
-        assert(parent_);
+        cxassert(parent_, "parent of an entity needs to be valid for archiving");
 
         if (ar.saving()) {
+            UUID uuid = UUID{ 0 };
             if (parent)
-                ar.optional("parent", parent.get_component<IDComponent>().uuid);
+                uuid = parent.get_component<IDComponent>().uuid;
+
+            ar("parent", uuid);
 
             usize count = children.size();
             ar.backend().begin_array("children", count);
             for (const Entity& e : children) {
-                assert(e.has_component<IDComponent>());
+                cxassert(e.has_component<IDComponent>(), "invalid entity: does not have an IDComponent");
+
                 UUID uuid = e.get_component<IDComponent>().uuid;
                 ar("uuid", uuid);
             }
             ar.backend().end_array();
         } else {
-            std::optional<UUID> uuid;
-            ar.optional("parent", uuid);
+            UUID uuid;
+            ar("parent", uuid);
 
-            if (uuid) {
+            if (uuid != UUID{ 0 }) {
                 pending_parent_ = uuid;
             }
 

@@ -18,8 +18,8 @@ int main(int argc, char** argv);
 namespace codex {
     // Forward declarations.
     class Input;
-    class EngineProject;
-    class EngineUserProject;
+    struct EngineProject;
+    struct EngineUserProject;
     namespace events {
         class WindowResizeEvent;
     } // namespace events
@@ -48,7 +48,7 @@ namespace codex {
     public:
         auto operator[](const usize index) const noexcept -> const char*
         {
-            CX_ASSERT(index > (usize)count, "Index out of bounds.");
+            cxassert(index > (usize)count, "Index out of bounds.");
             return args[index];
         }
     };
@@ -94,31 +94,19 @@ namespace codex {
         [[nodiscard]] static inline auto window() noexcept -> Window& { return *s_instance_->window_; }
         [[nodiscard]] static inline auto get() noexcept -> Engine& { return *s_instance_; }
         [[nodiscard]] static inline auto fps() noexcept -> u32
-        {
-            return static_cast<u32>(1.0f / s_instance_->delta_time_);
-        }
+        { return static_cast<u32>(1.0f / s_instance_->delta_time_); }
         [[nodiscard]] static inline auto frame_cap() noexcept -> u32
-        {
-            return s_instance_->properties_.video_properties.frame_cap;
-        }
+        { return s_instance_->properties_.video_properties.frame_cap; }
         [[nodiscard]] static inline auto delta() noexcept -> f32 { return s_instance_->delta_time_; }
         [[nodiscard]] static inline auto imgui_layer() noexcept -> imgui::ImGuiLayer*
-        {
-            return s_instance_->imgui_layer_;
-        }
+        { return s_instance_->imgui_layer_; }
         [[nodiscard]] static inline auto worker_pool() noexcept -> cc::ThreadedExecutor&
-        {
-            return *s_instance_->worker_thread_executor_;
-        }
+        { return *s_instance_->worker_thread_executor_; }
         [[nodiscard]] static inline auto cooperative_pool() noexcept -> cc::CooperativeExecutor&
-        {
-            return s_instance_->main_thread_executor_;
-        }
+        { return s_instance_->main_thread_executor_; }
         [[nodiscard]] static inline auto thread_id() noexcept -> u32 { return sys::get_current_thread_id(); }
         [[nodiscard]] static inline auto cwd() noexcept -> std::filesystem::path
-        {
-            return std::filesystem::current_path();
-        }
+        { return std::filesystem::current_path(); }
         [[nodiscard]] static inline auto engine_concurrency() noexcept { return sys::get_engine_thread_count(); }
         static inline void               set_cwd(const std::filesystem::path& new_cwd)
         {

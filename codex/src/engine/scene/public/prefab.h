@@ -35,7 +35,7 @@ namespace codex::scene {
         std::vector<u8> serialized_entity_buf_;
     };
 
-    class PrefabLoader : public AssetLoaderBase<Prefab, void>
+    class PrefabLoader final : public AssetLoaderBase<Prefab, void>
     {
         [[nodiscard]] Shared<Prefab> load(Shared<fs::FileHandle> fh) const noexcept override;
     };

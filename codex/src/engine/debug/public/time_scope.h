@@ -4,7 +4,10 @@
 
 #ifdef CX_CONFIG_DEBUG
 #define CX_DEBUG_PROFILE_SCOPE(...)                                                                                    \
-    const auto __var_to_hold_scope_profile_things = codex::dbg::profile_scope(__VA_ARGS__);
+    const auto __cx_intrinsics_current_scope_profiler = codex::dbg::profile_scope(__VA_ARGS__);
+#elif defined(CX_ENSURE_PROFILER)
+#define CX_DEBUG_PROFILE_SCOPE(...)                                                                                    \
+    const auto __cx_intrinsics_current_scope_profiler = codex::dbg::profile_scope(__VA_ARGS__);
 #else
 #define CX_DEBUG_PROFILE_SCOPE(...)
 #endif
@@ -23,16 +26,16 @@ namespace codex::dbg {
         friend class Profiler;
 
     public:
-        using Ratio       = std::nano;
-        using Rep         = f64;
-        using ChronoClock = std::chrono::steady_clock;
+        using ratio        = std::nano;
+        using rep          = f64;
+        using chrono_clock = std::chrono::steady_clock;
 
     public:
         inline TimeScope() noexcept = default;
         inline explicit TimeScope(ProfileInfo info) noexcept
-            : info_(std::move(info))
-            , initiated_(true)
-            , initial_tp_(ChronoClock::now())
+            : info_{ std::move(info) }
+            , initiated_{ true }
+            , initial_tp_{ chrono_clock::now() }
         {
         }
         inline TimeScope(TimeScope&& other) noexcept            = default;
@@ -64,15 +67,15 @@ namespace codex::dbg {
         {
             if (initiated_) {
                 initiated_ = false;
-                duration_  = std::chrono::duration<Rep, Ratio>(ChronoClock::now() - initial_tp_);
+                duration_  = std::chrono::duration<rep, ratio>(chrono_clock::now() - initial_tp_);
             }
         }
 
     private:
         ProfileInfo                               info_;
         mutable bool                              initiated_ = false;
-        ChronoClock::time_point                   initial_tp_;
-        mutable std::chrono::duration<Rep, Ratio> duration_;
+        chrono_clock::time_point                  initial_tp_;
+        mutable std::chrono::duration<rep, ratio> duration_;
     };
 
     [[nodiscard]] inline TimeScope profile_scope(

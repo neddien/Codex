@@ -22,6 +22,7 @@ namespace codex {
             deser_factories_[std::string{ type_name }] = [](Archive& ar, Entity entity)
             {
                 T component;
+                component.parent_ = entity;
                 component.archive(ar);
                 entity.add_or_replace_component<T>(std::move(component));
             };

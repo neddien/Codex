@@ -195,11 +195,13 @@ void NetManager::on_peer_connect(ENetPeer* peer)
         log(Warn, "on_peer_connect: Failed to retrieve IP ");
     }
 
-    npeer.id   = id;
+    /*
+    npeer.id   = id; fixernio
     peers_[id] = std::move(npeer);
 
     if (client_join_delegate_)
         client_join_delegate_(peers_[id]);
+    */
 }
 
 void NetManager::on_peer_disconnect(ENetPeer* peer)

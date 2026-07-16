@@ -68,8 +68,8 @@ namespace codex::editor {
 
     protected:
         virtual void on_init() = 0;
-        virtual void on_update(const f32 deltaTime) {};
+        virtual void on_update([[maybe_unused]] const f32 deltaTime) {};
         void         on_pre_imgui_render();
-        virtual void on_event(events::Event& e) {}
+        virtual void on_event([[maybe_unused]] events::Event& e) {}
     };
 } // namespace codex::editor

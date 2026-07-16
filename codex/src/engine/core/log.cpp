@@ -199,9 +199,8 @@ namespace codex {
 
         {
             std::scoped_lock guard{ s_tag_loggers_mutex };
-            auto [_, did_insert] =
-                s_tag_loggers.try_emplace(util::crypto::fnv1a(CX_DEFAULT_LOGGER_NAME), std::move(default_logger));
-            assert(did_insert);
+
+            s_tag_loggers[util::crypto::fnv1a(CX_DEFAULT_LOGGER_NAME)] = std::move(default_logger);
 
             // If we have any deferred loggers that we need to register
             for (auto it = s_pending_logger_regs.begin(); it != s_pending_logger_regs.end(); ++it) {
@@ -210,8 +209,7 @@ namespace codex {
                 auto logger =
                     std::make_shared<spdlog::async_logger>(std::string{ name }, s_spd_sinks.begin(), s_spd_sinks.end(),
                                                            spdlog::thread_pool(), spdlog::async_overflow_policy::block);
-                auto [_, did_insert] = s_tag_loggers.try_emplace(hash, logger);
-                assert(did_insert);
+                s_tag_loggers[hash] = logger;
             }
 
             s_initialized.store(true);
@@ -240,14 +238,12 @@ namespace codex {
                 auto logger = std::make_shared<spdlog::async_logger>(std::string{ logger_name }, s_spd_sinks.begin(),
                                                                      s_spd_sinks.end(), spdlog::thread_pool(),
                                                                      spdlog::async_overflow_policy::block);
-                auto [_, did_insert] = s_tag_loggers.try_emplace(hash, logger);
-                assert(did_insert);
+                s_tag_loggers[hash] = logger;
             }
         } else {
             // Defer it to when this is finished loading.
             if (auto it = s_pending_logger_regs.find(hash); it == s_pending_logger_regs.end()) {
-                auto [_, did_insert] = s_pending_logger_regs.try_emplace(hash, logger_name);
-                assert(did_insert);
+                s_pending_logger_regs[hash] = logger_name;
             }
         }
     }

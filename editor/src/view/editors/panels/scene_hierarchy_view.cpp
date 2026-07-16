@@ -42,14 +42,29 @@ namespace codex::editor {
             static auto action_delete        = false;
             static auto action_rename        = false;
             static auto action_create_prefab = false;
-            auto        entities             = scene->entities_with_component<TagComponent>();
-            for (auto& e : entities) {
+
+            // Hierarchy mutations are deferred until after the tree is drawn so we never
+            // mutate a children list we are currently iterating.
+            std::optional<std::pair<Entity, Entity>> pending_attach; // { new parent, child }
+            std::optional<Entity>                    pending_detach;
+
+            auto draw_entity_node = [&](auto&& self, Entity e) -> void {
                 auto& tag_component = e.get_component<TagComponent>();
                 auto& idc           = e.get_component<IDComponent>();
-                if (ImGui::Selectable((tag_component.tag + "##" + idc.uuid.to_string()).c_str(),
-                                      d->selected_entity.entity == e, ImGuiSelectableFlags_DontClosePopups)) {
+                auto* hc = e.has_component<HierarchyComponent>() ? &e.get_component<HierarchyComponent>() : nullptr;
+
+                auto flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick |
+                             ImGuiTreeNodeFlags_SpanAvailWidth;
+                if (!hc || hc->children.empty())
+                    flags |= ImGuiTreeNodeFlags_Leaf;
+                if (d->selected_entity.entity == e)
+                    flags |= ImGuiTreeNodeFlags_Selected;
+
+                const bool open =
+                    ImGui::TreeNodeEx((tag_component.tag + "##" + idc.uuid.to_string()).c_str(), flags);
+
+                if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen())
                     d->selected_entity.select(e);
-                }
 
                 if (ImGui::BeginPopupContextItem()) {
                     d->selected_entity.select(e);
@@ -58,12 +73,57 @@ namespace codex::editor {
                         action_rename = true;
                     if (ImGui::MenuItem("Create Prefab"))
                         action_create_prefab = true;
+                    if (hc && hc->parent && ImGui::MenuItem("Detach"))
+                        pending_detach = e;
                     if (ImGui::MenuItem("Delete"))
                         action_delete = true;
 
                     ImGui::EndPopup();
                 }
+
+                if (ImGui::BeginDragDropSource()) {
+                    ImGui::SetDragDropPayload("CX_ENTITY", &e, sizeof(Entity));
+                    ImGui::TextUnformatted(tag_component.tag.c_str());
+                    ImGui::EndDragDropSource();
+                }
+
+                if (ImGui::BeginDragDropTarget()) {
+                    if (const auto* payload = ImGui::AcceptDragDropPayload("CX_ENTITY"))
+                        pending_attach = { { e, *static_cast<const Entity*>(payload->Data) } };
+                    ImGui::EndDragDropTarget();
+                }
+
+                if (open) {
+                    if (hc)
+                        for (Entity c : hc->children)
+                            self(self, c);
+                    ImGui::TreePop();
+                }
+            };
+
+            auto entities = scene->entities_with_component<TagComponent>();
+            for (auto& e : entities) {
+                // Children get drawn by their parents.
+                if (e.has_component<HierarchyComponent>() && e.get_component<HierarchyComponent>().parent)
+                    continue;
+                draw_entity_node(draw_entity_node, e);
             }
+
+            // Dropping onto the empty space below the tree detaches the entity from its parent.
+            const auto avail = ImGui::GetContentRegionAvail();
+            ImGui::Dummy({ std::max(avail.x, 1.0f), std::max(avail.y, 40.0f) });
+            if (ImGui::BeginDragDropTarget()) {
+                if (const auto* payload = ImGui::AcceptDragDropPayload("CX_ENTITY"))
+                    pending_detach = *static_cast<const Entity*>(payload->Data);
+                ImGui::EndDragDropTarget();
+            }
+
+            if (pending_attach && !scene->attach_parent(pending_attach->first, pending_attach->second))
+                log(Warn, "Cannot parent '{}' to '{}'.",
+                    pending_attach->second.get_component<TagComponent>().tag,
+                    pending_attach->first.get_component<TagComponent>().tag);
+            if (pending_detach && pending_detach->has_component<HierarchyComponent>())
+                scene->detach_parent(pending_detach->get_component<HierarchyComponent>().parent, *pending_detach);
 
             if (action_create_prefab) {
                 action_create_prefab = false;

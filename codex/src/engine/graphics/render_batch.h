@@ -12,15 +12,16 @@
 namespace codex::gfx {
     constexpr auto QUAD2D_VERTEX_COUNT = 4; // How many vertices does the buffer have?
 
-    CX_PACKED(struct QuadVertex {
-        mat4 model;
+    struct QuadVertex
+    {
         vec4 vertex;
         vec4 colour;
+        vec3 centre;
         vec2 tex_coord;
         vec2 tex_size;
         i32  tex_id;
         i32  entity_id;
-    });
+    };
 
     class CODEX_API RenderBatch
     {

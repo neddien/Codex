@@ -13,11 +13,12 @@ namespace codex {
 
         self.loaders_.try_emplace(loader->asset_type_hash(), loader.template as<TLoader>());
         for (const auto& e : extensions) {
-            bool result = self.loaders_by_ext_.try_emplace(util::crypto::fnv1a(e), loader).second;
+            [[maybe_unused]] bool result = self.loaders_by_ext_.try_emplace(util::crypto::fnv1a(e), loader).second;
             assert(result);
         }
 
-        bool result = self.loaders_by_type_.try_emplace(util::crypto::fnv1a(loader->asset_type_name()), loader).second;
+        [[maybe_unused]] bool result =
+            self.loaders_by_type_.try_emplace(util::crypto::fnv1a(loader->asset_type_name()), loader).second;
         assert(result);
     }
 

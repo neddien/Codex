@@ -59,14 +59,22 @@ namespace codex::editor {
     } // namespace
 
     void EditorPanelDeleter::operator()(EditorPanel* panel) noexcept
-    {
-        delete panel;
-    }
+    { delete panel; }
 
     void SceneEditorView::on_attach()
     {
-        descriptor_ =
-            Shared<SceneEditorDescriptor>::from(new SceneEditorDescriptor{ .editor_scene = Shared<Scene>::make() });
+        descriptor_ = Shared<SceneEditorDescriptor>::from(new SceneEditorDescriptor{
+            .project              = {},
+            .active_scene         = {},
+            .editor_scene         = Shared<Scene>::make(),
+            .runtime_scene        = {},
+            .current_scene_path   = {},
+            .script_module_path   = {},
+            .selected_entity      = {},
+            .current_project_path = {},
+            .registry_state_mutex = {},
+            .registry_state_cv    = {},
+        });
         descriptor_->active_scene = descriptor_->editor_scene;
 
         // Panels
@@ -105,9 +113,7 @@ namespace codex::editor {
     }
 
     void SceneEditorView::on_detach()
-    {
-        unload_project();
-    }
+    { unload_project(); }
 
     void SceneEditorView::on_update(const f32 dt)
     {
@@ -166,9 +172,8 @@ namespace codex::editor {
 
                 if (d->selected_entity.entity && d->outline_shader &&
                     d->selected_entity.entity.has_component<SpriteRendererComponent>()) {
-                    const auto&                tc  = d->selected_entity.entity.get_component<TransformComponent>();
-                    const auto&                src = d->selected_entity.entity.get_component<SpriteRendererComponent>();
-                    const scene::EditorCamera& camera = Editor::viewport_camera();
+                    const auto& tc  = d->selected_entity.entity.get_component<TransformComponent>();
+                    const auto& src = d->selected_entity.entity.get_component<SpriteRendererComponent>();
 
                     gfx::Renderer::stencil_mask(0xff);
                     gfx::Renderer::stencil_op(opengl::Enum::Keep, opengl::Enum::Keep, opengl::Enum::Replace);
@@ -330,7 +335,7 @@ namespace codex::editor {
             for (auto& e : dbg::Profiler::get_profilers()) {
                 const auto info = e.second.info();
                 const auto dur  = e.second.elapsed_as<std::milli, f32>().count();
-                ImGui::Text("%s: %fms", info.name.c_str(), dur);
+                ImGui::Text("%s: %fms", info.name.c_str(), static_cast<double>(dur));
             }
             ImGui::End();
         }
@@ -353,8 +358,6 @@ namespace codex::editor {
                         compile_project();
                     }
                     if (ImGui::MenuItem("Clear build files")) {
-                        auto& d = descriptor_;
-
                         sys::ProcessInfo p_info;
 
 #ifdef CX_PLATFORM_WINDOWS
@@ -364,12 +367,11 @@ namespace codex::editor {
 #elif defined(CX_PLATFORM_OSX)
                         p_info.command = "./build.py --preset osx-any-debug --clear";
 #endif
-                        p_info.on_exit = [this](i32 exitCode)
+                        p_info.on_exit = []([[maybe_unused]] i32 exitCode)
                         {
-                            auto& d = descriptor_;
                             // TODO: Scene should also be thread safe since this callback is being called from a
                             // different thread.
-                            // Scene::LoadScriptModule(d->script_module_path); // TODO: COME BACK
+                            // Scene::LoadScriptModule(descriptor_->script_module_path); // TODO: COME BACK
                             ConsoleMan::append_message("-- Clear finished.");
                         };
                         p_info.redirect_stdout = true;
@@ -474,8 +476,8 @@ namespace codex::editor {
 
             auto current_viewport_window_size = ImGui::GetContentRegionAvail();
             viewport_size_                    = vec2{ current_viewport_window_size.x, current_viewport_window_size.y };
-            ImGui::Image((ImTextureID)(framebuffer_->colour_attachment_id_at(0)), current_viewport_window_size,
-                         { 0, 1 }, { 1, 0 });
+            ImGui::Image(reinterpret_cast<ImTextureID>(framebuffer_->colour_attachment_id_at(0)),
+                         current_viewport_window_size, { 0, 1 }, { 1, 0 });
 
             if (ImGui::BeginDragDropTarget()) {
                 if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CX_ASSET")) {
@@ -533,9 +535,18 @@ namespace codex::editor {
                     gizmo_active_ = ImGuizmo::IsOver();
 
                     if (gizmo_active_ && ImGuizmo::IsUsing()) {
+                        // The gizmo manipulates the world matrix; convert back to parent-relative
+                        // before writing the local TRS fields.
+                        auto local_new = transform;
+                        if (d->selected_entity.entity.has_component<HierarchyComponent>()) {
+                            auto& hc = d->selected_entity.entity.get_component<HierarchyComponent>();
+                            if (hc.parent)
+                                local_new = glm::inverse(hc.parent.transform().world_mat()) * transform;
+                        }
+
                         vec3 rotation;
-                        codex::math::transform_decompose(transform, tc.position, rotation, tc.scale);
-                        tc.rotation += glm::degrees(rotation) - tc.rotation;
+                        codex::math::transform_decompose(local_new, tc.position, rotation, tc.scale);
+                        tc.rotation = glm::degrees(rotation);
                     }
                 }
             }
@@ -561,7 +572,7 @@ namespace codex::editor {
 
             if (ImGui::CollapsingHeader("OpenGL", ImGuiTreeNodeFlags_DefaultOpen)) {
                 ImGui::Text("FPS: %u", Engine::fps());
-                ImGui::Text("Delta time: %f", Engine::delta());
+                ImGui::Text("Delta time: %f", static_cast<double>(Engine::delta()));
                 ImGui::Text("Batch count: %zu", gfx::BatchRenderer2D::batch_count());
                 ImGui::Text("Total quad count: %zu", gfx::BatchRenderer2D::quad_count());
                 ImGui::Text("Command Queue Size: 0");
@@ -680,7 +691,7 @@ namespace codex::editor {
         return false;
     }
 
-    bool SceneEditorView::on_mouse_down_event(events::MouseDownEvent& e)
+    bool SceneEditorView::on_mouse_down_event([[maybe_unused]] events::MouseDownEvent& e)
     {
         auto mouse_pos = ivec2{ ImGui::GetMousePos().x, ImGui::GetMousePos().y };
         mouse_pos.x -= viewport_bounds_[0].x;
@@ -709,7 +720,7 @@ namespace codex::editor {
         return false;
     }
 
-    bool SceneEditorView::on_mouse_move_event(events::MouseMoveEvent& e)
+    bool SceneEditorView::on_mouse_move_event([[maybe_unused]] events::MouseMoveEvent& e)
     {
         auto mouse_pos = ivec2{ ImGui::GetMousePos().x, ImGui::GetMousePos().y };
         mouse_pos.x -= viewport_bounds_[0].x;
@@ -732,9 +743,7 @@ namespace codex::editor {
                     auto& tmc    = d->selected_entity.entity.get_component<TilemapComponent>();
                     auto& camera = Editor::viewport_camera();
 
-                    // Vector conversion fiesta
-                    const auto camera_dim = vec3{ camera.width() * camera.pan(), camera.height() * camera.pan(), 0.0f };
-                    auto       tile_pos   = scene::Camera::screen_coordinates_to_world(camera, mouse_pos, camera.pos());
+                    auto tile_pos = scene::Camera::screen_coordinates_to_world(camera, mouse_pos, camera.pos());
                     tile_pos = util::snap(tile_pos, vec3{ tmc.grid_size, 1.0f }) + vec3{ tmc.grid_size / 2.0f, 0.0f };
                     if (tmc.current_state == TilemapComponent::State::Brush) {
                         tmc.add_tile(tile_pos, tmc.current_tile);
@@ -864,7 +873,7 @@ namespace codex::editor {
 
         d->active_scene   = d->runtime_scene;
         auto active_scene = d->active_scene.lock();
-        assert(active_scene);
+        cxensure(active_scene, "active_scene should not be null right after being set from runtime_scene");
 
         active_scene->set_state(Scene::State::Play);
         active_scene->on_runtime_start();
@@ -880,7 +889,7 @@ namespace codex::editor {
 
         d->active_scene   = d->runtime_scene;
         auto active_scene = d->active_scene.lock();
-        assert(active_scene);
+        cxensure(active_scene, "active_scene should not be null right after being set from runtime_scene");
 
         active_scene->set_state(Scene::State::Simulate);
         active_scene->on_simulation_start();
@@ -903,9 +912,7 @@ namespace codex::editor {
     }
 
     void SceneEditorView::initialize_panel(EditorPanel& panel) const noexcept
-    {
-        panel.on_init();
-    }
+    { panel.on_init(); }
 
     void SceneEditorView::visualize_lines() const noexcept
     {
@@ -1036,8 +1043,6 @@ namespace codex::editor {
 
     void SceneEditorView::unload_project()
     {
-        auto& d = descriptor_;
-
         AssetManager::dispose();
         EditorApplication::vfs().unmount(std::string{ project_assets_vfs_root });
 
@@ -1099,7 +1104,7 @@ namespace codex::editor {
         CX_DEBUG_PROFILE_SCOPE("on_update::viewport_resize")
 
         auto scene = d->active_scene.lock();
-        assert(scene);
+        cxensure(scene, "active_scene should not be null while viewport is resizing");
 
         scene::Camera* camera = nullptr;
         if (scene->state() == Scene::State::Play) {
@@ -1277,8 +1282,8 @@ namespace codex::editor {
             return;
 
         constexpr std::string_view temporary_pak = "/edit/tmp/registry.cxpk";
-        auto                       pak           = vfs.open(std::string{ temporary_pak },
-                                                            { fs::FileMode::Create | fs::FileMode::Trunc | fs::FileMode::Write });
+        auto                       pak = vfs.open(std::string{ temporary_pak },
+                                                  { fs::FileMode::Create | fs::FileMode::Trunc | fs::FileMode::Write });
         if (!pak) {
             log(Error, "Failed to create temporary registry.cxpk");
             return;
@@ -1427,7 +1432,8 @@ namespace codex::editor {
         ImGui::PopID();
     }
 
-    void SceneEditorView::draw_asset_path(const AssetPath& path, const f32 column_width)
+    void SceneEditorView::draw_asset_path([[maybe_unused]] const AssetPath& path,
+                                          [[maybe_unused]] const f32       column_width)
     {
     }
 } // namespace codex::editor

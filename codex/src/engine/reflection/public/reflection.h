@@ -7,9 +7,7 @@
 #define RF_SERIALIZABLE                                                                                                \
 public:                                                                                                                \
     [[nodiscard]] codex::Box<codex::NativeBehaviour> clone() const override                                            \
-    {                                                                                                                  \
-        return codex::Box<std::decay_t<std::remove_pointer_t<decltype(this)>>>::make(*this);                           \
-    }                                                                                                                  \
+    { return codex::Box<std::decay_t<std::remove_pointer_t<decltype(this)>>>::make(*this); }                           \
                                                                                                                        \
 private:                                                                                                               \
     void                       archive(codex::Archive& archive) override;                                              \
@@ -67,7 +65,7 @@ namespace codex::rf {
             : name{ name }
             , type{ type }
             , offset{ offset }
-            , display_name{ this->display_name.empty() ? name : display_name }
+            , display_name{ display_name.empty() ? name : display_name }
             , category{ category }
             , tooltip{ tooltip }
             , display{ display }
@@ -89,9 +87,7 @@ namespace codex::rf {
         inline void add_property(const std::string_view name, const PropertyType type, const usize offset,
                                  const std::string_view display_name = "", const std::string_view category = "General",
                                  const std::string_view tooltip = "", const bool display = true)
-        {
-            properties_.emplace_back(name, type, offset, display_name, category, tooltip, display);
-        }
+        { properties_.emplace_back(name, type, offset, display_name, category, tooltip, display); }
         inline const Property* find_property(const std::string_view name) const noexcept
         {
             for (const auto& prop : properties_) {
@@ -166,7 +162,5 @@ namespace codex::rf {
 
     template <typename T>
     [[nodiscard]] constexpr PropertyType type_of(T) noexcept
-    {
-        return type_of<T>();
-    }
+    { return type_of<T>(); }
 } // namespace codex::rf

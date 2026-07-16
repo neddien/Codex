@@ -11,7 +11,7 @@ namespace codex::util {
             case Kinematic: return b2_kinematicBody;
         }
 
-        CX_ASSERT(false, "Unknown body type.");
+        cxassert(false, "Unknown body type.");
         return b2_staticBody;
     }
 

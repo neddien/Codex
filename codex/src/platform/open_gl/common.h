@@ -14,7 +14,7 @@
 #include <glad/glad.h>
 #endif
 
-#define MGL_ASSERT(...) CX_ASSERT(__VA_ARGS__)
+#define MGL_ASSERT(...) cxassert(__VA_ARGS__)
 
 #define GL_ClearError() while (glGetError() != 0)
 #ifdef MGL_DEBUG
@@ -23,7 +23,7 @@
     x;                                                                                                                 \
     {                                                                                                                  \
         codex::u32 error_code = gl_error_check();                                                                      \
-        MGL_ASSERT(error_code == 0, "GL Error occured! Error Code: " + std::to_string(error_code))                     \
+        MGL_ASSERT(error_code == 0, "GL Error occured! Error Code: " + std::to_string(error_code));                    \
     }
 #else
 #define GL_Call(x) x;

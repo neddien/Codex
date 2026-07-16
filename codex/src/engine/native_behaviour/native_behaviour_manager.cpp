@@ -1,6 +1,7 @@
 #include "public/native_behaviour_manager.h"
 
 #include <engine/scene/public/components.h>
+#include <engine/scene/public/entity.inl>
 #include <engine/scene/public/scene.h>
 #include <engine/system/dynamic_library.h>
 
@@ -86,9 +87,7 @@ namespace codex {
     }
 
     bool NBMan::instance_loaded() noexcept
-    {
-        return get().nb_instance_;
-    }
+    { return get().nb_instance_; }
 
     const NBMan::BHRecord* NBMan::type_record(const std::string_view type) noexcept
     {

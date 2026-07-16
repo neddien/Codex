@@ -10,7 +10,7 @@ namespace codex::opengl {
 }
 
 namespace codex::gfx {
-    class CODEX_API Texture2D : public IAsset
+    class CODEX_API Texture2D final : public IAsset
     {
         CX_ASSET(Texture2D)
 
@@ -24,8 +24,8 @@ namespace codex::gfx {
 
         public:
             ImportSettings() noexcept = default;
-            explicit ImportSettings(const TextureProperties& props) noexcept
-                : props{ props }
+            explicit ImportSettings(const TextureProperties& properties) noexcept
+                : props{ properties }
             {
             }
 
@@ -40,7 +40,7 @@ namespace codex::gfx {
         Texture2D(Texture2D&& other) noexcept;
         Texture2D& operator=(const Texture2D& other);
         Texture2D& operator=(Texture2D&& other) noexcept;
-        ~Texture2D();
+        ~Texture2D() override;
 
     public:
         [[nodiscard]] explicit                 operator bool() const noexcept;
@@ -63,7 +63,7 @@ namespace codex::gfx {
         Box<opengl::Texture> raw_texture_;
     };
 
-    class Texture2DLoader : public AssetLoaderBase<Texture2D, Texture2D::ImportSettings>
+    class Texture2DLoader final : public AssetLoaderBase<Texture2D, Texture2D::ImportSettings>
     {
         [[nodiscard]] Shared<Texture2D> load(Shared<fs::FileHandle>           fh,
                                              const Texture2D::ImportSettings& params) const noexcept override;

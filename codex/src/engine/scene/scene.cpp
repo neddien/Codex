@@ -53,8 +53,8 @@ namespace codex {
     { copy_components<Components...>(from, to, map); }
 
     template <typename... Components>
-    [[nodiscarcd]] static std::vector<Component*> collect_components(ComponentGroup<Components...>,
-                                                                     Entity entity) noexcept
+    [[nodiscard]] static std::vector<Component*> collect_components(ComponentGroup<Components...>,
+                                                                    Entity entity) noexcept
     {
         std::vector<Component*> components;
         (
@@ -95,31 +95,6 @@ namespace codex {
         auto view = registry_->view<NativeBehaviourComponent>();
         for (auto& e : view)
             view.get<NativeBehaviourComponent>(e).dispose_behaviours();
-    }
-
-    void Scene::copy_to(Scene& other) const noexcept
-    {
-        /*
-        {
-            EntityMap entity_map;
-
-            const auto src_reg = registry_.lock();
-            const auto id_view = src_reg->view<IDComponent, TagComponent>();
-
-            for (const auto& e : id_view) {
-                const auto& tc        = id_view.get<TagComponent>(e);
-                const auto& idc       = id_view.get<IDComponent>(e);
-                auto        cx_entity = other.create_entity(tc.tag, idc.uuid);
-                entity_map[idc.uuid]  = entt::entity{ static_cast<Entity::handle_type>(cx_entity) };
-            }
-
-            auto dst_reg = other.registry_.lock();
-            copy_components(AllComponents{}, *src_reg, *dst_reg, entity_map);
-        }
-
-        other.name_               = name_;
-        other.physics_properties_ = physics_properties_;
-        */
     }
 
     void Scene::clone_via_serialization(Scene& other) const
@@ -183,27 +158,29 @@ namespace codex {
 
     void Scene::remove_entity(Entity entity)
     {
-        CX_ASSERT(registry_->valid(entity.handle_), "Entity does not exists in registry.");
+        cxassert(registry_->valid(entity.handle_), "Entity does not exists in registry.");
 
         std::scoped_lock guard{ mutex_ };
         auto             registry = registry_.lock();
 
         // Detach in case there's a hierarchy
-        if (entity.has_component<HierarchyComponent>()) {
-            auto&               hc   = entity.get_component<HierarchyComponent>();
+        if (auto* hc = registry->try_get<HierarchyComponent>(entity.handle_); hc) {
             HierarchyComponent* p_hc = nullptr;
 
-            if (hc.parent) {
-                p_hc = &hc.parent.get_component<HierarchyComponent>();
-                if (auto it = std::find(p_hc->children.begin(), p_hc->children.end(), entity);
-                    it != p_hc->children.end())
-                    p_hc->children.erase(it);
+            if (registry->valid(hc->parent.handle_)) {
+                p_hc = registry->try_get<HierarchyComponent>(hc->parent.handle_);
+
+                if (p_hc) {
+                    if (auto it = std::find(p_hc->children.begin(), p_hc->children.end(), entity);
+                        it != p_hc->children.end())
+                        p_hc->children.erase(it);
+                }
             }
 
-            for (Entity& e : hc.children) {
-                auto& c_hc  = e.get_component<HierarchyComponent>();
-                c_hc.parent = hc.parent; // If we don't have a parent, neither will our children when we'll die so its
-                                         // okay to assign parent here blindly
+            for (Entity& e : hc->children) {
+                auto& c_hc  = registry->get<HierarchyComponent>(e.handle_);
+                c_hc.parent = hc->parent; // If we don't have a parent, neither will our children when we'll die so its
+                                          // okay to assign parent here blindly
 
                 if (p_hc) {
                     p_hc->children.push_back(e);
@@ -211,7 +188,7 @@ namespace codex {
             }
         }
 
-        auto& idc = entity.get_component<IDComponent>();
+        auto& idc = registry->get<IDComponent>(entity.handle_);
         if (auto it = uuid_to_entity_.find(idc.uuid); it != uuid_to_entity_.end())
             uuid_to_entity_.erase(it);
 
@@ -287,11 +264,11 @@ namespace codex {
         return Entity{};
     }
 
-    void Scene::set_parent(Entity parent, Entity child) noexcept
+    bool Scene::attach_parent(Entity parent, Entity child) noexcept
     {
         // If parent or child are nil, or parent is child
         if ((!parent || !child) || parent == child)
-            return;
+            return false;
 
         if (!parent.has_component<HierarchyComponent>())
             parent.add_component<HierarchyComponent>();
@@ -305,7 +282,7 @@ namespace codex {
         Entity cur = parent;
         while (cur) {
             if (cur == child)
-                return;
+                return false;
             if (!cur.has_component<HierarchyComponent>())
                 break;
             cur = cur.get_component<HierarchyComponent>().parent;
@@ -313,7 +290,7 @@ namespace codex {
 
         // If our parent already has this child
         if (std::find(p_hc.children.begin(), p_hc.children.end(), child) != p_hc.children.end())
-            return;
+            return false;
 
         // If our child already has a parent
         if (c_hc.parent) {
@@ -332,13 +309,50 @@ namespace codex {
         vec3       rot_in_rad;
         math::transform_decompose(local_new, local_child.position, rot_in_rad, local_child.scale);
         local_child.rotation = glm::degrees(rot_in_rad);
+
+        return true;
+    }
+
+    bool Scene::detach_parent(Entity parent, Entity child) noexcept
+    {
+        std::scoped_lock guard{ mutex_ };
+        auto             registry = registry_.lock();
+
+        // If parent or child are nil, or parent is child
+        if (parent.handle_ == entt::null || child.handle_ == entt::null || parent == child ||
+            !registry->valid(parent.handle_) || !registry->valid(child.handle_))
+            return false;
+
+        auto* p_hc = registry->try_get<HierarchyComponent>(parent.handle_);
+        auto* c_hc = registry->try_get<HierarchyComponent>(child.handle_);
+
+        if (!p_hc || !c_hc)
+            return false;
+
+        // If our parent already has this child
+        if (auto it = std::find(p_hc->children.begin(), p_hc->children.end(), child); it != p_hc->children.end()) {
+            auto& c_trans = registry->get<TransformComponent>(child.handle_);
+            mat4  w_child = c_trans.world_mat();
+
+            p_hc->children.erase(it);
+            c_hc->parent = Entity{};
+
+            vec3 rot_in_rad;
+            math::transform_decompose(w_child, c_trans.position, rot_in_rad, c_trans.scale);
+            c_trans.rotation = glm::degrees(rot_in_rad);
+
+            return true;
+        }
+
+        return false;
     }
 
     Scene::BagHandle Scene::create_behaviour_bag(Entity owner) noexcept
     {
         /* clang-format: no inline */
         auto handle = bag_.emplace_back(NBCRecord{
-            .owner = owner,
+            .owner      = owner,
+            .behaviours = {},
         });
 
         log(Info, "Created bag for: ({}, {})", handle.gen(), handle.index());
@@ -371,8 +385,7 @@ namespace codex {
             if (NBCRecord* rec = bag_.try_at(handle); rec) {
                 Box<NativeBehaviour> bh = type_rec->factory();
                 bh->set_owner(rec->owner);
-                NativeBehaviour* bhptr  = bh.get();
-                NBHandle         handle = behaviours_.emplace_back(std::move(bh));
+                NBHandle handle = behaviours_.emplace_back(std::move(bh));
                 rec->behaviours.emplace(handle);
                 return handle;
             }
@@ -434,7 +447,7 @@ namespace codex {
         auto                      view = registry->view<TransformComponent>();
         for (const auto& [e, tc] : view.each()) {
             if (auto* hc = registry->try_get<HierarchyComponent>(e); hc) {
-                if (hc->parent)
+                if (registry->valid(hc->parent.handle_))
                     continue;
             }
 
@@ -479,7 +492,7 @@ namespace codex {
 
                     // TODO: Get rid of this and optimize this?
                     const auto transform =
-                        transform_component.world_mat() * glm::scale(glm::identity<mat4>(), { size.x, size.y, 1.0f });
+                        transform_component.world_mat() * glm::scale(mat4{ 1.0f }, { size.x, size.y, 1.0f });
                     gfx::BatchRenderer2D::render_sprite(renderer_component.sprite(), transform, static_cast<i32>(e));
                 }
             }
@@ -487,15 +500,13 @@ namespace codex {
 
         // Tiles
         {
-            const auto registry = registry_.lock();
-            const auto view     = registry->view<TilemapComponent, TransformComponent>();
-            for (const auto& e : view) {
-                auto& tilemap_component = view.get<TilemapComponent>(e);
-                for (const auto& tile : tilemap_component.tiles) {
-                    auto sprite = tilemap_component.sprite;
-                    sprite.set_size(tilemap_component.grid_size);
-                    sprite.set_texture_coords(
-                        util::to_rect(tile.atlas, tilemap_component.tile_size.x, tilemap_component.tile_size.y));
+            auto registry = registry_.lock();
+            auto view     = registry->view<TilemapComponent, TransformComponent>();
+            for (const auto& [e, tmc, tc] : view.each()) {
+                for (auto& tile : tmc.tiles) {
+                    Sprite& sprite = tmc.sprite;
+                    sprite.set_size(tmc.grid_size);
+                    sprite.set_texture_coords(util::to_rect(tile.atlas, tmc.tile_size.x, tmc.tile_size.y));
                     sprite.set_z_index(tile.layer);
 
                     auto transform = mat4{ 1.0f };
@@ -561,6 +572,7 @@ namespace codex {
                                         (anim->current_frame + anim->frame_count - 1) % anim->frame_count;
                                 }
                             } break;
+                            case kPlaybackModeSize: break; // sentinel, not a real mode
                         }
                     }
 
@@ -638,9 +650,27 @@ namespace codex {
 
         const auto& trans = registry.get<TransformComponent>(entity);
 
+        const mat4 world = trans.world_mat();
+
+        // In a TRS our translation is always on the last column (OpenGL is column-major)
+        const vec2 world_translation = vec2(world[3]);
+
+        // Because Scale gets applied to our rotation matrix and the values of the rotation matricies are always
+        // normalized [-1,1], we can just calculate the length of the rotation coordinates to restore the scale back
+        const vec2 world_scale = vec2(glm::length(world[0]), glm::length(world[1]));
+
+        // This is basically the inverse operation of a rotation matrix but we use atan2() (tan shows us the relation
+        // between sin and cos) because we lose rotation information and atan2 takes in a horiztonal and a vertical
+        // coordinate and depending on the signs TLDR: of these coordinates returns the correct angle.
+        // TLDR: cos(45) = 0.7 as well as cos(-45) = 0.7; Now was it -45deg or 45deg? Atan2 asnwers that.
+        const f32 world_rotation_z = glm::atan2(world[0].y, world[0].x); // In radians because Box2D wants radians, we
+                                                                         // should also switch to radians only show
+                                                                         // degress in the editor.
+        // Then we'll switch to quats when 3D support gets added eventually.
+
         b2BodyDef body_def;
-        body_def.position.Set(trans.position.x * physics_properties_.scaling_factor,
-                              trans.position.y * physics_properties_.scaling_factor);
+        body_def.position.Set(world_translation.x * physics_properties_.scaling_factor,
+                              world_translation.y * physics_properties_.scaling_factor);
         body_def.type           = util::to_b2_type(rb2d->body_type);
         body_def.angularDamping = rb2d->angular_damping;
         body_def.linearDamping  = rb2d->linear_damping;
@@ -648,15 +678,15 @@ namespace codex {
         body_def.fixedRotation  = rb2d->fixed_rotation;
         body_def.gravityScale   = rb2d->gravity_scale;
         body_def.enabled        = rb2d->enabled;
-        body_def.angle          = math::to_radf(trans.rotation.z);
+        body_def.angle          = world_rotation_z;
         auto* b2_body           = physics_world_->CreateBody(&body_def);
 
         rb2d->runtime_body = b2_body;
 
         if (const auto* collider = registry.try_get<BoxCollider2DComponent>(entity)) {
             b2PolygonShape shape;
-            shape.SetAsBox(collider->size.x * trans.scale.x * physics_properties_.scaling_factor,
-                           collider->size.y * trans.scale.y * physics_properties_.scaling_factor,
+            shape.SetAsBox(collider->size.x * world_scale.x * physics_properties_.scaling_factor,
+                           collider->size.y * world_scale.y * physics_properties_.scaling_factor,
                            util::to_b2_vec2(collider->offset * physics_properties_.scaling_factor), 0.0f);
 
             b2FixtureDef fixture_def;
@@ -887,9 +917,9 @@ namespace codex {
         // Transform pass
         transform_pass();
 
-        // Render.
+        // Render
         {
-            // Grab primary camera.
+            // Grab primary camera
             {
                 auto registry = registry_.lock();
 
@@ -906,7 +936,8 @@ namespace codex {
                 }
             }
 
-            // Render our sprites if there's a camera.
+            // Render our sprites if there's a camera
+            // FIXME: Sprites should always get rendered despite the abscence of a camera
             if (primary_camera_entity_) {
                 const auto& cc = primary_camera_entity_->get_component<CameraComponent>();
                 const auto& tc = primary_camera_entity_->get_component<TransformComponent>();
@@ -917,7 +948,7 @@ namespace codex {
             }
         }
 
-        // Native behaviour updates.
+        // Native behaviour update
         {
             bool stop = false;
             {
@@ -925,7 +956,7 @@ namespace codex {
 
                 // NOTE: Temporary Fix: Need to create a snapshot of behaviours here because
                 // behaviours can spawn prefabs with their own behaviour(s) which will
-                // case our behaviours_ dense vector to be invalidated
+                // cause our behaviours_ dense vector to be invalidated
                 // TODO: This is not acceptable for a tight game loop, in the future we'll need to
                 // have separate to_be_attached_ and to_be_disposed_ lists holding their respective
                 // behaviours as the names suggest.
@@ -989,6 +1020,7 @@ namespace codex {
 
                     // Snapshot for the same reason as on_runtime_update: callbacks may
                     // spawn prefabs and grow behaviours_ mid-iteration.
+                    // TODO: Overhaul here too
                     std::vector<NativeBehaviour*> behaviours;
                     for (Box<NativeBehaviour>& bh : self.behaviours_)
                         behaviours.push_back(bh.get());
@@ -1010,7 +1042,7 @@ namespace codex {
                     }
                 }
 
-                // Physics.
+                // Physics
                 if (self.state_.load() != State::Edit) {
                     std::scoped_lock guard{ self.mutex_ };
                     auto             registry = self.registry_.lock();
@@ -1021,7 +1053,7 @@ namespace codex {
                         auto& trans = view.get<TransformComponent>(e);
                         auto& rb2d  = view.get<RigidBody2DComponent>(e);
 
-                        // Bodies added at runtime outside the prefab path are built here.
+                        // Bodies added at runtime outside the prefab path are built here
                         if (!rb2d.runtime_body)
                             self.construct_physics_body(*registry, e);
 
@@ -1030,9 +1062,24 @@ namespace codex {
                             continue;
                         const auto& b2_pos = b2_body->GetPosition();
 
-                        trans.position.x = b2_pos.x / self.physics_properties_.scaling_factor + 1.0f;
-                        trans.position.y = b2_pos.y / self.physics_properties_.scaling_factor + 1.0f;
-                        trans.rotation.z = math::to_degf(b2_body->GetAngle());
+                        const vec2 b2_world{ b2_pos.x / self.physics_properties_.scaling_factor,
+                                             b2_pos.y / self.physics_properties_.scaling_factor };
+                        const f32  b2_angle_world = math::to_degf(b2_body->GetAngle());
+
+                        if (auto* hc = registry->try_get<HierarchyComponent>(e); hc && hc->parent) {
+                            const mat4 parent_world = registry->get<TransformComponent>(hc->parent.handle_).world_mat();
+                            const vec3 local_world =
+                                glm::inverse(parent_world) * vec4(b2_world, trans.position.z, 1.0f);
+                            const f32 parent_angle_world_rad = glm::atan2(parent_world[0].y, parent_world[0].x);
+
+                            trans.position.x = local_world.x;
+                            trans.position.y = local_world.y;
+                            trans.rotation.z = b2_angle_world - glm::degrees(parent_angle_world_rad);
+                        } else {
+                            trans.position.x = b2_world.x;
+                            trans.position.y = b2_world.y;
+                            trans.rotation.z = b2_angle_world;
+                        }
                     }
                 }
 

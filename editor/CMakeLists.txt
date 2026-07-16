@@ -32,12 +32,14 @@ get_target_property(CODEX_BUILD_DIR CodexEngine BINARY_DIR)
 get_target_property(CODEX_CMAKE_SOURCE_DIR CodexEngine SOURCE_DIR)
 
 if(DEFINED CX_BUILD_TYPE_RELEASE OR DEFINED CX_BUILD_TYPE_SHIPPING)
-  if(DEFINED CX_COMPILER_CLANG OR DEFINED CX_COMPILER_GNUC)
-    target_compile_options(CodexEngine PRIVATE -Wall -Wextra -Werror -pedantic)
-    target_compile_options(CodexEngine-static PRIVATE -Wall -Wextra -Werror
-                                                      -pedantic)
+  if(DEFINED CX_COMPILER_GNUC)
+    target_compile_options(CodexEditor PRIVATE -Wall -Wextra -Werror -pedantic
+                                               ${CX_STRICT_WARNINGS_GNU})
+  elseif(DEFINED CX_COMPILER_CLANG)
+    target_compile_options(CodexEditor PRIVATE -Wall -Wextra -Werror -pedantic
+                                               ${CX_STRICT_WARNINGS_CLANG})
   elseif(DEFINED CX_COMPILER_MSVC)
-
+    target_compile_options(CodexEditor PRIVATE /Wall /W4 /WX ${CX_STRICT_WARNINGS_MSVC})
   endif()
 elseif(DEFINED CX_BUILD_TYPE_DEBUG)
   # Disable warnings for debug builds.
@@ -96,8 +98,14 @@ elseif(DEFINED CX_PLATFORM_UNIX)
           DESTINATION share/${PROJECT_NAME})
 endif()
 
-target_include_directories(CodexEditor PUBLIC ${IMGUIZMO_INCLUDE_DIRS})
+target_include_directories(CodexEditor SYSTEM PUBLIC ${IMGUIZMO_INCLUDE_DIRS})
 target_sources(CodexEditor PRIVATE ${IMGUIZMO_SOURCE_FILES})
+
+# ImGuizmo.cpp is vendored (FetchContent) and compiled directly as one of our
+# own sources, so the SYSTEM include dir above doesn't exempt the file itself
+# from our strict/-Werror flags. -w overrides everything earlier on the
+# command line and disables warnings outright for just this file.
+set_source_files_properties(${IMGUIZMO_SOURCE_FILES} PROPERTIES COMPILE_OPTIONS "-w")
 
 # === Misc ===
 # Run the python script responsible for creating the template project for all

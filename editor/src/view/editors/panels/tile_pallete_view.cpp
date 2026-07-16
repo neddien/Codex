@@ -120,8 +120,8 @@ namespace codex::editor {
 
                     auto current_viewport_window_size = ImGui::GetContentRegionAvail();
                     viewport_size_ = vec2{ current_viewport_window_size.x, current_viewport_window_size.y };
-                    ImGui::Image((ImTextureID)(pallete_fb_->colour_attachment_id_at(0)), current_viewport_window_size,
-                                 { 0, 1 }, { 1, 0 });
+                    ImGui::Image(reinterpret_cast<ImTextureID>(pallete_fb_->colour_attachment_id_at(0)),
+                                 current_viewport_window_size, { 0, 1 }, { 1, 0 });
 
                     viewport_focused_ = ImGui::IsWindowFocused();
                     viewport_hovered_ = ImGui::IsWindowHovered();
@@ -144,7 +144,7 @@ namespace codex::editor {
         d.dispatch<events::MouseScrollEvent>(bind_event_delegate(this, &TilePalleteView::on_mouse_scroll_event));
     }
 
-    bool TilePalleteView::on_mouse_down_event(events::MouseDownEvent& e)
+    bool TilePalleteView::on_mouse_down_event([[maybe_unused]] events::MouseDownEvent& e)
     {
         auto mouse_pos = ivec2{ ImGui::GetMousePos().x, ImGui::GetMousePos().y };
         mouse_pos.x -= viewport_bounds_[0].x;
@@ -171,7 +171,7 @@ namespace codex::editor {
         return false;
     }
 
-    bool TilePalleteView::on_mouse_move_event(events::MouseMoveEvent& e)
+    bool TilePalleteView::on_mouse_move_event([[maybe_unused]] events::MouseMoveEvent& e)
     {
         auto mouse_pos = ivec2{ ImGui::GetMousePos().x, ImGui::GetMousePos().y };
         mouse_pos.x -= viewport_bounds_[0].x;

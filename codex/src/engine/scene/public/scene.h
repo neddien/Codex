@@ -130,7 +130,6 @@ namespace codex {
             return entities;
         }
 
-        void   copy_to(Scene& other) const noexcept;
         void   clone_via_serialization(Scene& other) const;
         Entity create_entity(std::string_view tag) noexcept;
         Entity create_entity(const std::optional<math::transform>& transform = std::nullopt,
@@ -142,7 +141,8 @@ namespace codex {
                                   std::string_view tag = "default tag", UUID uuid = UUID{}) noexcept;
         void   enqueue_for_disposal(Entity entity) noexcept;
         Entity entity_by_uuid(UUID uuid) noexcept;
-        void   set_parent(Entity parent, Entity child) noexcept;
+        bool   attach_parent(Entity parent, Entity child) noexcept;
+        bool   detach_parent(Entity parent, Entity child) noexcept;
 
         [[nodiscard]] BagHandle             create_behaviour_bag(Entity owner) noexcept;
         void                                dispose_behaviour_bag(BagHandle handle) noexcept;
@@ -175,8 +175,11 @@ namespace codex {
         static void on_fixed_update(Scene& self) noexcept;
 
     private:
-        BehaviourBag                      bag_;
-        BehaviourList                     behaviours_;
+        BehaviourBag  bag_;
+        BehaviourList behaviours_;
+
+        // BIG NOTE TO SELF: DO NOT USE THE codex::Entity API WHEN registry_ IS LOCKED! USE RAW ENTT API WITH THE
+        // REGISTRY SINCE YOU HAVE IT LOCKED!
         cc::Mutex<entt::registry>         registry_;
         std::string                       name_          = "Default scene";
         Box<b2World, B2WorldDeleter>      physics_world_ = nullptr;

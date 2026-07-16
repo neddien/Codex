@@ -38,6 +38,5 @@ namespace codex::opengl {
     private:
         i32 width_;
         i32 height_;
-        u32 stride_ = 9 * sizeof(f32);
     };
 } // namespace codex::opengl

@@ -131,7 +131,7 @@ def cmd_build(args: argparse.Namespace) -> None:
         com.Chrono.begin()
         com.log("Conan install started.")
         res = com.run(
-            f"conan install . --output-folder=builds/conan --build=missing -s build_type={args.lib_config.lower().capitalize()}",
+            f"conan install . --output-folder=builds/conan-{args.lib_config.lower()} --build=missing -s build_type={args.lib_config.lower().capitalize()}",
             stdout=stdout,
             stderr=stdout,
         )
@@ -223,8 +223,8 @@ def _make_parser() -> argparse.ArgumentParser:
     build.add_argument(
         "--lib-config", metavar="TYPE",
         dest="lib_config",
-        help="Library build configuration for Conan (e.g. debug, release)",
-        default="debug",
+        help="Library build configuration for Conan (e.g. debug, release). Defaults to --config.",
+        default=None,
     )
     build.add_argument(
         "--no-parallel", action="store_true",
@@ -288,6 +288,8 @@ def main() -> None:
         args.run = True
     if args.command == "build" and args.run:
         args.install = True
+    if args.command == "build" and args.lib_config is None:
+        args.lib_config = args.config
 
     dispatch = {
         "list": cmd_list,

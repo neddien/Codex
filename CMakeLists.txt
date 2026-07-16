@@ -51,6 +51,76 @@ else()
       CACHE INTERNAL "")
 endif()
 
+# GCC's UBSan miscompiles Abseil's SwissTable constexpr policy-function checks
+# (abseil-cpp#1634 / GCC PR71962: comparing a hash-slot function pointer to
+# nullptr in a constexpr context fails to fold under GCC+UBSan). Clang is
+# unaffected, so only strip it for GCC; Clang builds keep full ASan+UBSan.
+if(CX_COMPILER_GNUC)
+  string(REPLACE "-fsanitize=undefined" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+  string(REPLACE "-fsanitize=undefined" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+  set(CMAKE_CXX_FLAGS
+      "${CMAKE_CXX_FLAGS}"
+      CACHE STRING "" FORCE)
+  set(CMAKE_C_FLAGS
+      "${CMAKE_C_FLAGS}"
+      CACHE STRING "" FORCE)
+endif()
+
+# Curated strict warning sets for Release/Shipping, shared by codex/ and
+# editor/. Deliberately excludes -Wconversion/-Wsign-conversion (GCC/Clang)
+# and their MSVC equivalents (/w44244 etc.) since those are the noisiest
+# against existing code and warrant their own dedicated cleanup pass rather
+# than riding along here.
+set(CX_STRICT_WARNINGS_GNU
+    -Wnon-virtual-dtor
+    # -Wstringop-overflow (part of baseline -Wall) has known false positives on null-checks
+    # hidden behind opaque-ish wrapper calls (e.g. Ref<T>::lock() + cxensure()) that GCC's
+    # analysis can't fully correlate with a later dereference. Keep it visible as a warning,
+    # just don't fail the build on it.
+    -Wno-error=stringop-overflow
+    -Wcast-align
+    -Woverloaded-virtual
+    -Wdouble-promotion
+    -Wformat=2
+    -Wimplicit-fallthrough
+    -Wmisleading-indentation
+    -Wduplicated-cond
+    -Wduplicated-branches
+    -Wlogical-op
+    -Wuseless-cast
+    CACHE INTERNAL "")
+set(CX_STRICT_WARNINGS_CLANG
+    -Wnon-virtual-dtor
+    -Wcast-align
+    -Woverloaded-virtual
+    -Wdouble-promotion
+    -Wformat=2
+    -Wimplicit-fallthrough
+    -Wmisleading-indentation
+    CACHE INTERNAL "")
+set(CX_STRICT_WARNINGS_MSVC
+    /permissive-
+    /w14242
+    /w14254
+    /w14263
+    /w14265
+    /w14287
+    /we4289
+    /w14296
+    /w14311
+    /w14545
+    /w14546
+    /w14547
+    /w14549
+    /w14555
+    /w14619
+    /w14640
+    /w14826
+    /w14905
+    /w14906
+    /w14928
+    CACHE INTERNAL "")
+
 # Determine the processor architecture
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
   set(CX_WORD_SIZE_64

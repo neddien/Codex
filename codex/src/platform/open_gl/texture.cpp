@@ -68,7 +68,7 @@ namespace codex::opengl {
         GL_Call(glBindTexture(GL_TEXTURE_2D, 0));
     }
 
-    GLenum Texture::format_type(TextureProperties props)
+    GLenum Texture::format_type([[maybe_unused]] TextureProperties props)
     {
         return (GLenum)0;
     }

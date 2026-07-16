@@ -937,8 +937,8 @@ namespace codex::editor {
                                         if (is_active)
                                             frame = anim.current_frame % anim.frame_count;
                                         else if (anim.frame_rate > 0.0f)
-                                            frame =
-                                                static_cast<u32>(ImGui::GetTime() * anim.frame_rate) % anim.frame_count;
+                                            frame = static_cast<u32>(ImGui::GetTime() * static_cast<double>(anim.frame_rate)) %
+                                                    anim.frame_count;
                                     }
 
                                     auto texture = c.sprite.texture();
@@ -951,7 +951,8 @@ namespace codex::editor {
                                     // on-screen top of the quad samples tile_y + grid_h, the bottom tile_y.
                                     ImVec2 uv0 = { tile_x / tex_w, (tile_y + c.grid_size.y) / tex_h };
                                     ImVec2 uv1 = { (tile_x + c.grid_size.x) / tex_w, tile_y / tex_h };
-                                    ImGui::Image((ImTextureID)(texture->gl_id()), { 100.0f, 100.0f }, uv0, uv1);
+                                    ImGui::Image(reinterpret_cast<ImTextureID>(texture->gl_id()), { 100.0f, 100.0f },
+                                                 uv0, uv1);
                                     if (anim.frame_count > 0)
                                         ImGui::Text("Frame %u / %u", frame + 1, anim.frame_count);
                                 } else {
@@ -1264,7 +1265,7 @@ namespace codex::editor {
         bool has_thumbnail = false;
         if (accepted_type == "Texture2D" && !path.path().empty()) {
             if (auto asset = AssetManager::load<gfx::Texture2D>(path).as_shared()) {
-                dl->AddImage((ImTextureID)asset->gl_id(), tl, br, { 0, 1 }, { 1, 0 });
+                dl->AddImage(reinterpret_cast<ImTextureID>(asset->gl_id()), tl, br, { 0, 1 }, { 1, 0 });
                 has_thumbnail = true;
             }
         }

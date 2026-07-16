@@ -194,8 +194,10 @@ namespace codex::sys {
     void POSIXProcess::write_line(const std::string_view msg)
     {
         if (stdin_pipe_[1] != -1) {
-            write(stdin_pipe_[1], msg.data(), msg.size());
-            write(stdin_pipe_[1], "\n", 1);
+            ssize_t wrl  = write(stdin_pipe_[1], msg.data(), msg.size());
+            ssize_t wrl0 = write(stdin_pipe_[1], "\n", 1);
+            (void)wrl;
+            (void)wrl0;
         }
     }
 } // namespace codex::sys
