@@ -18,7 +18,6 @@ namespace codex::gfx {
         vec4 colour;
         vec3 centre;
         vec2 tex_coord;
-        vec2 tex_size;
         i32  tex_id;
         i32  entity_id;
     };

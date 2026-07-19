@@ -7,7 +7,6 @@
 
 namespace codex::editor {
     using namespace codex::events;
-
     void PropertiesView::on_init()
     {
     }
@@ -63,6 +62,10 @@ namespace codex::editor {
                 } else if (
                     !entity.has_component<AudioListenerComponent>() && ImGui::MenuItem("Audio Listener Component")) {
                     entity.add_component<AudioListenerComponent>();
+                    ImGui::CloseCurrentPopup();
+                } else if (!entity.has_component<RevoluteJoint2DComponent>() &&
+                           ImGui::MenuItem("Revolute Joint 2D Component")) {
+                    entity.add_component<RevoluteJoint2DComponent>();
                     ImGui::CloseCurrentPopup();
                 }
                 ImGui::EndPopup();
@@ -937,7 +940,8 @@ namespace codex::editor {
                                         if (is_active)
                                             frame = anim.current_frame % anim.frame_count;
                                         else if (anim.frame_rate > 0.0f)
-                                            frame = static_cast<u32>(ImGui::GetTime() * static_cast<double>(anim.frame_rate)) %
+                                            frame = static_cast<u32>(
+                                                        ImGui::GetTime() * static_cast<double>(anim.frame_rate)) %
                                                     anim.frame_count;
                                     }
 
@@ -1187,6 +1191,128 @@ namespace codex::editor {
                 }
                 if (remove)
                     d->selected_entity.entity.remove_component<AudioListenerComponent>();
+            }
+            if (d->selected_entity.entity.has_component<RevoluteJoint2DComponent>()) {
+                ImGui::Dummy(ImVec2(0.0f, 10.0f));
+
+                auto& rj2d = d->selected_entity.entity.get_component<RevoluteJoint2DComponent>();
+
+                bool remove = false;
+                bool open   = ImGui::CollapsingHeader("Revolute Joint 2D Component", ImGuiTreeNodeFlags_DefaultOpen);
+                if (ImGui::BeginPopupContextItem()) {
+                    if (ImGui::MenuItem("Remove Component"))
+                        remove = true;
+                    ImGui::EndPopup();
+                }
+                if (open) {
+                    ImGui::Dummy(ImVec2(0.0f, 10.0f));
+
+                    const f32 column_width = d->column_width;
+
+                    // Body B: drag an entity from the scene hierarchy onto the slot.
+                    {
+                        ImGui::Columns(2);
+                        ImGui::SetColumnWidth(0, column_width);
+                        ImGui::Text("Body B");
+                        ImGui::NextColumn();
+
+                        Entity rjent = d->active_scene.lock()->entity_by_uuid(rj2d.body_b);
+
+                        const auto label = rjent && rjent.has_component<TagComponent>()
+                                               ? rjent.get_component<TagComponent>().tag
+                                               : std::string{ "None (drop an entity here)" };
+                        ImGui::Button((label + "###rj2d:bodyb:btn").c_str(),
+                                      { ImGui::GetContentRegionAvail().x, 0.0f });
+                        if (ImGui::BeginDragDropTarget()) {
+                            if (const auto* payload = ImGui::AcceptDragDropPayload("CX_ENTITY")) {
+                                const auto dropped = *static_cast<const Entity*>(payload->Data);
+                                if (dropped == d->selected_entity.entity)
+                                    log(Warn, "A revolute joint cannot connect an entity to itself.");
+                                else if (!dropped.has_component<RigidBody2DComponent>())
+                                    log(Warn, "Cannot use '{}' as Body B: it has no Rigid Body 2D component.",
+                                        dropped.get_component<TagComponent>().tag);
+                                else
+                                    rj2d.body_b = dropped.uuid();
+                            }
+                            ImGui::EndDragDropTarget();
+                        }
+                        if (rjent && ImGui::BeginPopupContextItem("rj2d:bodyb:ctx")) {
+                            if (ImGui::MenuItem("Clear"))
+                                rj2d.body_b = UUID{ 0 };
+                            ImGui::EndPopup();
+                        }
+                        ImGui::Columns(1);
+                    }
+
+                    SceneEditorView::draw_vec2_control("Local Anchor A", rj2d.local_anchor_a, column_width);
+                    SceneEditorView::draw_vec2_control("Local Anchor B", rj2d.local_anchor_b, column_width);
+
+                    // Enable limit
+                    {
+                        ImGui::Columns(2);
+                        ImGui::SetColumnWidth(0, column_width);
+                        ImGui::Text("Enable limit");
+                        ImGui::NextColumn();
+                        ImGui::Checkbox("###rj2d:limit:chbx", &rj2d.enable_limit);
+                        ImGui::Columns(1);
+                    }
+                    // Lower angle
+                    {
+                        ImGui::Columns(2);
+                        ImGui::SetColumnWidth(0, column_width);
+                        ImGui::Text("Lower angle");
+                        ImGui::NextColumn();
+                        ImGui::DragFloat("###rj2d:lwrangl:dragf", &rj2d.lower_angle);
+                        ImGui::Columns(1);
+                    }
+                    // Upper angle
+                    {
+                        ImGui::Columns(2);
+                        ImGui::SetColumnWidth(0, column_width);
+                        ImGui::Text("Upper angle");
+                        ImGui::NextColumn();
+                        ImGui::DragFloat("###rj2d:uprangl:dragf", &rj2d.upper_angle);
+                        ImGui::Columns(1);
+                    }
+                    // Enable motor
+                    {
+                        ImGui::Columns(2);
+                        ImGui::SetColumnWidth(0, column_width);
+                        ImGui::Text("Enable motor");
+                        ImGui::NextColumn();
+                        ImGui::Checkbox("###rj2d:enablmtor:chbx", &rj2d.enable_motor);
+                        ImGui::Columns(1);
+                    }
+                    // Motor speed
+                    {
+                        ImGui::Columns(2);
+                        ImGui::SetColumnWidth(0, column_width);
+                        ImGui::Text("Motor speed");
+                        ImGui::NextColumn();
+                        ImGui::DragFloat("###rj2d:mtorsped:dragf", &rj2d.motor_speed);
+                        ImGui::Columns(1);
+                    }
+                    // Max motor torque
+                    {
+                        ImGui::Columns(2);
+                        ImGui::SetColumnWidth(0, column_width);
+                        ImGui::Text("Max motor torque");
+                        ImGui::NextColumn();
+                        ImGui::DragFloat("###rj2d:mxmtorsped:dragf", &rj2d.max_motor_torque);
+                        ImGui::Columns(1);
+                    }
+                    // Collide connected
+                    {
+                        ImGui::Columns(2);
+                        ImGui::SetColumnWidth(0, column_width);
+                        ImGui::Text("Collide connected");
+                        ImGui::NextColumn();
+                        ImGui::Checkbox("###rj2d:coldcon:chbx", &rj2d.collide_connected);
+                        ImGui::Columns(1);
+                    }
+                }
+                if (remove)
+                    d->selected_entity.entity.remove_component<RevoluteJoint2DComponent>();
             }
         }
 

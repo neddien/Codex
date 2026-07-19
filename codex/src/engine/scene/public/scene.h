@@ -170,8 +170,9 @@ namespace codex {
         void        render_sprites();
         void        render_audio();
         void        construct_physics_bodies();
-        void        construct_physics_body(entt::registry& registry, const entt::entity entity);
-        void        destroy_physics_body(entt::registry& registry, entt::entity entity) noexcept;
+        void        construct_physics_body(entt::registry& registry, entt::entity entity);
+        void        construct_physics_joint(entt::registry& registry, entt::entity entity);
+        void        destroy_physics_body(entt::registry& registry, entt::entity entity);
         static void on_fixed_update(Scene& self) noexcept;
 
     private:

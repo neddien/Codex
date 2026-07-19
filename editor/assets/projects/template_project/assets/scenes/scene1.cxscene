@@ -4,91 +4,13 @@
         [
             {
                 "type": "IDComponent",
-                "uuid": "706b-5d74-fbd3aa64"
+                "uuid": "d027-510e-21b3a9ac"
             },
             {
                 "type": "TransformComponent",
                 "position": {
-                    "x": 315.0003662109375,
-                    "y": -79.9996566772461,
-                    "z": 0.0
-                },
-                "rotation": {
                     "x": 0.0,
-                    "y": -0.0,
-                    "z": 0.0
-                },
-                "scale": {
-                    "x": 1.0,
-                    "y": 1.0,
-                    "z": 1.0
-                }
-            },
-            {
-                "type": "TagComponent",
-                "tag": "Entity 4"
-            },
-            {
-                "type": "TilesetAnimationComponent",
-                "sprite": {
-                    "asset": {
-                        "path": "sprites/dun_tileset.png",
-                        "uuid": "2792-434e-e3d9cb37"
-                    },
-                    "texture_coords": {
-                        "x": 0.0,
-                        "y": 0.0,
-                        "w": 384.0,
-                        "h": 160.0
-                    },
-                    "size": {
-                        "x": 64.0,
-                        "y": 64.0
-                    },
-                    "colour": {
-                        "x": 1.0,
-                        "y": 1.0,
-                        "z": 1.0,
-                        "w": 1.0
-                    },
-                    "z_index": 0
-                },
-                "grid_size": {
-                    "x": 16.0,
-                    "y": 16.0
-                },
-                "animations": [
-                    {
-                        "name": "animation #0",
-                        "starting_tile": {
-                            "x": 0.0,
-                            "y": 4.0
-                        },
-                        "frame_count": 7,
-                        "frame_rate": 24.0,
-                        "playback_mode": "kPingPong"
-                    }
-                ],
-                "active_animation": 0
-            },
-            {
-                "type": "HierarchyComponent",
-                "parent": {
-                    "uuid": "e83f-6cfd-bce28950"
-                },
-                "children": []
-            }
-        ],
-        [
-            {
-                "type": "IDComponent",
-                "uuid": "9c77-d253-5cc4c560"
-            },
-            {
-                "type": "TransformComponent",
-                "position": {
-                    "x": 31.200010299682617,
-                    "y": 20.80000114440918,
+                    "y": 0.0,
                     "z": 0.0
                 },
                 "rotation": {
@@ -104,48 +26,10 @@
             },
             {
                 "type": "TagComponent",
-                "tag": "Phonograph"
+                "tag": "Camera"
             },
             {
-                "type": "SpriteRendererComponent",
-                "asset": {
-                    "path": "sprites/phonograph.png",
-                    "uuid": "27cf-a0be-a2f4f938"
-                },
-                "texture_coords": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "w": 32.0,
-                    "h": 32.0
-                },
-                "size": {
-                    "x": 64.0,
-                    "y": 64.0
-                },
-                "colour": {
-                    "x": 1.0,
-                    "y": 1.0,
-                    "z": 1.0,
-                    "w": 1.0
-                },
-                "z_index": 0
-            },
-            {
-                "type": "AudioSourceComponent",
-                "event_path": "event:/Phonograph-music-1",
-                "sound_path": "",
-                "volume": 1.0,
-                "pitch": 1.0,
-                "loop": false,
-                "play_on_start": true,
-                "is_3d": true,
-                "min_distance": 1.0,
-                "max_distance": 100.0,
-                "parameters": {
-                    "bandpass-filter-drywet": 0.0,
-                    "reverb-drywet": 0.0,
-                    "reverb-size": 0.0
-                }
+                "type": "CameraComponent"
             }
         ],
         [
@@ -256,23 +140,47 @@
             },
             {
                 "type": "HierarchyComponent",
+                "parent": {
+                    "uuid": "0000-0000-00000000"
+                },
                 "children": [
                     {
                         "uuid": "706b-5d74-fbd3aa64"
                     }
                 ]
+            },
+            {
+                "type": "RevoluteJoint2DComponent",
+                "body_b": {
+                    "uuid": "706b-5d74-fbd3aa64"
+                },
+                "local_anchor_a": {
+                    "x": 87.0,
+                    "y": 0.0
+                },
+                "local_anchor_b": {
+                    "x": 0.0,
+                    "y": 0.0
+                },
+                "enable_limit": false,
+                "lower_angle": 0.0,
+                "upper_angle": 0.0,
+                "enable_motor": false,
+                "motor_speed": 0.0,
+                "max_motor_torque": 0.0,
+                "collide_connected": false
             }
         ],
         [
             {
                 "type": "IDComponent",
-                "uuid": "d027-510e-21b3a9ac"
+                "uuid": "9c77-d253-5cc4c560"
             },
             {
                 "type": "TransformComponent",
                 "position": {
-                    "x": 0.0,
-                    "y": 0.0,
+                    "x": 31.200010299682617,
+                    "y": 20.80000114440918,
                     "z": 0.0
                 },
                 "rotation": {
@@ -288,10 +196,153 @@
             },
             {
                 "type": "TagComponent",
-                "tag": "Camera"
+                "tag": "Phonograph"
             },
             {
-                "type": "CameraComponent"
+                "type": "SpriteRendererComponent",
+                "asset": {
+                    "path": "sprites/phonograph.png",
+                    "uuid": "27cf-a0be-a2f4f938"
+                },
+                "texture_coords": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "w": 32.0,
+                    "h": 32.0
+                },
+                "size": {
+                    "x": 64.0,
+                    "y": 64.0
+                },
+                "colour": {
+                    "x": 1.0,
+                    "y": 1.0,
+                    "z": 1.0,
+                    "w": 1.0
+                },
+                "z_index": 0
+            },
+            {
+                "type": "AudioSourceComponent",
+                "event_path": "event:/Phonograph-music-1",
+                "sound_path": "",
+                "volume": 1.0,
+                "pitch": 1.0,
+                "loop": false,
+                "play_on_start": true,
+                "is_3d": true,
+                "min_distance": 1.0,
+                "max_distance": 100.0,
+                "parameters": {
+                    "bandpass-filter-drywet": 0.0,
+                    "reverb-drywet": 0.0,
+                    "reverb-size": 0.0
+                }
+            }
+        ],
+        [
+            {
+                "type": "IDComponent",
+                "uuid": "706b-5d74-fbd3aa64"
+            },
+            {
+                "type": "TransformComponent",
+                "position": {
+                    "x": 132.00021362304688,
+                    "y": -19.999858856201172,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": 0.0,
+                    "y": -0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 1.0,
+                    "y": 1.0,
+                    "z": 1.0
+                }
+            },
+            {
+                "type": "TagComponent",
+                "tag": "Entity 4"
+            },
+            {
+                "type": "RigidBody2DComponent",
+                "body_type": "Dynamic",
+                "fixed_rotation": false,
+                "linear_damping": 0.0,
+                "angular_damping": 0.10000000149011612,
+                "high_velocity": false,
+                "enabled": true,
+                "gravity_scale": 1.0
+            },
+            {
+                "type": "BoxCollider2DComponent",
+                "offset": {
+                    "x": 0.0,
+                    "y": 0.0
+                },
+                "size": {
+                    "x": 32.0,
+                    "y": 32.0
+                },
+                "physics_material": {
+                    "density": 1.0,
+                    "friction": 0.5,
+                    "restitution": 0.5,
+                    "restitution_threshold": 0.5
+                }
+            },
+            {
+                "type": "TilesetAnimationComponent",
+                "sprite": {
+                    "asset": {
+                        "path": "sprites/dun_tileset.png",
+                        "uuid": "2792-434e-e3d9cb37"
+                    },
+                    "texture_coords": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "w": 384.0,
+                        "h": 160.0
+                    },
+                    "size": {
+                        "x": 64.0,
+                        "y": 64.0
+                    },
+                    "colour": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0,
+                        "w": 1.0
+                    },
+                    "z_index": 0
+                },
+                "grid_size": {
+                    "x": 16.0,
+                    "y": 16.0
+                },
+                "animations": [
+                    {
+                        "name": "animation #0",
+                        "starting_tile": {
+                            "x": 0.0,
+                            "y": 4.0
+                        },
+                        "frame_count": 7,
+                        "frame_rate": 24.0,
+                        "playback_mode": "kPingPong"
+                    }
+                ],
+                "active_animation": 0
+            },
+            {
+                "type": "HierarchyComponent",
+                "parent": {
+                    "uuid": "e83f-6cfd-bce28950"
+                },
+                "children": []
             }
         ]
     ]

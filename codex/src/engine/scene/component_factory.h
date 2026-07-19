@@ -71,6 +71,7 @@ namespace codex {
         CX_REGISTER_COMPONENT(RigidBody2DComponent);
         CX_REGISTER_COMPONENT(BoxCollider2DComponent);
         CX_REGISTER_COMPONENT(CircleCollider2DComponent);
+        CX_REGISTER_COMPONENT(RevoluteJoint2DComponent);
         CX_REGISTER_COMPONENT(GridRendererComponent);
         CX_REGISTER_COMPONENT(TilemapComponent);
         CX_REGISTER_COMPONENT(TilesetAnimationComponent);
@@ -90,7 +91,7 @@ namespace codex {
         ComponentGroup<IDComponent, TransformComponent, TagComponent, SpriteRendererComponent, NativeBehaviourComponent,
                        CameraComponent, RigidBody2DComponent, BoxCollider2DComponent, CircleCollider2DComponent,
                        GridRendererComponent, TilemapComponent, TilesetAnimationComponent, AudioSourceComponent,
-                       AudioListenerComponent, HierarchyComponent>;
+                       AudioListenerComponent, HierarchyComponent, RevoluteJoint2DComponent>;
 
     ///////////////////////////////////////////////////////////////////////////////
 } // namespace codex

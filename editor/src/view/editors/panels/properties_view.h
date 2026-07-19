@@ -5,7 +5,7 @@
 #include "editor_panel.h"
 
 namespace codex::editor {
-    class PropertiesView : public EditorPanel
+    class PropertiesView : public EditorPanel, private Loggable<"PropertiesView">
     {
     public:
         using EditorPanel::EditorPanel;

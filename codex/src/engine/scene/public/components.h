@@ -103,8 +103,15 @@ namespace codex {
         TransformComponent& operator=(const math::transform& transform) noexcept;
 
     public:
-        [[nodiscard]] mat4 world_mat() const noexcept { return world_; };
-        [[nodiscard]] mat4 local_mat() const noexcept { return local_; };
+        [[nodiscard]] mat4      world_mat() const noexcept { return world_; };
+        [[nodiscard]] mat4      local_mat() const noexcept { return local_; };
+        [[nodiscard]] transform world_transform() const noexcept
+        {
+            transform world_trans;
+            math::transform_decompose(world_, world_trans.position, world_trans.rotation, world_trans.scale);
+            world_trans.rotation = glm::degrees(world_trans.rotation);
+            return world_trans;
+        }
 
     public:
         void archive_impl(Archive& ar) override;
@@ -214,6 +221,7 @@ namespace codex {
         void apply_torque(const f32 torque) noexcept;
         void apply_linear_impulse(const vec2& impulse, const std::optional<vec2> point = std::nullopt);
         void apply_angular_impulse(const f32 torque);
+        void set_transform(const transform& transform);
 
     public:
         void archive_impl(Archive& ar) override;
@@ -242,6 +250,26 @@ namespace codex {
         f32                     radius = 32.0f;
         phys::PhysicsMaterial2D physics_material;
         void*                   runtime_fixture = nullptr;
+
+    public:
+        void archive_impl(Archive& ar) override;
+    };
+
+    struct CODEX_API RevoluteJoint2DComponent : public Component
+    {
+        CX_COMPONENT(RevoluteJoint2DComponent)
+
+    public:
+        UUID body_b{ 0 };
+        vec2 local_anchor_a{};
+        vec2 local_anchor_b{};
+        bool enable_limit{ false };
+        f32  lower_angle{ 0.0f };
+        f32  upper_angle{ 0.0f };
+        bool enable_motor{ false };
+        f32  motor_speed{ 0.0f };
+        f32  max_motor_torque{ 0.0f };
+        bool collide_connected{ false };
 
     public:
         void archive_impl(Archive& ar) override;

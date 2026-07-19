@@ -33,7 +33,6 @@ namespace codex::gfx {
         layout_->push<f32>(4); // a_Colour
         layout_->push<f32>(3); // a_Centre
         layout_->push<f32>(2); // a_TexCoord
-        layout_->push<f32>(2); // a_TexDim
         layout_->push<i32>(1); // a_TexId
         layout_->push<i32>(1); // a_EntityId
 
@@ -120,10 +119,10 @@ namespace codex::gfx {
                                    { -0.5f, 0.5f, 0.0f, 1.0f },
                                    { -0.5f, -0.5f, 0.0f, 1.0f },
                                    { 0.5f, -0.5f, 0.0f, 1.0f } };
-        vec2 tex_coords[4]     = { { src_rect.x + src_rect.w, src_rect.y + src_rect.h },
-                                   { src_rect.x, src_rect.y + src_rect.h },
-                                   { src_rect.x, src_rect.y },
-                                   { src_rect.x + src_rect.w, src_rect.y } };
+        vec2 tex_coords[4]     = { { (src_rect.x + src_rect.w) / tex_width, (src_rect.y + src_rect.h) / tex_height },
+                                   { src_rect.x / tex_width, (src_rect.y + src_rect.h) / tex_height },
+                                   { src_rect.x / tex_width, src_rect.y / tex_height },
+                                   { (src_rect.x + src_rect.w) / tex_width, src_rect.y / tex_height } };
 
         for (usize i = 0; i < QUAD2D_VERTEX_COUNT; ++i) {
             vertex_ptr_->vertex    = transform * quad_verticies[i];
@@ -131,7 +130,6 @@ namespace codex::gfx {
             vertex_ptr_->centre    = transform[3];
             vertex_ptr_->tex_coord = tex_coords[i];
             vertex_ptr_->tex_id    = tex_id;
-            vertex_ptr_->tex_size  = { tex_width, tex_height };
             vertex_ptr_->entity_id = entity_id;
             ++vertex_ptr_;
         }
@@ -181,7 +179,7 @@ namespace codex::gfx {
                 textures[i] = i;
 
             shader_->set_uniform_1i_arr("u_Textures", max_texture_slot_count_, textures.data());
-            texture_slots_initialized = false;
+            texture_slots_initialized = true;
         }
 
         GL_Call(glDrawElements(GL_TRIANGLES, 6 * quad_count_, GL_UNSIGNED_INT, nullptr));

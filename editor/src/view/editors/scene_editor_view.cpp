@@ -63,7 +63,7 @@ namespace codex::editor {
 
     void SceneEditorView::on_attach()
     {
-        descriptor_ = Shared<SceneEditorDescriptor>::from(new SceneEditorDescriptor{
+        descriptor_               = Shared<SceneEditorDescriptor>::from(new SceneEditorDescriptor{
             .project              = {},
             .active_scene         = {},
             .editor_scene         = Shared<Scene>::make(),
@@ -513,7 +513,8 @@ namespace codex::editor {
 
             // Guizmo
             if (active_scene->state() != Scene::State::Play) {
-                if (d->selected_entity.entity) {
+                if (d->selected_entity.entity &&
+                    d->selected_entity.entity.has_component<TransformComponent>()) {
                     ImGuizmo::SetOrthographic(true);
                     ImGuizmo::SetDrawlist();
 
@@ -535,18 +536,30 @@ namespace codex::editor {
                     gizmo_active_ = ImGuizmo::IsOver();
 
                     if (gizmo_active_ && ImGuizmo::IsUsing()) {
-                        // The gizmo manipulates the world matrix; convert back to parent-relative
-                        // before writing the local TRS fields.
-                        auto local_new = transform;
-                        if (d->selected_entity.entity.has_component<HierarchyComponent>()) {
-                            auto& hc = d->selected_entity.entity.get_component<HierarchyComponent>();
-                            if (hc.parent)
-                                local_new = glm::inverse(hc.parent.transform().world_mat()) * transform;
-                        }
+                        const bool simulating = d->active_scene.lock()->state() != Scene::State::Edit;
+                        if (simulating && d->selected_entity.entity.has_component<RigidBody2DComponent>()) {
+                            // Drive the Rigid Body rather than the transform directly since the transform
+                            // is owned by the physics engine in Rigid Bodies.
+                            auto& rb2d = d->selected_entity.entity.get_component<RigidBody2DComponent>();
 
-                        vec3 rotation;
-                        codex::math::transform_decompose(local_new, tc.position, rotation, tc.scale);
-                        tc.rotation = glm::degrees(rotation);
+                            struct transform final_transform;
+                            math::transform_decompose(transform, final_transform.position, final_transform.rotation,
+                                                      final_transform.scale);
+                            final_transform.rotation = glm::degrees(final_transform.rotation);
+                            rb2d.set_transform(final_transform);
+                        } else {
+                            // Convert back from gizmo world TRS to parent relative local TRS
+                            auto local_new = transform;
+                            if (d->selected_entity.entity.has_component<HierarchyComponent>()) {
+                                auto& hc = d->selected_entity.entity.get_component<HierarchyComponent>();
+                                if (hc.parent)
+                                    local_new = glm::inverse(hc.parent.transform().world_mat()) * transform;
+                            }
+
+                            vec3 rotation;
+                            codex::math::transform_decompose(local_new, tc.position, rotation, tc.scale);
+                            tc.rotation = glm::degrees(rotation);
+                        }
                     }
                 }
             }
@@ -924,19 +937,39 @@ namespace codex::editor {
         {
             const auto box_colliders = d->active_scene.lock()->entities_with_component<BoxCollider2DComponent>();
             for (const auto& e : box_colliders) {
-                const auto& bc = e.get_component<BoxCollider2DComponent>();
-                const auto& tc = e.get_component<TransformComponent>();
-                debug_draw_.draw_rect_2d({ bc.offset.x + tc.position.x, bc.offset.y + tc.position.y,
-                                           bc.size.x * tc.scale.x * 2.0f, bc.size.y * tc.scale.y * 2.0f },
-                                         tc.rotation.z);
+                const auto&     bc   = e.get_component<BoxCollider2DComponent>();
+                const auto&     tc   = e.transform();
+                const transform w_tr = tc.world_transform();
+                debug_draw_.draw_rect_2d({ bc.offset.x + w_tr.position.x, bc.offset.y + w_tr.position.y,
+                                           bc.size.x * w_tr.scale.x * 2.0f, bc.size.y * w_tr.scale.y * 2.0f },
+                                         w_tr.rotation.z);
             }
 
             const auto circle_colliders = d->active_scene.lock()->entities_with_component<CircleCollider2DComponent>();
             for (const auto& e : circle_colliders) {
-                const auto& cc = e.get_component<CircleCollider2DComponent>();
-                const auto& tc = e.get_component<TransformComponent>();
-                debug_draw_.draw_circle_2d(vec3{ cc.offset, 0.0f } + tc.position, cc.radius * tc.scale.x * tc.scale.y,
-                                           tc.rotation.z);
+                const auto&     cc   = e.get_component<CircleCollider2DComponent>();
+                const auto&     tc   = e.transform();
+                const transform w_tr = tc.world_transform();
+                debug_draw_.draw_circle_2d(vec3{ cc.offset, 0.0f } + w_tr.position,
+                                           cc.radius * w_tr.scale.x * w_tr.scale.y, w_tr.rotation.z);
+            }
+
+            const auto rj2d_colliders = d->active_scene.lock()->entities_with_component<RevoluteJoint2DComponent>();
+            for (const auto& e : rj2d_colliders) {
+                auto&                     rj2d  = e.get_component<RevoluteJoint2DComponent>();
+                const TransformComponent& trs_a = e.transform();
+
+                const vec3 world_local_anchor_a = trs_a.world_mat() * vec4(rj2d.local_anchor_a, .0f, 1.0f);
+                debug_draw_.draw_circle_2d(vec2(world_local_anchor_a), 4);
+
+                Entity bodyb = d->active_scene.lock()->entity_by_uuid(rj2d.body_b);
+                if (bodyb) {
+                    const TransformComponent& trs_b = bodyb.transform();
+
+                    const vec3 world_local_anchor_b = trs_b.world_mat() * vec4(rj2d.local_anchor_b, .0f, 1.0f);
+                    debug_draw_.draw_circle_2d(vec2(world_local_anchor_b), 4);
+                    debug_draw_.draw_line_2d(vec2(world_local_anchor_a), vec2(world_local_anchor_b));
+                }
             }
         }
 
@@ -944,11 +977,12 @@ namespace codex::editor {
         {
             const auto cameras = d->active_scene.lock()->entities_with_component<CameraComponent>();
             for (const auto& e : cameras) {
-                const auto& tc = e.get_component<TransformComponent>();
-                const auto& cc = e.get_component<CameraComponent>();
-
+                const auto&     tc   = e.get_component<TransformComponent>();
+                const auto&     cc   = e.get_component<CameraComponent>();
+                const transform w_tr = tc.world_transform();
                 debug_draw_.draw_rect_2d(
-                    { tc.position.x, tc.position.y, (f32)cc.camera.width(), (f32)cc.camera.height() }, tc.rotation.z);
+                    { w_tr.position.x, w_tr.position.y, (f32)cc.camera.width(), (f32)cc.camera.height() },
+                    w_tr.rotation.z);
             }
         }
     }
@@ -1433,7 +1467,7 @@ namespace codex::editor {
     }
 
     void SceneEditorView::draw_asset_path([[maybe_unused]] const AssetPath& path,
-                                          [[maybe_unused]] const f32       column_width)
+                                          [[maybe_unused]] const f32        column_width)
     {
     }
 } // namespace codex::editor

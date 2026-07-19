@@ -4,9 +4,8 @@ layout (location = 0) in vec4 a_Vertex;
 layout (location = 1) in vec4 a_Colour;
 layout (location = 2) in vec3 a_Centre;
 layout (location = 3) in vec2 a_TexCoord;
-layout (location = 4) in vec2 a_TexDim;
-layout (location = 5) in int a_TexId;
-layout (location = 6) in int a_EntityId;
+layout (location = 4) in int a_TexId;
+layout (location = 5) in int a_EntityId;
 
 out vec4 o_Colour;
 flat out int o_EntityId;

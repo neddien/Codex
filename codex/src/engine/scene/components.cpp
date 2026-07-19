@@ -262,12 +262,18 @@ namespace codex {
 
     void RigidBody2DComponent::apply_torque(const f32 torque) noexcept
     {
+        cxassert(parent_, "Valid parent required");
+        cxassert(runtime_body, "Valid runtime body required");
+
         auto* body = reinterpret_cast<b2Body*>(runtime_body);
         body->ApplyTorque(torque, true);
     }
 
     void RigidBody2DComponent::apply_linear_impulse(const vec2& impulse, const std::optional<vec2> point)
     {
+        cxassert(parent_, "Valid parent required");
+        cxassert(runtime_body, "Valid runtime body required");
+
         auto* body = reinterpret_cast<b2Body*>(runtime_body);
         body->ApplyLinearImpulse(util::to_b2_vec2(impulse), (point) ? util::to_b2_vec2(*point) : body->GetWorldCenter(),
                                  true);
@@ -275,8 +281,25 @@ namespace codex {
 
     void RigidBody2DComponent::apply_angular_impulse(const f32 torque)
     {
+        cxassert(parent_, "Valid parent required");
+        cxassert(runtime_body, "Valid runtime body required");
+
         auto* body = reinterpret_cast<b2Body*>(runtime_body);
         body->ApplyAngularImpulse(torque, true);
+    }
+
+    void RigidBody2DComponent::set_transform(const transform& transform)
+    {
+        cxassert(parent_, "Valid parent required");
+        cxassert(runtime_body, "Valid runtime body required");
+
+        const auto& phys_props = parent_.scene()->physics_properties();
+        auto*       body       = reinterpret_cast<b2Body*>(runtime_body);
+        body->SetLinearVelocity(b2Vec2());
+        body->SetAngularVelocity(0.0f);
+        body->SetTransform(
+            b2Vec2(transform.position.x * phys_props.scaling_factor, transform.position.y * phys_props.scaling_factor),
+            math::to_radf(transform.rotation.z));
     }
 
     void TilemapComponent::add_tile([[maybe_unused]] const vec3 pos, [[maybe_unused]] const i32 tileId)
@@ -334,6 +357,20 @@ namespace codex {
         ar("offset", offset);
         ar("radius", radius);
         ar("physics_material", physics_material);
+    }
+
+    void RevoluteJoint2DComponent::archive_impl(Archive& ar)
+    {
+        ar("body_b", body_b);
+        ar("local_anchor_a", local_anchor_a);
+        ar("local_anchor_b", local_anchor_b);
+        ar("enable_limit", enable_limit);
+        ar("lower_angle", lower_angle);
+        ar("upper_angle", upper_angle);
+        ar("enable_motor", enable_motor);
+        ar("motor_speed", motor_speed);
+        ar("max_motor_torque", max_motor_torque);
+        ar("collide_connected", collide_connected);
     }
 
     void GridRendererComponent::archive_impl(Archive& ar)

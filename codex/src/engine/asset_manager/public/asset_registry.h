@@ -9,6 +9,7 @@ namespace codex {
         class VirtualFilesystem;
     }
 
+    // TODO: Move impl over to TRU
     struct AssetMetadata : public ISerializable
     {
         AssetPath                 path;
@@ -24,56 +25,15 @@ namespace codex {
 
     public:
         AssetMetadata() noexcept = default;
-        AssetMetadata(const AssetMetadata& other) noexcept
-            : path{ other.path }
-            , storage_path{ other.storage_path }
-            , type{ other.type }
-            , checksum{ other.checksum }
-            , last_modified{ other.last_modified }
-            , size{ other.size }
-            , dependencies{ other.dependencies }
-            , null_asset{ other.null_asset }
-            , dirty{ other.dirty }
-        {
-            if (other.import_settings)
-                import_settings = other.import_settings->clone();
-        }
-        AssetMetadata(AssetMetadata&& other) noexcept
-            : path{ std::move(other.path) }
-            , storage_path(std::move(other.storage_path))
-            , type{ std::move(other.type) }
-            , checksum{ other.checksum }
-            , last_modified{ other.last_modified }
-            , size{ other.size }
-            , import_settings{ std::move(other.import_settings) }
-            , dependencies{ std::move(other.dependencies) }
-            , null_asset{ other.null_asset }
-            , dirty{ other.dirty }
-        {
-        }
+        AssetMetadata(const AssetMetadata& other) noexcept;
+        AssetMetadata(AssetMetadata&& other) noexcept;
 
     public:
-        AssetMetadata& operator=(const AssetMetadata& other) noexcept { return AssetMetadata{ other }.swap(*this); }
-        AssetMetadata& operator=(AssetMetadata&& other) noexcept
-        {
-            return AssetMetadata{ std::move(other) }.swap(*this);
-        }
+        AssetMetadata& operator=(const AssetMetadata& other) noexcept;
+        AssetMetadata& operator=(AssetMetadata&& other) noexcept;
 
     public:
-        AssetMetadata& swap(AssetMetadata& other) noexcept
-        {
-            std::swap(path, other.path);
-            std::swap(storage_path, other.storage_path);
-            std::swap(type, other.type);
-            std::swap(last_modified, other.last_modified);
-            std::swap(checksum, other.checksum);
-            std::swap(size, other.size);
-            import_settings.swap(other.import_settings);
-            std::swap(dependencies, other.dependencies);
-            std::swap(null_asset, other.null_asset);
-            std::swap(dirty, other.dirty);
-            return *this;
-        }
+        AssetMetadata& swap(AssetMetadata& other) noexcept;
 
     public:
         void archive(Archive& archive);
@@ -90,14 +50,10 @@ namespace codex {
     public:
         [[nodiscard]]
         inline fs::VirtualFilesystem& vfs() noexcept
-        {
-            return vfs_;
-        }
+        { return vfs_; }
         [[nodiscard]]
         inline const fs::VirtualFilesystem& vfs() const noexcept
-        {
-            return vfs_;
-        };
+        { return vfs_; };
 
     public:
         void           move_asset(const AssetPath& path, const std::string& new_path);

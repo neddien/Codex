@@ -63,7 +63,11 @@ namespace codex::editor {
                 const bool open =
                     ImGui::TreeNodeEx((tag_component.tag + "##" + idc.uuid.to_string()).c_str(), flags);
 
-                if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen())
+                // Select on mouse RELEASE, not press: selecting on press would switch the
+                // properties panel the moment a drag starts, hiding the drop target the
+                // entity is being dragged towards.
+                if (ImGui::IsItemHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Left) &&
+                    !ImGui::IsItemToggledOpen() && ImGui::GetDragDropPayload() == nullptr)
                     d->selected_entity.select(e);
 
                 if (ImGui::BeginPopupContextItem()) {

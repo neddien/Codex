@@ -134,6 +134,7 @@ namespace codex {
             id_comp.parent_               = cx_entity;
         }
 
+        cx_entity.add_component<TransformComponent>();
         cx_entity.add_component<TagComponent>(tag);
         return cx_entity;
     }
@@ -640,6 +641,11 @@ namespace codex {
             construct_physics_body(*registry, e);
             registry->on_destroy<RigidBody2DComponent>().connect<&Scene::destroy_physics_body>(*this);
         }
+
+        const auto joint_view = registry->view<RevoluteJoint2DComponent>();
+        for (const auto& e : joint_view) {
+            construct_physics_joint(*registry, e);
+        }
     }
 
     void Scene::construct_physics_body(entt::registry& registry, const entt::entity entity)
@@ -683,7 +689,7 @@ namespace codex {
 
         rb2d->runtime_body = b2_body;
 
-        if (const auto* collider = registry.try_get<BoxCollider2DComponent>(entity)) {
+        if (const auto* collider = registry.try_get<BoxCollider2DComponent>(entity); collider) {
             b2PolygonShape shape;
             shape.SetAsBox(collider->size.x * world_scale.x * physics_properties_.scaling_factor,
                            collider->size.y * world_scale.y * physics_properties_.scaling_factor,
@@ -699,7 +705,7 @@ namespace codex {
             b2_body->CreateFixture(&fixture_def);
         }
 
-        if (const auto* collider = registry.try_get<CircleCollider2DComponent>(entity)) {
+        if (const auto* collider = registry.try_get<CircleCollider2DComponent>(entity); collider) {
             b2CircleShape shape;
             shape.m_p.Set(collider->offset.x * physics_properties_.scaling_factor,
                           collider->offset.y * physics_properties_.scaling_factor);
@@ -716,12 +722,60 @@ namespace codex {
         }
     }
 
-    void Scene::destroy_physics_body(entt::registry& registry, entt::entity entity) noexcept
+    void Scene::construct_physics_joint(entt::registry& registry, entt::entity entity)
+    {
+        auto* rb2d = registry.try_get<RigidBody2DComponent>(entity);
+        if (!rb2d)
+            return;
+
+        if (rb2d->runtime_body && physics_world_) {
+            if (const auto* joint = registry.try_get<RevoluteJoint2DComponent>(entity); joint) {
+                if (!uuid_to_entity_.contains(joint->body_b))
+                    return;
+
+                entt::entity body_b_ent = uuid_to_entity_[joint->body_b].handle_;
+
+                // Joint to self
+                if (body_b_ent == entity)
+                    return;
+
+                RigidBody2DComponent* rb2d_b = registry.try_get<RigidBody2DComponent>(body_b_ent);
+                if (rb2d_b && rb2d_b->runtime_body) {
+                    b2RevoluteJointDef joint_def;
+                    joint_def.bodyA = reinterpret_cast<b2Body*>(rb2d->runtime_body);
+                    joint_def.bodyB = reinterpret_cast<b2Body*>(rb2d_b->runtime_body);
+                    joint_def.localAnchorA =
+                        util::to_b2_vec2(joint->local_anchor_a * physics_properties_.scaling_factor);
+                    joint_def.localAnchorB =
+                        util::to_b2_vec2(joint->local_anchor_b * physics_properties_.scaling_factor);
+                    joint_def.enableLimit      = joint->enable_limit;
+                    joint_def.lowerAngle       = math::to_radf(joint->lower_angle);
+                    joint_def.upperAngle       = math::to_radf(joint->upper_angle);
+                    joint_def.enableMotor      = joint->enable_motor;
+                    joint_def.motorSpeed       = joint->motor_speed;
+                    joint_def.maxMotorTorque   = joint->max_motor_torque;
+                    joint_def.collideConnected = joint->collide_connected;
+
+                    physics_world_->CreateJoint(&joint_def);
+
+                    log(Info, "Created joint parent: {}, child: {}", registry.get<TagComponent>(entity).tag,
+                        registry.get<TagComponent>(body_b_ent).tag);
+                }
+            }
+        }
+    }
+
+    void Scene::destroy_physics_body(entt::registry& registry, entt::entity entity)
     {
         auto& rb2d = registry.get<RigidBody2DComponent>(entity);
         if (rb2d.runtime_body && physics_world_) {
             physics_world_->DestroyBody(reinterpret_cast<b2Body*>(rb2d.runtime_body));
             rb2d.runtime_body = nullptr;
+        }
+
+        // Joints are managed by Bodies in Box2D, that should also be the case for Codex as well
+        if (auto* rj2dc = registry.try_get<RevoluteJoint2DComponent>(entity); rj2dc) {
+            registry.remove<RevoluteJoint2DComponent>(entity);
         }
     }
 

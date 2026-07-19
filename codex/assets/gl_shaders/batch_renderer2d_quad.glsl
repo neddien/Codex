@@ -4,9 +4,8 @@ layout (location = 0) in vec4 a_Vertex;
 layout (location = 1) in vec4 a_Colour;
 layout (location = 2) in vec3 a_Centre;
 layout (location = 3) in vec2 a_TexCoord;
-layout (location = 4) in vec2 a_TexDim;
-layout (location = 5) in int a_TexId;
-layout (location = 6) in int a_EntityId;
+layout (location = 4) in int a_TexId;
+layout (location = 5) in int a_EntityId;
 
 out vec4 o_Colour;
 out vec2 o_TexCoord;
@@ -18,9 +17,11 @@ uniform mat4 u_Proj;
 
 void main()
 {
-	o_Colour = a_Colour;
 	//o_TexCoord = vec2(a_TexCoord.x / a_TexDim.x, 1.0 - (a_TexCoord.y / a_TexDim.y));
-	o_TexCoord = vec2(a_TexCoord.x / a_TexDim.x, a_TexCoord.y / a_TexDim.y);
+	//o_TexCoord = vec2(a_TexCoord.x / a_TexDim.x, a_TexCoord.y / a_TexDim.y);
+
+	o_Colour = a_Colour;
+    o_TexCoord = a_TexCoord;
     o_TexId = a_TexId;
 	o_EntityId = a_EntityId;
 	gl_Position = u_Proj * u_View * a_Vertex;
