@@ -3,6 +3,7 @@
 #include <engine/concurrency/public/mutex.h>
 #include <engine/core/public/common_third_party_libs.h>
 #include <engine/core/public/uuid.h>
+#include <engine/reflection/public/reflection.h>
 
 namespace codex {
     // Forward declarations.
@@ -77,12 +78,22 @@ namespace codex {
 
         template <typename T>
             requires(std::is_base_of_v<Component, T>)
+        [[nodiscard]] T* try_get_component();
+
+        template <typename T>
+            requires(std::is_base_of_v<Component, T>)
+        [[nodiscard]] const T* try_get_component() const;
+
+        template <typename T>
+            requires(std::is_base_of_v<Component, T>)
         [[nodiscard]] bool has_component() const;
 
     private:
         entt::entity handle_{ entt::null };
         Scene*       scene_ = nullptr;
     };
+
+    RF_REGISTER_TYPE(Entity, codex::rf::PropertyType::EntityHandle)
 } // namespace codex
 
 namespace std {

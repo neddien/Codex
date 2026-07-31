@@ -9,7 +9,9 @@ namespace codex::editor {
         std::string   vfs_root = "/edit";
         std::string   last_asset_path;
         std::string   last_open_scene;
+        std::array<std::string, 16> physics_layer_names;
 
+    public:
         EditorProject() noexcept;
 
         void archive(Archive& archive) override;

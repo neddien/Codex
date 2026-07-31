@@ -50,7 +50,15 @@ namespace codex::gfx {
                 case NearestLinear: mipmap = opengl::TextureMipmapMode::NearestLinear; break;
             }
 
-            return { fmt, wrap, filter, mipmap };
+            return {
+                .format                 = fmt,
+                .wrap_mode              = wrap,
+                .filter_mode            = filter,
+                .mipmap_mode            = mipmap,
+                .chroma_key             = p.chroma_key,
+                .chroma_inner_tolerance = p.chroma_inner_tolerance,
+                .chroma_outer_tolerance = p.chroma_outer_tolerance,
+            };
         }
     } // namespace
 
@@ -141,5 +149,8 @@ namespace codex::gfx {
         ar("mipmap_mode", props.mipmap_mode);
         ar("wrap_mode", props.wrap_mode);
         ar("format", props.format);
+        ar.optional("chroma_key", props.chroma_key);
+        ar.optional("chroma_inner_tolerance", props.chroma_inner_tolerance);
+        ar.optional("chroma_outer_tolerance", props.chroma_outer_tolerance);
     }
 } // namespace codex::gfx

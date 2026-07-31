@@ -47,9 +47,12 @@ namespace codex::gfx {
 
     struct TextureProperties
     {
-        TextureFormat     format      = TextureFormat::None;
-        TextureWrapMode   wrap_mode   = TextureWrapMode::Mirror;
-        TextureFilterMode filter_mode = TextureFilterMode::Linear;
-        TextureMipmapMode mipmap_mode = TextureMipmapMode::None;
+        TextureFormat     format                 = TextureFormat::None;
+        TextureWrapMode   wrap_mode              = TextureWrapMode::Mirror;
+        TextureFilterMode filter_mode            = TextureFilterMode::Linear;
+        TextureMipmapMode mipmap_mode            = TextureMipmapMode::None;
+        opt<vec3>         chroma_key             = std::nullopt;
+        f32               chroma_inner_tolerance = 30.0f;
+        f32               chroma_outer_tolerance = 70.0f;
     };
 } // namespace codex::gfx

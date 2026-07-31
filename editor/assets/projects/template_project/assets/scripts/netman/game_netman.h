@@ -16,10 +16,10 @@ class GameNetworkManager
                        const transform& spawn_location = transform{});
 
 public:
-    Entity create_replicated_entity(const std::optional<transform>& transform = std::nullopt,
+    Entity create_replicated_entity(const opt<transform>& transform = std::nullopt,
                                     std::string_view default_tag = "default tag", UUID uuid = UUID{});
     Entity create_replicated_prefab(const scene::Prefab&            prefab,
-                                    const std::optional<transform>& transform = std::nullopt,
+                                    const opt<transform>& transform = std::nullopt,
                                     std::string_view default_tag = "default tag", UUID uuid = UUID{});
 
 public:

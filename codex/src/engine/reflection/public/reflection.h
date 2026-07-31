@@ -13,6 +13,15 @@ private:                                                                        
     void                       archive(codex::Archive& archive) override;                                              \
     const codex::rf::TypeInfo& type_info() const override;
 
+#define RF_REGISTER_TYPE(type, enum_val)                                                                               \
+    namespace rf {                                                                                                     \
+        template <>                                                                                                    \
+        struct type_of_ext<type>                                                                                       \
+        {                                                                                                              \
+            static constexpr PropertyType __cx_intrinsics_value = enum_val;                                            \
+        };                                                                                                             \
+    }
+
 namespace codex::rf {
     enum class PropertyType
     {
@@ -37,6 +46,7 @@ namespace codex::rf {
         Vector3f,
         Vector4f,
         PrefabAsset,
+        EntityHandle,
         UserDefined,
     };
 
@@ -45,23 +55,22 @@ namespace codex::rf {
     template <typename T>
     struct type_of_ext
     {
-        static constexpr PropertyType value = PropertyType::None;
+        static constexpr PropertyType __cx_intrinsics_value = PropertyType::None;
     };
 
     struct Property
     {
-        std::string  name;         // Variable name (e.g., "m_Velocity")
+        std::string  name;         // Variable name
         PropertyType type;         // Property type
-        usize        offset;       // Offset in bytes from object start
+        uintptr      offset;       // Byte offset of the member within its (most-derived) object
         std::string  display_name; // Display name for editor
         std::string  category;     // Category for grouping
         std::string  tooltip;      // Tooltip description
         bool         display;      // Whether to show in UI
 
     public:
-        Property(const std::string_view name, const PropertyType type, const usize offset,
-                 const std::string_view display_name = "", const std::string_view category = "General",
-                 const std::string_view tooltip = "", const bool display = true)
+        Property(std::string_view name, PropertyType type, uintptr offset, std::string_view display_name = "",
+                 std::string_view category = "General", std::string_view tooltip = "", bool display = true)
             : name{ name }
             , type{ type }
             , offset{ offset }
@@ -76,7 +85,7 @@ namespace codex::rf {
     class TypeInfo
     {
     public:
-        explicit TypeInfo(const std::string_view type_name)
+        explicit TypeInfo(std::string_view type_name)
             : type_name_{ type_name }
         {
         }
@@ -84,11 +93,11 @@ namespace codex::rf {
     public:
         [[nodiscard]] inline std::string_view             name() const noexcept { return type_name_; }
         [[nodiscard]] inline const std::vector<Property>& properties() const noexcept { return properties_; }
-        inline void add_property(const std::string_view name, const PropertyType type, const usize offset,
-                                 const std::string_view display_name = "", const std::string_view category = "General",
-                                 const std::string_view tooltip = "", const bool display = true)
+        inline void add_property(std::string_view name, PropertyType type, uintptr offset,
+                                 std::string_view display_name = "", std::string_view category = "General",
+                                 std::string_view tooltip = "", bool display = true)
         { properties_.emplace_back(name, type, offset, display_name, category, tooltip, display); }
-        inline const Property* find_property(const std::string_view name) const noexcept
+        inline const Property* find_property(std::string_view name) const noexcept
         {
             for (const auto& prop : properties_) {
                 if (prop.name == name) {
@@ -98,16 +107,14 @@ namespace codex::rf {
             return nullptr;
         }
 
-        // Helper to get property value by name
         template <typename T>
-        T* property_value(object obj, const std::string_view property_name) const noexcept
+        T* property_value(object obj, std::string_view property_name) const noexcept
         {
             const Property* prop = find_property(property_name);
             if (!prop)
                 return nullptr;
 
-            u8* obj_bytes = reinterpret_cast<u8*>(obj);
-            return reinterpret_cast<T*>(obj_bytes + prop->offset);
+            return reinterpret_cast<T*>(static_cast<char*>(obj) + prop->offset);
         }
 
     private:
@@ -157,7 +164,7 @@ namespace codex::rf {
         else if constexpr (std::is_same_v<T, std::string>)
             return String;
         else
-            return type_of_ext<T>::value; // None unless specialized next to the type
+            return type_of_ext<T>::__cx_intrinsics_value; // None unless specialized next to the type
     }
 
     template <typename T>

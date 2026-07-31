@@ -62,7 +62,7 @@ bool NetManager::send(OutgoingPacket&& packet)
     return true;
 }
 
-std::optional<IncomingPacket> NetManager::dequeue()
+opt<IncomingPacket> NetManager::dequeue()
 {
     if (!in_queue_.empty()) {
         IncomingPacket packet = std::move(in_queue_.front());

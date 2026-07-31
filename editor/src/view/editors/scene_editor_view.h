@@ -66,8 +66,9 @@ namespace codex::editor {
         std::filesystem::path           script_module_path;
         SelectedEntityDescriptor        selected_entity;
         f32                             column_width = 140.0f;
-        vec4                           select_colour{ 0.9f, 0.5f, 0.07f, 1.0f };
+        vec4                            select_colour{ 0.9f, 0.5f, 0.07f, 1.0f };
         std::filesystem::path           current_project_path;
+        std::filesystem::path           current_project_file;
         std::atomic<CompilationState>   compilation_state{ CompilationState::Idle };
         std::atomic<bool>               pending_nb_load{ false };
         f64                             compilation_finish_time = 0.0;
@@ -79,6 +80,7 @@ namespace codex::editor {
         UUID                            selected_asset{};
         Box<gfx::Shader>                outline_shader{};
         f32                             outline_border_size = .05f;
+        bool                            visualize_lines     = true;
 
     public:
         void reset() noexcept
@@ -90,6 +92,7 @@ namespace codex::editor {
             column_width            = 140.0f;
             select_colour           = { 0.9f, 0.5f, 0.07f, 1.0f };
             current_project_path    = std::filesystem::path{};
+            current_project_file    = std::filesystem::path{};
             compilation_state       = CompilationState::Idle;
             pending_nb_load         = false;
             compilation_finish_time = .0f;
@@ -113,6 +116,7 @@ namespace codex::editor {
             std::swap(column_width, other.column_width);
             std::swap(select_colour, other.select_colour);
             std::swap(current_project_path, other.current_project_path);
+            std::swap(current_project_file, other.current_project_file);
             std::swap(compilation_finish_time, other.compilation_finish_time);
             {
                 auto tmp = registry_state.load(std::memory_order_acquire);

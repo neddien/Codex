@@ -31,7 +31,7 @@ namespace codex::ax {
         ~AudioSystem() = default;
 
     private:
-        [[nodiscard]] static FMOD::Studio::System* get_fmod_system() noexcept;
+        [[nodiscard]] static FMOD::Studio::System* fmod_system() noexcept;
 
     public:
         [[nodiscard]] static bool is_valid() noexcept;

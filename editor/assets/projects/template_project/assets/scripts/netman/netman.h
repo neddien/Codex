@@ -97,7 +97,7 @@ public:
     void                          replicate_entity(Entity entity);
     void                          update_entities();
     bool                          send(OutgoingPacket&& packet);
-    std::optional<IncomingPacket> dequeue();
+    opt<IncomingPacket> dequeue();
 
 private:
     void initialize_as_server(std::string_view ip, u16 port);

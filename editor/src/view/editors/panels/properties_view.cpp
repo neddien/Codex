@@ -158,42 +158,60 @@ namespace codex::editor {
                                     case I32:
                                     case U32: {
                                         ImGui::DragInt(prop_id.c_str(), type_info.property_value<i32>(v, prop.name));
-                                        break;
-                                    }
+                                    } break;
                                     case F32:
                                     case F64:
                                     case F128: {
                                         ImGui::DragFloat(prop_id.c_str(), type_info.property_value<f32>(v, prop.name));
-                                        break;
-                                    }
+                                    } break;
                                     case String: {
                                         ImGui::InputText(prop_id.c_str(),
                                                          type_info.property_value<std::string>(v, prop.name));
-                                        break;
-                                    }
+                                    } break;
                                     case Boolean: {
                                         ImGui::Checkbox(prop_id.c_str(), type_info.property_value<bool>(v, prop.name));
-                                        break;
-                                    }
+                                    } break;
                                     case Vector2f: {
                                         SceneEditorView::draw_vec2_control(
                                             prop_id.c_str(), *type_info.property_value<math::vec2>(v, prop.name),
                                             d->column_width);
-                                        break;
-                                    }
+                                    } break;
                                     case Vector3f: {
                                         SceneEditorView::draw_vec3_control(
                                             prop_id.c_str(), *type_info.property_value<math::vec3>(v, prop.name),
                                             d->column_width);
-                                        break;
-                                    }
+                                    } break;
                                     case PrefabAsset: {
                                         auto*     asset = type_info.property_value<Asset<scene::Prefab>>(v, prop.name);
                                         AssetPath path  = asset->path();
                                         if (render_asset_path_box(prop_id.c_str(), "Prefab", path))
                                             *asset = AssetManager::load<scene::Prefab>(path.uuid());
-                                        break;
-                                    }
+                                    } break;
+                                    case EntityHandle: {
+                                        Entity* entity = type_info.property_value<Entity>(v, prop.name);
+                                        cxassert(entity,
+                                                 "RF Entity must be valid for RF controls to render inside the Editor");
+
+                                        // TODO: Move to a reusable function for RevJoint and this?
+                                        const auto label = *entity && entity->has_component<TagComponent>()
+                                                               ? entity->get_component<TagComponent>().tag
+                                                               : std::string{ "None (drop an entity here)" };
+                                        ImGui::Button((label + "###nb:enthd:btn").c_str(),
+                                                      { ImGui::GetContentRegionAvail().x, 0.0f });
+                                        if (ImGui::BeginDragDropTarget()) {
+                                            if (const auto* payload = ImGui::AcceptDragDropPayload("CX_ENTITY")) {
+                                                const auto dropped = *static_cast<const Entity*>(payload->Data);
+                                                *entity            = dropped;
+                                            }
+                                            ImGui::EndDragDropTarget();
+                                        }
+                                        if (*entity && ImGui::BeginPopupContextItem("rj2d:bodyb:ctx")) {
+                                            if (ImGui::MenuItem("Clear"))
+                                                *entity = Entity{};
+                                            ImGui::EndPopup();
+                                        }
+                                        ImGui::Columns(1);
+                                    } break;
                                     default: break; // throw CodexException("Should not happen."); break;
                                 }
                                 ImGui::Columns(1);
@@ -489,6 +507,84 @@ namespace codex::editor {
                         ImGui::Text("Gravity scale");
                         ImGui::NextColumn();
                         ImGui::DragFloat("###gravity_drag", &c.gravity_scale);
+                        ImGui::Columns(1);
+                    }
+
+                    ImGui::Dummy(ImVec2(0.0f, 10.0f));
+
+                    // Collision filtering (Box2D b2Filter): 16 layer bits, 16 mask bits and a
+                    // group-index override. Godot-style grid of toggle buttons, one per bit.
+                    {
+                        // Renders 16 toggle buttons (2 rows of 8); a set bit is highlighted.
+                        auto bit_grid = [&d](const char* id, u16& bits) {
+                            constexpr int cols = 8;
+                            const ImVec2  sz{ 18.0f, 18.0f };
+                            ImGui::PushID(id);
+                            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 2.0f, 2.0f });
+                            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{ 2.0f, 2.0f });
+                            for (int i = 0; i < 16; ++i) {
+                                const u16  bit = static_cast<u16>(1u << i);
+                                const bool set = (bits & bit) != 0;
+                                if (i % cols != 0)
+                                    ImGui::SameLine();
+                                if (set) {
+                                    const auto col = ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive);
+                                    ImGui::PushStyleColor(ImGuiCol_Button, col);
+                                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, col);
+                                }
+                                ImGui::PushID(i);
+                                if (ImGui::Button(std::to_string(i + 1).c_str(), sz))
+                                    bits ^= bit;
+                                ImGui::PopID();
+                                if (set)
+                                    ImGui::PopStyleColor(2);
+                                if (ImGui::IsItemHovered()) {
+                                    const auto& name = d->project.physics_layer_names[i];
+                                    if (name.empty())
+                                        ImGui::SetTooltip("Layer %d", i + 1);
+                                    else
+                                        ImGui::SetTooltip("%s", name.c_str());
+                                }
+                            }
+                            ImGui::PopStyleVar(2);
+                            ImGui::PopID();
+                        };
+
+                        ImGui::Columns(2);
+                        ImGui::SetColumnWidth(0, d->column_width);
+                        ImGui::Text("Collision Layer");
+                        ImGui::NextColumn();
+                        bit_grid("rb2d:layer", c.filter.layer_bits);
+                        ImGui::Columns(1);
+
+                        ImGui::Dummy(ImVec2(0.0f, 4.0f));
+
+                        ImGui::Columns(2);
+                        ImGui::SetColumnWidth(0, d->column_width);
+                        ImGui::Text("Collision Mask");
+                        ImGui::NextColumn();
+                        bit_grid("rb2d:mask", c.filter.mask_bits);
+                        ImGui::Columns(1);
+
+                        ImGui::Dummy(ImVec2(0.0f, 8.0f));
+
+                        // Group index override. Same non-zero value on two bodies forces the
+                        // outcome (positive: always collide, negative: never); otherwise the
+                        // layer/mask test above decides.
+                        ImGui::Columns(2);
+                        ImGui::SetColumnWidth(0, d->column_width);
+                        ImGui::Text("Group index");
+                        ImGui::SameLine();
+                        ImGui::TextDisabled("(?)");
+                        if (ImGui::IsItemHovered())
+                            ImGui::SetTooltip("Two bodies sharing the SAME non-zero value:\n"
+                                              "  > 0  always collide\n"
+                                              "  < 0  never collide\n"
+                                              "Different values (or 0) fall back to layer/mask.");
+                        ImGui::NextColumn();
+                        int group = c.filter.group_index;
+                        if (ImGui::DragInt("###group_index", &group, 1.0f, -32768, 32767))
+                            c.filter.group_index = static_cast<i16>(group);
                         ImGui::Columns(1);
                     }
                 }
@@ -1149,13 +1245,13 @@ namespace codex::editor {
 
                         // Refresh when the event path changes.
                         if (cached_params_event != c.event_path) {
-                            cached_params       = ax::AudioManager::get_event_parameters(c.event_path);
+                            cached_params       = ax::AudioManager::event_parameters(c.event_path);
                             cached_params_event = c.event_path;
 
                             // Populate defaults for parameters not yet in the map.
                             for (const auto& p : cached_params) {
                                 if (!c.parameters.contains(p.name))
-                                    c.parameters[p.name] = p.defaultValue;
+                                    c.parameters[p.name] = p.default_value;
                             }
                         }
 

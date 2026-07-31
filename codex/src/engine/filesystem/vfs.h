@@ -51,7 +51,7 @@ namespace codex::fs {
         [[nodiscard]] cc::task<bool>                     is_directory_async(std::string path) const noexcept;
         bool                                 export_to_pak(Shared<FileHandle> out, const PakProperties props = {},
                                                            const std::string& root = "/") noexcept;
-        std::optional<std::filesystem::path> materialize(const std::string&           vfs_path,
+        opt<std::filesystem::path> materialize(const std::string&           vfs_path,
                                                          const std::filesystem::path& cache_dir);
 
     private:

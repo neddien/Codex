@@ -139,8 +139,7 @@ namespace codex {
         return cx_entity;
     }
 
-    Entity Scene::create_entity(const std::optional<math::transform>& transform, std::string_view tag,
-                                UUID uuid) noexcept
+    Entity Scene::create_entity(const opt<math::transform>& transform, std::string_view tag, UUID uuid) noexcept
     {
         Entity cx_entity;
         {
@@ -159,7 +158,7 @@ namespace codex {
 
     void Scene::remove_entity(Entity entity)
     {
-        cxassert(registry_->valid(entity.handle_), "Entity does not exists in registry.");
+        cxassert(registry_->valid(entity.handle_), "Entity does not exists in registry");
 
         std::scoped_lock guard{ mutex_ };
         auto             registry = registry_.lock();
@@ -200,10 +199,44 @@ namespace codex {
         registry->destroy(entity.handle_);
     }
 
+    Entity Scene::clone_entity(Entity entity, const opt<transform>& transform, std::string_view tag, UUID uuid) noexcept
+    {
+        cxassert(registry_->valid(entity.handle_), "Entity does not exists in registry");
+
+        Entity     new_ent   = create_entity();
+        const UUID temp_uuid = new_ent.get_component<IDComponent>().uuid;
+
+        std::vector<u8> ser_buf;
+        {
+            BinaryArchiveBackend binsd{}; // saving
+            Archive              ar{ binsd };
+            serialize_as_whole(ar, entity);
+
+            ser_buf = binsd.take_buffer();
+        }
+
+        {
+            BinaryArchiveBackend binsd{ ser_buf }; // loading
+            Archive              ar{ binsd };
+            serialize_as_whole(ar, new_ent);
+        }
+
+        if (transform)
+            new_ent.get_component<TransformComponent>() = *transform;
+        new_ent.get_component<TagComponent>().tag = tag;
+
+        if (auto it = uuid_to_entity_.find(temp_uuid); it != uuid_to_entity_.end())
+            uuid_to_entity_.erase(it);
+        uuid_to_entity_[uuid]                     = new_ent;
+        new_ent.get_component<IDComponent>().uuid = uuid;
+
+        return new_ent;
+    }
+
     void Scene::remove_entity(const u32 entity)
     { remove_entity(Entity{ static_cast<entt::entity>(entity), this }); }
 
-    Entity Scene::instantiate_prefab(const scene::Prefab& prefab, const std::optional<math::transform>& transform,
+    Entity Scene::instantiate_prefab(const scene::Prefab& prefab, const opt<math::transform>& transform,
                                      std::string_view tag, UUID uuid) noexcept
     {
         Entity entity = prefab.instantiate(*this);
@@ -240,6 +273,7 @@ namespace codex {
             }
             for (NativeBehaviour* bh : spawned) {
                 try {
+                    bh->on_pre_init();
                     bh->on_init();
                 }
                 catch (const std::exception& ex) {
@@ -658,6 +692,14 @@ namespace codex {
 
         const mat4 world = trans.world_mat();
 
+        // Check if we have degenerate transform and warn about it
+        const f32 det = world[0].x * world[1].y - world[1].x * world[0].y;
+        if (det <= 0.0f)
+            log(Warn,
+                "Rigid body '{}' has a mirrored/degenerate world transform; "
+                "physics rotation will be wrong. Use Sprite flip_x instead of negative scale.",
+                registry.get<TagComponent>(entity).tag);
+
         // In a TRS our translation is always on the last column (OpenGL is column-major)
         const vec2 world_translation = vec2(world[3]);
 
@@ -694,6 +736,10 @@ namespace codex {
             shape.SetAsBox(collider->size.x * world_scale.x * physics_properties_.scaling_factor,
                            collider->size.y * world_scale.y * physics_properties_.scaling_factor,
                            util::to_b2_vec2(collider->offset * physics_properties_.scaling_factor), 0.0f);
+            // b2PolygonShape defaults m_radius to b2_polygonRadius (0.01m), inflating the simulated
+            // collider beyond the requested half-extents. Zero it so the fixture matches the size the
+            // editor gizmo draws exactly, instead of a fixed skin that's only noticeable on small colliders.
+            shape.m_radius = 0.0f;
 
             b2FixtureDef fixture_def;
             fixture_def.shape                = &shape;
@@ -701,6 +747,9 @@ namespace codex {
             fixture_def.friction             = collider->physics_material.friction_;
             fixture_def.restitution          = collider->physics_material.restitution_;
             fixture_def.restitutionThreshold = collider->physics_material.restitution_threshold_;
+            fixture_def.filter.categoryBits  = rb2d->filter.layer_bits;
+            fixture_def.filter.maskBits      = rb2d->filter.mask_bits;
+            fixture_def.filter.groupIndex    = rb2d->filter.group_index;
 
             b2_body->CreateFixture(&fixture_def);
         }
@@ -717,6 +766,9 @@ namespace codex {
             fixture_def.friction             = collider->physics_material.friction_;
             fixture_def.restitution          = collider->physics_material.restitution_;
             fixture_def.restitutionThreshold = collider->physics_material.restitution_threshold_;
+            fixture_def.filter.categoryBits  = rb2d->filter.layer_bits;
+            fixture_def.filter.maskBits      = rb2d->filter.mask_bits;
+            fixture_def.filter.groupIndex    = rb2d->filter.group_index;
 
             b2_body->CreateFixture(&fixture_def);
         }
@@ -724,30 +776,32 @@ namespace codex {
 
     void Scene::construct_physics_joint(entt::registry& registry, entt::entity entity)
     {
-        auto* rb2d = registry.try_get<RigidBody2DComponent>(entity);
-        if (!rb2d)
+        auto* rb2d_local_body = registry.try_get<RigidBody2DComponent>(entity);
+        if (!rb2d_local_body)
             return;
 
-        if (rb2d->runtime_body && physics_world_) {
-            if (const auto* joint = registry.try_get<RevoluteJoint2DComponent>(entity); joint) {
+        if (rb2d_local_body->runtime_body && physics_world_) {
+            if (auto* joint = registry.try_get<RevoluteJoint2DComponent>(entity); joint) {
                 if (!uuid_to_entity_.contains(joint->body_b))
                     return;
 
-                entt::entity body_b_ent = uuid_to_entity_[joint->body_b].handle_;
+                entt::entity connected_body_ent = uuid_to_entity_[joint->body_b].handle_;
 
                 // Joint to self
-                if (body_b_ent == entity)
+                if (connected_body_ent == entity)
                     return;
 
-                RigidBody2DComponent* rb2d_b = registry.try_get<RigidBody2DComponent>(body_b_ent);
-                if (rb2d_b && rb2d_b->runtime_body) {
+                RigidBody2DComponent* rb2d_connected_body = registry.try_get<RigidBody2DComponent>(connected_body_ent);
+                TransformComponent&   con_body_trans      = registry.get<TransformComponent>(connected_body_ent);
+                TransformComponent&   local_body_trans    = registry.get<TransformComponent>(entity);
+                if (rb2d_connected_body && rb2d_connected_body->runtime_body) {
                     b2RevoluteJointDef joint_def;
-                    joint_def.bodyA = reinterpret_cast<b2Body*>(rb2d->runtime_body);
-                    joint_def.bodyB = reinterpret_cast<b2Body*>(rb2d_b->runtime_body);
+                    joint_def.bodyA = reinterpret_cast<b2Body*>(rb2d_connected_body->runtime_body);
+                    joint_def.bodyB = reinterpret_cast<b2Body*>(rb2d_local_body->runtime_body);
                     joint_def.localAnchorA =
-                        util::to_b2_vec2(joint->local_anchor_a * physics_properties_.scaling_factor);
-                    joint_def.localAnchorB =
                         util::to_b2_vec2(joint->local_anchor_b * physics_properties_.scaling_factor);
+                    joint_def.localAnchorB =
+                        util::to_b2_vec2(joint->local_anchor_a * physics_properties_.scaling_factor);
                     joint_def.enableLimit      = joint->enable_limit;
                     joint_def.lowerAngle       = math::to_radf(joint->lower_angle);
                     joint_def.upperAngle       = math::to_radf(joint->upper_angle);
@@ -755,11 +809,14 @@ namespace codex {
                     joint_def.motorSpeed       = joint->motor_speed;
                     joint_def.maxMotorTorque   = joint->max_motor_torque;
                     joint_def.collideConnected = joint->collide_connected;
+                    joint_def.referenceAngle =
+                        glm::atan2(local_body_trans.world_mat()[0].y, local_body_trans.world_mat()[0].x) -
+                        glm::atan2(con_body_trans.world_mat()[0].y, con_body_trans.world_mat()[0].x);
 
-                    physics_world_->CreateJoint(&joint_def);
+                    joint->runtime_joint = reinterpret_cast<void*>(physics_world_->CreateJoint(&joint_def));
 
-                    log(Info, "Created joint parent: {}, child: {}", registry.get<TagComponent>(entity).tag,
-                        registry.get<TagComponent>(body_b_ent).tag);
+                    log(Info, "Created joint child: {}, parent: {}", registry.get<TagComponent>(entity).tag,
+                        registry.get<TagComponent>(connected_body_ent).tag);
                 }
             }
         }
@@ -821,6 +878,7 @@ namespace codex {
                 assert(bh);
 
                 try {
+                    bh->on_pre_init();
                     bh->on_init();
                 }
                 catch (const std::exception& ex) {
@@ -889,6 +947,8 @@ namespace codex {
 
         construct_physics_bodies();
 
+        attach_pending_behaviours();
+
         // Native behaviour instantiation
         // TODO: Thread safety
         {
@@ -896,6 +956,7 @@ namespace codex {
                 assert(bh);
 
                 try {
+                    bh->on_pre_init();
                     bh->on_init();
                 }
                 catch (const std::exception& ex) {
@@ -1146,17 +1207,35 @@ namespace codex {
         }
     }
 
+    void Scene::resolve_entity_references() noexcept
+    {
+        // We also need to resolve entities references that behaviours might contain
+        for (auto& bh : behaviours_) {
+            cxassert(bh, "Invalid behaviour in Scene's behaviour list, this is not supposed to happen");
+
+            for (auto& [entity, uuid] : bh->pending_entity_refs_) {
+                *entity = entity_by_uuid(uuid);
+            }
+
+            bh->pending_entity_refs_.clear();
+        }
+    }
+
     void Scene::attach_pending_behaviours() noexcept
     {
         std::scoped_lock guard{ mutex_ };
         auto             registry = registry_.lock();
         auto             view     = registry->view<NativeBehaviourComponent>();
-        for (auto& e : view)
+        for (entt::entity e : view)
             view.get<NativeBehaviourComponent>(e).attach_pending();
+
+        resolve_entity_references();
     }
 
     void Scene::archive(Archive& ar)
     {
+        std::scoped_lock guard{ mutex_ };
+
         ar("name", name_);
 
         IArchiveBackend& b = ar.backend();
@@ -1173,7 +1252,7 @@ namespace codex {
             b.begin_array("entities", entity_total);
             for (const auto& entity : entities) {
                 Entity cx_entity{ entity, this };
-                serialize(ar, cx_entity);
+                serialize_as_whole(ar, cx_entity);
             }
             b.end_array();
         } else {
@@ -1181,7 +1260,7 @@ namespace codex {
             b.begin_array("entities", entity_total);
             for (usize i = 0; i < entity_total; ++i) {
                 Entity entity = create_entity();
-                serialize(ar, entity);
+                serialize_as_whole(ar, entity);
             }
             b.end_array();
 
@@ -1206,10 +1285,12 @@ namespace codex {
                     hc.resolve_pending();
                 }
             }
+
+            resolve_entity_references();
         }
     }
 
-    void serialize(Archive& ar, Entity& entity)
+    void serialize_as_whole(Archive& ar, Entity& entity)
     {
         if (!entity)
             return;

@@ -10,7 +10,7 @@ namespace codex {
         return parent_.get_component<TransformComponent>();
     }
 
-    Entity NativeBehaviour::create_entity(const std::optional<math::transform>& transform, std::string_view tag,
+    Entity NativeBehaviour::create_entity(const opt<math::transform>& transform, std::string_view tag,
                                           UUID uuid)
     {
         if (parent_)
@@ -18,7 +18,7 @@ namespace codex {
         return {};
     }
 
-    Entity NativeBehaviour::create_prefab(const scene::Prefab& prefab, const std::optional<math::transform>& transform,
+    Entity NativeBehaviour::create_prefab(const scene::Prefab& prefab, const opt<math::transform>& transform,
                                           std::string_view tag, UUID uuid)
     {
         if (parent_)
@@ -27,7 +27,7 @@ namespace codex {
     }
 
     Entity NativeBehaviour::create_prefab(const Asset<scene::Prefab>&           prefab,
-                                          const std::optional<math::transform>& transform, std::string_view tag,
+                                          const opt<math::transform>& transform, std::string_view tag,
                                           UUID uuid)
     {
         if (parent_ && prefab)

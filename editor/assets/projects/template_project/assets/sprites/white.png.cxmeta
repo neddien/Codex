@@ -11,6 +11,13 @@
         "filter_mode": "Nearest",
         "mipmap_mode": "None",
         "wrap_mode": "Mirror",
-        "format": "None"
+        "format": "None",
+        "chroma_key": {
+            "x": 255.0,
+            "y": 0.0,
+            "z": 255.0
+        },
+        "chroma_inner_tolerance": 30.0,
+        "chroma_outer_tolerance": 70.0
     }
 }

@@ -35,12 +35,16 @@ namespace codex::gfx {
         void begin(const scene::EditorCamera& camera);
         void end();
 
-        void draw_line_2d(const vec2 source, const vec2 destination, const vec4 colour = { 0.0f, 1.0f, 0.0f, 1.0f },
-                          const i32 lifeTime = 1);
-        void draw_rect_2d(const rect rect, const f32 angle = 0.0f, const vec4 colour = { 0.0f, 1.0f, 0.0f, 1.0f },
-                          const i32 lifeTime = 1);
-        void draw_circle_2d(const vec2 centrePos, const i32 radius = 50, const f32 angle = 0.0f,
-                            const i32 segments = 20, const vec4 colour = { 0.0f, 1.0f, 0.0f, 1.0f }, i32 lifeTime = 1);
+        void draw_line_2d(const vec2& source, const vec2& destination, const vec4& colour = { 0.0f, 1.0f, 0.0f, 1.0f },
+                          i32 lifetime = 1);
+        void draw_rect_2d(const rect& rect, f32 angle = 0.0f, const vec4& colour = { 0.0f, 1.0f, 0.0f, 1.0f },
+                          i32 lifetime = 1);
+        void draw_circle_2d(const vec2& centre_pos, f32 radius = 50.0f, f32 angle = 0.0f, i32 segments = 20,
+                            const vec4& colour = { 0.0f, 1.0f, 0.0f, 1.0f }, i32 lifetime = 1);
+        void draw_arc_2d(const vec2& centre_pos, f32 start_deg = .0f, f32 end_deg = .0f, f32 radius = 50.0f,
+                         i32 segments = 20, const vec4& colour = { 0.0f, 1.0f, 0.0f, 1.0f }, i32 lifetime = 1);
+        void draw_cone_2d(const vec2& centre_pos, f32 radius = 50.0f, f32 angle = 0.0f, const i32 segments = 20,
+                          const vec4& colour = { 0.0f, 1.0f, 0.0f, 1.0f }, i32 lifetime = 1);
 
     public:
         static void init(fs::VirtualFilesystem& vfs, std::string_view path);

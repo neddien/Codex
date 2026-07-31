@@ -694,7 +694,7 @@ namespace codex::fs {
         return true;
     }
 
-    std::optional<std::filesystem::path> VirtualFilesystem::materialize(const std::string&           vfs_path,
+    opt<std::filesystem::path> VirtualFilesystem::materialize(const std::string&           vfs_path,
                                                                         const std::filesystem::path& cache_dir)
     {
         auto source = open(vfs_path, { FileMode::Read });

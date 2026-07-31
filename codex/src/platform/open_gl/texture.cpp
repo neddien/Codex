@@ -24,6 +24,19 @@ namespace codex::opengl {
             throw std::runtime_error("[OpenGL]::[ERROR] >> Could not open texture file for reading: ");
         }
 
+        if (properties.chroma_key) {
+            vec3  chroma_value = *properties.chroma_key;
+            f32   itol         = properties.chroma_inner_tolerance;
+            f32   otol         = properties.chroma_outer_tolerance;
+            usize pixel_bytes  = (usize)width_ * (usize)height_ * 4;
+            for (usize i = 0; i < pixel_bytes; i += 4) {
+                vec3 pixel(buffer_[i], buffer_[i + 1], buffer_[i + 2]);
+                f32  distance = glm::distance(pixel, chroma_value);
+                f32  t        = std::clamp((distance - itol) / (otol - itol), 0.0f, 1.0f);
+                buffer_[i + 3] = (u8)(t * (f32)buffer_[i + 3]);
+            }
+        }
+
         // Since we are forcing 4 channels no matter what.
         properties.format = TextureFormat::RGBA8;
 
@@ -64,13 +77,9 @@ namespace codex::opengl {
     }
 
     void Texture::unbind() const
-    {
-        GL_Call(glBindTexture(GL_TEXTURE_2D, 0));
-    }
+    { GL_Call(glBindTexture(GL_TEXTURE_2D, 0)); }
 
     GLenum Texture::format_type([[maybe_unused]] TextureProperties props)
-    {
-        return (GLenum)0;
-    }
+    { return (GLenum)0; }
 
 } // namespace codex::opengl

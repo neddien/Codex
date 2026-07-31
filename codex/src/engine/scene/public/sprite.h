@@ -18,15 +18,13 @@ namespace codex {
             texture_coords_ = { 0.0f, 0.0f, static_cast<f32>(texture->width()), static_cast<f32>(texture->height()) };
             size_           = { texture_coords_.w, texture_coords_.h };
         }
-        Sprite(Asset<gfx::Texture2D> texture, const rect texture_coords,
-               const vec4 colour = { 1.0f, 1.0f, 1.0f, 1.0f }, const i32 z_index = 0)
+        Sprite(Asset<gfx::Texture2D> texture, const rect texture_coords, const vec4 colour = { 1.0f, 1.0f, 1.0f, 1.0f },
+               const i32 z_index = 0)
             : texture_{ texture }
             , texture_coords_{ texture_coords }
             , colour_{ colour }
             , z_index_{ z_index }
-        {
-            size_ = { (f32)texture_->width(), (f32)texture_->height() };
-        }
+        { size_ = { (f32)texture_->width(), (f32)texture_->height() }; }
 
     public:
         [[nodiscard]] static inline Sprite empty() noexcept { return Sprite(); }
@@ -37,12 +35,10 @@ namespace codex {
 
         [[nodiscard]] inline rect texture_coords() const noexcept { return texture_coords_; }
         inline void               set_texture_coords(rect new_texture_coords) noexcept
-        {
-            texture_coords_ = std::move(new_texture_coords);
-        }
+        { texture_coords_ = std::move(new_texture_coords); }
 
         [[nodiscard]] inline vec4 colour() const noexcept { return colour_; }
-        inline void                set_colour(const vec4& new_colour) noexcept { colour_ = new_colour; }
+        inline void               set_colour(const vec4& new_colour) noexcept { colour_ = new_colour; }
 
         [[nodiscard]] inline i32 z_index() const noexcept { return z_index_; }
         inline void              set_z_index(const i32 new_z_index) noexcept { z_index_ = new_z_index; }
@@ -83,7 +79,7 @@ namespace codex {
         Asset<gfx::Texture2D> texture_{};
         rect                  texture_coords_{};
         vec2                  size_{};
-        vec4                 colour_{};
+        vec4                  colour_{};
         i32                   z_index_{};
     };
 } // namespace codex

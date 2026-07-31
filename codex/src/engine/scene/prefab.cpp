@@ -13,7 +13,7 @@ namespace codex::scene {
         if (entity) {
             BinaryArchiveBackend binsd{}; // Automatically save mode (ie saving_ = false)
             Archive              ar{ binsd };
-            serialize(ar, entity);
+            serialize_as_whole(ar, entity);
 
             serialized_entity_buf_ = binsd.take_buffer();
         }
@@ -25,7 +25,7 @@ namespace codex::scene {
 
         BinaryArchiveBackend binsd{ serialized_entity_buf_ }; // Automatically load mode (ie saving_ = true)
         Archive              ar{ binsd };
-        serialize(ar, cx_entity);
+        serialize_as_whole(ar, cx_entity);
 
         cx_entity.add_or_replace_component<IDComponent>().uuid = uuid;
 
@@ -38,7 +38,7 @@ namespace codex::scene {
         if (entity) {
             BinaryArchiveBackend binsd{}; // Automatically save mode (ie saving_ = false)
             Archive              ar{ binsd };
-            serialize(ar, entity);
+            serialize_as_whole(ar, entity);
 
             prefab.serialized_entity_buf_ = binsd.take_buffer();
         }

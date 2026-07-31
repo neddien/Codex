@@ -132,12 +132,13 @@ namespace codex {
 
         void   clone_via_serialization(Scene& other) const;
         Entity create_entity(std::string_view tag) noexcept;
-        Entity create_entity(const std::optional<math::transform>& transform = std::nullopt,
+        Entity create_entity(const opt<math::transform>& transform = std::nullopt,
                              const std::string_view tag = "default tag", UUID uuid = UUID{}) noexcept;
         void   remove_entity(Entity entity);
         void   remove_entity(u32 entity);
-        Entity instantiate_prefab(const scene::Prefab&                  prefab,
-                                  const std::optional<math::transform>& transform = std::nullopt,
+        Entity clone_entity(Entity entity, const opt<transform>& transform = std::nullopt,
+                            std::string_view tag = "cloned entity", UUID uuid = UUID{}) noexcept;
+        Entity instantiate_prefab(const scene::Prefab& prefab, const opt<math::transform>& transform = std::nullopt,
                                   std::string_view tag = "default tag", UUID uuid = UUID{}) noexcept;
         void   enqueue_for_disposal(Entity entity) noexcept;
         Entity entity_by_uuid(UUID uuid) noexcept;
@@ -163,6 +164,7 @@ namespace codex {
         void archive(Archive& archive) override;
 
     public:
+        void resolve_entity_references() noexcept;
         void attach_pending_behaviours() noexcept;
 
     private:
@@ -195,5 +197,5 @@ namespace codex {
         mutable std::recursive_mutex mutex_;
     };
 
-    void serialize(Archive& ar, Entity& entity);
+    void serialize_as_whole(Archive& ar, Entity& entity);
 } // namespace codex

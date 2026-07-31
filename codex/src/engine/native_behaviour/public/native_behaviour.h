@@ -34,53 +34,48 @@ namespace codex {
         template <typename T>
             requires(std::is_base_of_v<Component, T>)
         [[nodiscard]] auto entities_with_component()
-        {
-            return parent_.scene_->entities_with_component<T>();
-        }
+        { return parent_.scene_->entities_with_component<T>(); }
         template <typename T, typename... TArgs>
         T& add_component(TArgs&&... args)
-        {
-            return parent_.add_component<T>(std::forward<TArgs>(args)...);
-        }
+        { return parent_.add_component<T>(std::forward<TArgs>(args)...); }
         template <typename T>
         void remove_component()
-        {
-            parent_.remove_component<T>();
-        }
+        { parent_.remove_component<T>(); }
         template <typename T>
         [[nodiscard]] T& get_component()
-        {
-            return parent_.get_component<T>();
-        }
+        { return parent_.get_component<T>(); }
         template <typename T>
         [[nodiscard]] const T& get_component() const
-        {
-            return parent_.get_component<T>();
-        }
+        { return parent_.get_component<T>(); }
+        template <typename T>
+        [[nodiscard]] T* try_get_component()
+        { return parent_.try_get_component<T>(); }
+        template <typename T>
+        [[nodiscard]] const T* try_get_component() const
+        { return parent_.try_get_component<T>(); }
         template <typename T>
         [[nodiscard]] bool has_component() const
-        {
-            return parent_.has_component<T>();
-        }
+        { return parent_.has_component<T>(); }
 
         // FIXME: Mark these methods protected!
         // protected:
     public:
+        virtual void                               on_pre_init() {};
         virtual void                               on_init() = 0;
-        virtual void                               on_update([[maybe_unused]] const f32 delta_time) {}
-        virtual void                               on_fixed_update([[maybe_unused]] const f32 delta_time) {}
+        virtual void                               on_update([[maybe_unused]] const f32 dt) {}
+        virtual void                               on_fixed_update([[maybe_unused]] const f32 dt) {}
         virtual void                               on_dispose() {}
         [[nodiscard]] virtual Box<NativeBehaviour> clone() const     = 0;
         [[nodiscard]] virtual const rf::TypeInfo&  type_info() const = 0;
 
     public:
-        [[nodiscard]] Entity              create_entity(const std::optional<math::transform>& transform = std::nullopt,
+        [[nodiscard]] Entity              create_entity(const opt<math::transform>& transform = std::nullopt,
                                                         std::string_view tag = "default_tag", UUID uuid = UUID{});
-        [[nodiscard]] Entity              create_prefab(const scene::Prefab&                  prefab,
-                                                        const std::optional<math::transform>& transform = std::nullopt,
+        [[nodiscard]] Entity              create_prefab(const scene::Prefab&        prefab,
+                                                        const opt<math::transform>& transform = std::nullopt,
                                                         std::string_view tag = "default tag", UUID uuid = UUID{});
-        [[nodiscard]] Entity              create_prefab(const Asset<scene::Prefab>&           prefab,
-                                                        const std::optional<math::transform>& transform = std::nullopt,
+        [[nodiscard]] Entity              create_prefab(const Asset<scene::Prefab>& prefab,
+                                                        const opt<math::transform>& transform = std::nullopt,
                                                         std::string_view tag = "default tag", UUID uuid = UUID{});
         void                              remove_entity(Entity entity);
         [[nodiscard]] std::vector<Entity> entities_with_tag(const std::string_view tag);
@@ -94,6 +89,7 @@ namespace codex {
         inline void set_owner(const Entity entity) noexcept { parent_ = entity; }
 
     protected:
-        Entity parent_;
+        Entity                            parent_;
+        std::unordered_map<Entity*, UUID> pending_entity_refs_;
     };
 } // namespace codex

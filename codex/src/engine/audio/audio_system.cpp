@@ -87,7 +87,7 @@ namespace codex::ax {
         }
     }
 
-    Studio::System* AudioSystem::get_fmod_system() noexcept
+    Studio::System* AudioSystem::fmod_system() noexcept
     { return get().fmod_sys_; }
 
     bool AudioSystem::is_valid() noexcept

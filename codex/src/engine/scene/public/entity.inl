@@ -56,6 +56,11 @@ namespace codex {
     template <typename T>
         requires(std::is_base_of_v<Component, T>)
     T& Entity::get_component()
+    { return const_cast<T&>(std::as_const(*this).get_component<T>()); }
+
+    template <typename T>
+        requires(std::is_base_of_v<Component, T>)
+    const T& Entity::get_component() const
     {
         cxassert(scene_->registry_->all_of<T>(handle_), "Entity does not have the component to retrieve.");
         return scene_->registry_->get<T>(handle_);
@@ -63,11 +68,16 @@ namespace codex {
 
     template <typename T>
         requires(std::is_base_of_v<Component, T>)
-    const T& Entity::get_component() const
-    { return const_cast<Entity*>(this)->get_component<T>(); }
+    bool Entity::has_component() const
+    { return scene_->registry_->all_of<T>(handle_); }
 
     template <typename T>
         requires(std::is_base_of_v<Component, T>)
-    bool Entity::has_component() const
-    { return scene_->registry_->all_of<T>(handle_); }
+    T* Entity::try_get_component()
+    { return const_cast<T*>(std::as_const(*this).try_get_component<T>()); }
+
+    template <typename T>
+        requires(std::is_base_of_v<Component, T>)
+    const T* Entity::try_get_component() const
+    { return scene_->registry_->try_get<T>(handle_); }
 } // namespace codex

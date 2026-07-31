@@ -42,11 +42,12 @@ namespace codex::editor {
             static auto action_delete        = false;
             static auto action_rename        = false;
             static auto action_create_prefab = false;
+            static auto action_duplicate     = false;
 
             // Hierarchy mutations are deferred until after the tree is drawn so we never
             // mutate a children list we are currently iterating.
-            std::optional<std::pair<Entity, Entity>> pending_attach; // { new parent, child }
-            std::optional<Entity>                    pending_detach;
+            opt<std::pair<Entity, Entity>> pending_attach; // { new parent, child }
+            opt<Entity>                    pending_detach;
 
             auto draw_entity_node = [&](auto&& self, Entity e) -> void {
                 auto& tag_component = e.get_component<TagComponent>();
@@ -75,6 +76,8 @@ namespace codex::editor {
 
                     if (ImGui::MenuItem("Rename"))
                         action_rename = true;
+                    if (ImGui::MenuItem("Duplicate"))
+                        action_duplicate = true;
                     if (ImGui::MenuItem("Create Prefab"))
                         action_create_prefab = true;
                     if (hc && hc->parent && ImGui::MenuItem("Detach"))
@@ -128,6 +131,17 @@ namespace codex::editor {
                     pending_attach->first.get_component<TagComponent>().tag);
             if (pending_detach && pending_detach->has_component<HierarchyComponent>())
                 scene->detach_parent(pending_detach->get_component<HierarchyComponent>().parent, *pending_detach);
+
+            if (action_duplicate) {
+                action_duplicate = false;
+
+                Entity source = d->selected_entity.entity;
+                if (source) {
+                    std::string new_tag = source.get_component<TagComponent>().tag + " (Copy)";
+                    Entity      copy    = scene->clone_entity(source, std::nullopt, new_tag);
+                    d->selected_entity.select(copy);
+                }
+            }
 
             if (action_create_prefab) {
                 action_create_prefab = false;

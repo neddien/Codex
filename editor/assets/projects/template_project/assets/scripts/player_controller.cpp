@@ -13,7 +13,7 @@ void PlayerController::on_update(const f32 dt)
 {
     static f32 fire_rate_t = 0;
     if (Input::is_key_down(Key::J) && projectile_ && fire_rate_t >= fire_rate_) {
-        create_prefab(projectile_, get_component<TransformComponent>());
+        (void)create_prefab(projectile_, get_component<TransformComponent>());
         fire_rate_t = 0;
     }
 
@@ -44,6 +44,12 @@ void PlayerController::on_fixed_update(const f32 dt)
             rb2d_->apply_torque(-1.0f);
         if (Input::is_key_down(Key::F))
             throw CodexException("Why did you press F?");
+        if (Input::is_key_down(Key::G))
+        {
+            if (entity_) {
+                entity_.get_component<TransformComponent>().position.x += 1;
+            }
+        }
 
         rb2d_->apply_force(current_velocity_);
     }

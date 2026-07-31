@@ -1,0 +1,9 @@
+{
+    "version": 4,
+    "vendor": {
+        "conan": {}
+    },
+    "include": [
+        "builds/conan-debug/CMakePresets.json"
+    ]
+}

@@ -14,7 +14,7 @@ GameNetworkManager::GameNetworkManager(Scene* scene, NetManager& net, const scen
         throw NetworkException("Cannot replicate a null scene");
 }
 
-Entity GameNetworkManager::create_replicated_entity(const std::optional<transform>& transform,
+Entity GameNetworkManager::create_replicated_entity(const opt<transform>& transform,
                                                     std::string_view default_tag, UUID uuid)
 {
     Entity entity = scene_->create_entity(std::move(transform), default_tag, uuid);
@@ -23,7 +23,7 @@ Entity GameNetworkManager::create_replicated_entity(const std::optional<transfor
 }
 
 Entity GameNetworkManager::create_replicated_prefab(
-    const scene::Prefab& prefab, const std::optional<transform>& transform, std::string_view default_tag, UUID uuid)
+    const scene::Prefab& prefab, const opt<transform>& transform, std::string_view default_tag, UUID uuid)
 {
     Entity entity = scene_->instantiate_prefab(prefab, std::move(transform), default_tag, uuid);
     register_entity_for_replication(entity);
@@ -32,7 +32,7 @@ Entity GameNetworkManager::create_replicated_prefab(
 
 void GameNetworkManager::on_update(f32 dt)
 {
-    std::optional<IncomingPacket> maybe_packet;
+    opt<IncomingPacket> maybe_packet;
     while ((maybe_packet = net_.dequeue()) != std::nullopt) {
         handle_incoming_packet(std::move(*maybe_packet));
     }

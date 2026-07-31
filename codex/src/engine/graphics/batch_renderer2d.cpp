@@ -15,14 +15,10 @@ namespace codex::gfx {
     std::vector<RenderBatch> BatchRenderer2D::s_batches_;
 
     Shader* BatchRenderer2D::shader() noexcept
-    {
-        return s_quad_shader_;
-    }
+    { return s_quad_shader_; }
 
     usize BatchRenderer2D::batch_count() noexcept
-    {
-        return s_batches_.size();
-    }
+    { return s_batches_.size(); }
 
     usize BatchRenderer2D::quad_count() noexcept
     {
@@ -33,9 +29,7 @@ namespace codex::gfx {
     }
 
     std::vector<RenderBatch>& BatchRenderer2D::batches() noexcept
-    {
-        return s_batches_;
-    }
+    { return s_batches_; }
 
     void BatchRenderer2D::init(fs::VirtualFilesystem& vfs, const std::string_view path)
     {
@@ -130,9 +124,9 @@ namespace codex::gfx {
         const ivec2 size{ glm::length(glm::vec3(transform[0])), glm::length(glm::vec3(transform[1])) };
         // Add ten extra pixels so fix the bug where there's a slight gap between the camera edge and the last
         // sprite inside the viewport of the camera.
-        const auto camera_dim = ivec3{ s_current_camera_->width() * s_current_camera_->pan(),
-                                       s_current_camera_->height() * s_current_camera_->pan(), 0 } +
-                                100;
+        const auto camera_dim      = ivec3{ s_current_camera_->width() * s_current_camera_->pan(),
+                                            s_current_camera_->height() * s_current_camera_->pan(), 0 } +
+                                     100;
         const auto current_cam_pos = s_current_camera_pos_ - vec3{ camera_dim / 2 };
 
         if (translation.x < current_cam_pos.x + camera_dim.x && translation.x + size.x > current_cam_pos.x &&
@@ -142,7 +136,7 @@ namespace codex::gfx {
                     if (batch.upload_quad(texture, src_rect, transform, colour, entity_id))
                         return;
                     else
-                        std::cerr << "failed to upload quad\n";
+                        log(LogLevel::Error, "BatchRenderer2D: Failed to upload quad");
                 }
             }
 

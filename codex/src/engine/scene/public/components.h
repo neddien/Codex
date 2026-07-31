@@ -175,8 +175,6 @@ namespace codex {
         void                 attach_pending() noexcept;
 
     private:
-        // Scripts waiting to be attached (NBMan not loaded yet, or freshly deserialized):
-        // type name -> serialized JSON state; an empty string means default state.
         Scene::BagHandle                                      handle_ = Scene::NBHandle::invalid_id();
         mutable absl::flat_hash_map<std::string, std::string> pending_;
     };
@@ -214,12 +212,25 @@ namespace codex {
         bool     high_velocity   = false;
         bool     enabled         = true;
         f32      gravity_scale   = 1.0f;
-        void*    runtime_body    = nullptr;
+        struct Filter
+        {
+            u16 layer_bits  = 0x0;
+            u16 mask_bits   = 0x0;
+            i16 group_index = 0;
+
+            friend void serialize(Archive& ar, Filter& filter) noexcept
+            {
+                ar("layer_bits", filter.layer_bits);
+                ar("mask_bits", filter.mask_bits);
+                ar("group_index", filter.group_index);
+            }
+        } filter;
+        void* runtime_body = nullptr;
 
     public:
-        void apply_force(const vec2& force, const std::optional<vec2> point = std::nullopt) noexcept;
+        void apply_force(const vec2& force, const opt<vec2> point = std::nullopt) noexcept;
         void apply_torque(const f32 torque) noexcept;
-        void apply_linear_impulse(const vec2& impulse, const std::optional<vec2> point = std::nullopt);
+        void apply_linear_impulse(const vec2& impulse, const opt<vec2> point = std::nullopt);
         void apply_angular_impulse(const f32 torque);
         void set_transform(const transform& transform);
 
@@ -260,16 +271,24 @@ namespace codex {
         CX_COMPONENT(RevoluteJoint2DComponent)
 
     public:
-        UUID body_b{ 0 };
-        vec2 local_anchor_a{};
-        vec2 local_anchor_b{};
-        bool enable_limit{ false };
-        f32  lower_angle{ 0.0f };
-        f32  upper_angle{ 0.0f };
-        bool enable_motor{ false };
-        f32  motor_speed{ 0.0f };
-        f32  max_motor_torque{ 0.0f };
-        bool collide_connected{ false };
+        UUID  body_b{ 0 };
+        vec2  local_anchor_a{};
+        vec2  local_anchor_b{};
+        bool  enable_limit{ false };
+        f32   lower_angle{ 0.0f };
+        f32   upper_angle{ 0.0f };
+        bool  enable_motor{ false };
+        f32   motor_speed{ 0.0f };
+        f32   max_motor_torque{ 0.0f };
+        bool  collide_connected{ false };
+        void* runtime_joint{ nullptr };
+
+    public:
+        [[nodiscard]] f32 joint_angle() const noexcept;
+        [[nodiscard]] f32 joint_speed() const noexcept;
+        void              set_motor_speed(f32 deg_per_sec) noexcept;
+        void              set_max_motor_torque(f32 torque) noexcept;
+        void              set_motor_enabled(bool enabled) noexcept;
 
     public:
         void archive_impl(Archive& ar) override;
@@ -436,7 +455,7 @@ namespace codex {
         void archive_impl(Archive& ar) override;
 
     protected:
-        std::optional<UUID> pending_parent_;
-        std::vector<UUID>   pending_children_;
+        opt<UUID>         pending_parent_;
+        std::vector<UUID> pending_children_;
     };
 } // namespace codex

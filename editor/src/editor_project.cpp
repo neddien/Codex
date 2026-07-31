@@ -28,5 +28,6 @@ namespace codex::editor {
         ar("vfs_root", vfs_root);
         ar("last_asset_path", last_asset_path);
         ar("last_open_scene", last_open_scene);
+        ar("physics_layer_names", physics_layer_names);
     }
 } // namespace codex::editor

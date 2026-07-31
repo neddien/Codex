@@ -46,7 +46,7 @@ namespace codex {
 
         // Optional field. save: writes presence (returns `present_on_save`); load: returns
         // whether the field is actually present. The value (if present) is archived after.
-        [[nodiscard]] virtual bool optional(const std::string_view key, const bool present_on_save) = 0;
+        [[nodiscard]] virtual bool optional(const std::string_view key, const bool present_on_save = true) = 0;
     };
 
     class Archive;
@@ -74,7 +74,7 @@ namespace codex {
         template <typename>
         inline constexpr bool is_std_optional_v = false;
         template <typename T>
-        inline constexpr bool is_std_optional_v<std::optional<T>> = true;
+        inline constexpr bool is_std_optional_v<opt<T>> = true;
 
         // Only string-keyed maps are supported (the document model has no other notion).
         template <typename>
@@ -124,7 +124,7 @@ namespace codex {
             return *this;
         }
 
-        // Explicitly optional field (also handled automatically for std::optional members).
+        // Explicitly optional field (also handled automatically for opt members).
         template <typename T>
         Archive& optional(const std::string_view key, T& value)
         {

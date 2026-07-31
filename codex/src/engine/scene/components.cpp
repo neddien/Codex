@@ -243,7 +243,7 @@ namespace codex {
     {
     }
 
-    void RigidBody2DComponent::apply_force(const vec2& force, const std::optional<vec2> point) noexcept
+    void RigidBody2DComponent::apply_force(const vec2& force, const opt<vec2> point) noexcept
     {
         auto* body = reinterpret_cast<b2Body*>(runtime_body);
         body->ApplyForce(util::to_b2_vec2(force), (point) ? util::to_b2_vec2(*point) : body->GetWorldCenter(), true);
@@ -258,6 +258,7 @@ namespace codex {
         ar("high_velocity", high_velocity);
         ar("enabled", enabled);
         ar("gravity_scale", gravity_scale);
+        ar("filter", filter);
     }
 
     void RigidBody2DComponent::apply_torque(const f32 torque) noexcept
@@ -269,7 +270,7 @@ namespace codex {
         body->ApplyTorque(torque, true);
     }
 
-    void RigidBody2DComponent::apply_linear_impulse(const vec2& impulse, const std::optional<vec2> point)
+    void RigidBody2DComponent::apply_linear_impulse(const vec2& impulse, const opt<vec2> point)
     {
         cxassert(parent_, "Valid parent required");
         cxassert(runtime_body, "Valid runtime body required");
@@ -357,6 +358,36 @@ namespace codex {
         ar("offset", offset);
         ar("radius", radius);
         ar("physics_material", physics_material);
+    }
+
+    f32 RevoluteJoint2DComponent::joint_angle() const noexcept
+    {
+        b2RevoluteJoint* joint = reinterpret_cast<b2RevoluteJoint*>(runtime_joint);
+        return joint->GetJointAngle();
+    }
+
+    f32 RevoluteJoint2DComponent::joint_speed() const noexcept
+    {
+        b2RevoluteJoint* joint = reinterpret_cast<b2RevoluteJoint*>(runtime_joint);
+        joint->GetMotorSpeed();
+    }
+
+    void RevoluteJoint2DComponent::set_motor_speed(f32 deg_per_sec) noexcept
+    {
+        b2RevoluteJoint* joint = reinterpret_cast<b2RevoluteJoint*>(runtime_joint);
+        joint->SetMotorSpeed(math::to_radf(deg_per_sec));
+    }
+
+    void RevoluteJoint2DComponent::set_max_motor_torque(f32 torque) noexcept
+    {
+        b2RevoluteJoint* joint = reinterpret_cast<b2RevoluteJoint*>(runtime_joint);
+        joint->SetMaxMotorTorque(torque);
+    }
+
+    void RevoluteJoint2DComponent::set_motor_enabled(bool enabled) noexcept
+    {
+        b2RevoluteJoint* joint = reinterpret_cast<b2RevoluteJoint*>(runtime_joint);
+        joint->EnableMotor(enabled);
     }
 
     void RevoluteJoint2DComponent::archive_impl(Archive& ar)

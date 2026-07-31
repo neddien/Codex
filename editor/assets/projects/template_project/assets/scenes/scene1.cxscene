@@ -62,7 +62,7 @@
             {
                 "type": "NativeBehaviourComponent",
                 "scripts": {
-                    "PlayerController": "{\n    \"velocity_\": {\n        \"x\": 150.0,\n        \"y\": 150.0\n    },\n    \"current_velocity_\": {\n        \"x\": 0.0,\n        \"y\": 0.0\n    },\n    \"sub_\": {\n        \"x\": 10.0,\n        \"y\": 10.0,\n        \"z\": 0.0\n    },\n    \"lerp_\": 0.5,\n    \"fire_rate_\": 0.5,\n    \"projectile_\": {\n        \"path\": {\n            \"path\": \"prefabs/projectile.cxprefab\",\n            \"uuid\": \"589d-f524-3d2b9754\"\n        }\n    }\n}"
+                    "PlayerController": "{\n    \"velocity_\": {\n        \"x\": 150.0,\n        \"y\": 150.0\n    },\n    \"current_velocity_\": {\n        \"x\": 0.0,\n        \"y\": 0.0\n    },\n    \"sub_\": {\n        \"x\": 10.0,\n        \"y\": 10.0,\n        \"z\": 0.0\n    },\n    \"lerp_\": 0.5,\n    \"fire_rate_\": 0.5,\n    \"projectile_\": {\n        \"path\": {\n            \"path\": \"prefabs/projectile.cxprefab\",\n            \"uuid\": \"589d-f524-3d2b9754\"\n        }\n    },\n    \"entity_\": {\n        \"uuid\": \"0000-0000-00000000\"\n    }\n}"
                 }
             },
             {
@@ -73,7 +73,12 @@
                 "angular_damping": 0.10000000149011612,
                 "high_velocity": false,
                 "enabled": true,
-                "gravity_scale": 0.0
+                "gravity_scale": 0.0,
+                "filter": {
+                    "layer_bits": 0,
+                    "mask_bits": 0,
+                    "group_index": 0
+                }
             },
             {
                 "type": "BoxCollider2DComponent",
@@ -275,7 +280,12 @@
                 "angular_damping": 0.10000000149011612,
                 "high_velocity": false,
                 "enabled": true,
-                "gravity_scale": 1.0
+                "gravity_scale": 1.0,
+                "filter": {
+                    "layer_bits": 0,
+                    "mask_bits": 0,
+                    "group_index": 0
+                }
             },
             {
                 "type": "BoxCollider2DComponent",
@@ -343,6 +353,213 @@
                     "uuid": "e83f-6cfd-bce28950"
                 },
                 "children": []
+            }
+        ],
+        [
+            {
+                "type": "IDComponent",
+                "uuid": "593a-d345-203167fe"
+            },
+            {
+                "type": "TransformComponent",
+                "position": {
+                    "x": -181.34994506835938,
+                    "y": 178.75,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": 0.0,
+                    "y": -0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 1.0,
+                    "y": 0.9999998807907104,
+                    "z": 1.0
+                }
+            },
+            {
+                "type": "TagComponent",
+                "tag": "Entity 5"
+            },
+            {
+                "type": "SpriteRendererComponent",
+                "asset": {
+                    "path": "sprites/white.png",
+                    "uuid": "b317-06d9-e34f7620"
+                },
+                "texture_coords": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "w": 64.0,
+                    "h": 64.0
+                },
+                "size": {
+                    "x": 64.0,
+                    "y": 64.0
+                },
+                "colour": {
+                    "x": 1.0,
+                    "y": 1.0,
+                    "z": 1.0,
+                    "w": 1.0
+                },
+                "z_index": 0
+            },
+            {
+                "type": "RigidBody2DComponent",
+                "body_type": "Static",
+                "fixed_rotation": false,
+                "linear_damping": 0.0,
+                "angular_damping": 0.10000000149011612,
+                "high_velocity": false,
+                "enabled": true,
+                "gravity_scale": 1.0,
+                "filter": {
+                    "layer_bits": 1,
+                    "mask_bits": 1,
+                    "group_index": -1
+                }
+            },
+            {
+                "type": "BoxCollider2DComponent",
+                "offset": {
+                    "x": 0.0,
+                    "y": 0.0
+                },
+                "size": {
+                    "x": 32.0,
+                    "y": 32.0
+                },
+                "physics_material": {
+                    "density": 1.0,
+                    "friction": 0.5,
+                    "restitution": 0.5,
+                    "restitution_threshold": 0.5
+                }
+            },
+            {
+                "type": "HierarchyComponent",
+                "parent": {
+                    "uuid": "0000-0000-00000000"
+                },
+                "children": [
+                    {
+                        "uuid": "7e67-497d-6df5652f"
+                    }
+                ]
+            }
+        ],
+        [
+            {
+                "type": "IDComponent",
+                "uuid": "7e67-497d-6df5652f"
+            },
+            {
+                "type": "TransformComponent",
+                "position": {
+                    "x": 64.3387222290039,
+                    "y": 0.970550537109375,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": 0.0,
+                    "y": -0.0,
+                    "z": -90.0
+                },
+                "scale": {
+                    "x": 0.9999990463256836,
+                    "y": 0.9999990463256836,
+                    "z": 1.0
+                }
+            },
+            {
+                "type": "TagComponent",
+                "tag": "Entity 6"
+            },
+            {
+                "type": "SpriteRendererComponent",
+                "asset": {
+                    "path": "sprites/white.png",
+                    "uuid": "b317-06d9-e34f7620"
+                },
+                "texture_coords": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "w": 64.0,
+                    "h": 64.0
+                },
+                "size": {
+                    "x": 64.0,
+                    "y": 64.0
+                },
+                "colour": {
+                    "x": 1.0,
+                    "y": 0.0,
+                    "z": 0.0,
+                    "w": 1.0
+                },
+                "z_index": 0
+            },
+            {
+                "type": "RigidBody2DComponent",
+                "body_type": "Dynamic",
+                "fixed_rotation": false,
+                "linear_damping": 0.0,
+                "angular_damping": 0.10000000149011612,
+                "high_velocity": false,
+                "enabled": true,
+                "gravity_scale": 1.0,
+                "filter": {
+                    "layer_bits": 1,
+                    "mask_bits": 1,
+                    "group_index": -1
+                }
+            },
+            {
+                "type": "BoxCollider2DComponent",
+                "offset": {
+                    "x": 0.0,
+                    "y": 0.0
+                },
+                "size": {
+                    "x": 32.0,
+                    "y": 32.0
+                },
+                "physics_material": {
+                    "density": 1.0,
+                    "friction": 0.5,
+                    "restitution": 0.5,
+                    "restitution_threshold": 0.5
+                }
+            },
+            {
+                "type": "HierarchyComponent",
+                "parent": {
+                    "uuid": "593a-d345-203167fe"
+                },
+                "children": []
+            },
+            {
+                "type": "RevoluteJoint2DComponent",
+                "body_b": {
+                    "uuid": "593a-d345-203167fe"
+                },
+                "local_anchor_a": {
+                    "x": -31.0,
+                    "y": -32.0
+                },
+                "local_anchor_b": {
+                    "x": 32.0,
+                    "y": 32.0
+                },
+                "enable_limit": true,
+                "lower_angle": 0.0,
+                "upper_angle": 273.0,
+                "enable_motor": true,
+                "motor_speed": 16.0,
+                "max_motor_torque": 20.0,
+                "collide_connected": false
             }
         ]
     ]

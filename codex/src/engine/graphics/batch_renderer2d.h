@@ -63,7 +63,7 @@ namespace codex::gfx {
         static Shader*                  s_quad_shader_;
         static const scene::Camera*     s_current_camera_;
         static mat4                     s_current_camera_view_mat_;
-        static vec3                    s_current_camera_pos_;
+        static vec3                     s_current_camera_pos_;
         static std::vector<RenderBatch> s_batches_;
     };
 } // namespace codex::gfx

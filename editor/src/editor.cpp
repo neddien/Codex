@@ -9,7 +9,7 @@
 namespace codex::editor {
     namespace stdfs = std::filesystem;
 
-    std::optional<scene::EditorCamera> Editor::s_camera_          = std::nullopt;
+    opt<scene::EditorCamera> Editor::s_camera_          = std::nullopt;
     ImFont*                            Editor::s_large_icon_font_ = nullptr;
     ImFont*                            Editor::s_xl_icon_font_    = nullptr;
     ImFont*                            Editor::s_console_font_    = nullptr;

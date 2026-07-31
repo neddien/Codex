@@ -11,6 +11,8 @@
         "filter_mode": "Linear",
         "mipmap_mode": "None",
         "wrap_mode": "Mirror",
-        "format": "None"
+        "format": "None",
+        "chroma_inner_tolerance": 30.0,
+        "chroma_outer_tolerance": 70.0
     }
 }

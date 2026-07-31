@@ -10,18 +10,19 @@
 namespace codex::ax {
     using namespace FMOD;
 
-    static cc::Mutex<std::unordered_map<std::string, Studio::Bank*>> s_bank_map_{};
+    static std::recursive_mutex                           s_mutex;
+    static std::unordered_map<std::string, Studio::Bank*> s_bank_map{};
 
-    std::future<EventHandle> AudioManager::load_event_async(const std::string_view eventPath)
+    std::future<EventHandle> AudioManager::load_event_async(const std::string_view event_path)
     {
         return std::async(
             std::launch::async,
-            [eventPath]
+            [event_path]
             {
                 Studio::EventDescription* desc{};
-                Studio::System*           system = AudioSystem::get_fmod_system();
-                if (auto ret = system->getEvent(eventPath.data(), &desc); ret != FMOD_OK) {
-                    throw AudioException("Failed to find FMOD event '{}': Err code: {}", eventPath,
+                Studio::System*           system = AudioSystem::fmod_system();
+                if (auto ret = system->getEvent(event_path.data(), &desc); ret != FMOD_OK) {
+                    throw AudioException("Failed to find FMOD event '{}': Err code: {}", event_path,
                                          FMOD_ErrorString(ret));
                 }
 
@@ -42,57 +43,77 @@ namespace codex::ax {
 
                 Studio::EventInstance* inst{};
                 if (auto ret = desc->createInstance(&inst); ret != FMOD_OK) {
-                    throw AudioException("Failed to create instance for '{}': {}", eventPath, FMOD_ErrorString(ret));
+                    throw AudioException("Failed to create instance for '{}': {}", event_path, FMOD_ErrorString(ret));
                 }
 
                 return EventHandle{ inst };
             });
     }
 
-    EventHandle AudioManager::load_event(const std::string_view eventPath)
-    {
-        return load_event_async(eventPath).get();
-    }
+    EventHandle AudioManager::load_event(const std::string_view event_path)
+    { return load_event_async(event_path).get(); }
 
-    std::future<void> AudioManager::load_bank_async(const std::filesystem::path& path)
+    std::future<void> AudioManager::load_bank_async(const std::filesystem::path& bank_path)
     {
         auto future = std::async(
             std::launch::async,
-            [path]()
+            [bank_path]()
             {
-                if (!std::filesystem::exists(path)) {
-                    throw AudioException("Failed to load FMOD bank {}: No such file or directory.", path.string());
-                } else if (s_bank_map_->contains(path.string())) {
-                    throw AudioException("Failed to load FMOD bank {}: Bank has already been loaded.", path.string());
+                std::scoped_lock guard{ s_mutex };
+
+                if (!std::filesystem::exists(bank_path)) {
+                    throw AudioException("Failed to load FMOD bank {}: No such file or directory.", bank_path.string());
+                } else if (s_bank_map.contains(bank_path.string())) {
+                    throw AudioException("Failed to load FMOD bank {}: Bank has already been loaded.",
+                                         bank_path.string());
                 }
 
                 Studio::Bank*   bank{};
-                Studio::System* system   = AudioSystem::get_fmod_system();
-                auto            path_str = path.string();
+                Studio::System* system   = AudioSystem::fmod_system();
+                auto            path_str = bank_path.string();
 
                 if (const auto ret = system->loadBankFile(path_str.c_str(), FMOD_STUDIO_LOAD_BANK_NORMAL, &bank);
                     ret != FMOD_OK) {
                     throw AudioException("Failed to load FMOD bank {}: Err code: {}", path_str, FMOD_ErrorString(ret));
                 }
 
-                s_bank_map_->operator[](std::move(path_str)) = bank;
+                s_bank_map[std::move(path_str)] = bank;
             });
 
         return future;
     }
 
-    void AudioManager::load_bank(const std::filesystem::path& path)
+    void AudioManager::load_bank(const std::filesystem::path& bank_path)
     {
         // Cheap function, we can just await the async version of this method.
         // You will use the async version of this only for parallel loading.
-        load_bank_async(path).get();
+        load_bank_async(bank_path).get();
+    }
+
+    void AudioManager::unload_bank(const std::filesystem::path& bank_path)
+    {
+        std::scoped_lock guard{ s_mutex };
+        if (auto it = s_bank_map.find(bank_path.string()); it != s_bank_map.end()) {
+            it->second->unload();
+            s_bank_map.erase(it);
+        }
+
+        throw AudioException("Failed to unload bank {}: no such bank", bank_path.generic_string());
+    }
+
+    void AudioManager::unload_all()
+    {
+        std::scoped_lock guard{ s_mutex };
+        Studio::System*  system = AudioSystem::fmod_system();
+        system->unloadAll();
+        s_bank_map.clear();
     }
 
     std::vector<std::string> AudioManager::get_all_event_paths()
     {
+        std::scoped_lock         guard{ s_mutex };
         std::vector<std::string> paths;
-        auto                     lock = s_bank_map_.lock();
-        for (const auto& [_, bank] : *lock) {
+        for (const auto& [_, bank] : s_bank_map) {
             int event_count = 0;
             bank->getEventCount(&event_count);
             if (event_count <= 0)
@@ -114,13 +135,13 @@ namespace codex::ax {
         return paths;
     }
 
-    std::vector<EventParameterInfo> AudioManager::get_event_parameters(const std::string_view eventPath)
+    std::vector<EventParameterInfo> AudioManager::event_parameters(const std::string_view event_path)
     {
         std::vector<EventParameterInfo> params;
-        Studio::System*                 system = AudioSystem::get_fmod_system();
+        Studio::System*                 system = AudioSystem::fmod_system();
 
         Studio::EventDescription* desc{};
-        if (system->getEvent(eventPath.data(), &desc) != FMOD_OK)
+        if (system->getEvent(event_path.data(), &desc) != FMOD_OK)
             return params;
 
         int count = 0;
@@ -138,10 +159,10 @@ namespace codex::ax {
                 continue;
 
             params.push_back({
-                .name         = pdesc.name,
-                .minimum      = pdesc.minimum,
-                .maximum      = pdesc.maximum,
-                .defaultValue = pdesc.defaultvalue,
+                .name          = pdesc.name,
+                .minimum       = pdesc.minimum,
+                .maximum       = pdesc.maximum,
+                .default_value = pdesc.defaultvalue,
             });
         }
 
@@ -151,28 +172,28 @@ namespace codex::ax {
     void AudioManager::set_master_volume(const f32 volume)
     {
         Studio::Bus* masterBus{};
-        AudioSystem::get_fmod_system()->getBus("bus:/", &masterBus);
+        AudioSystem::fmod_system()->getBus("bus:/", &masterBus);
         masterBus->setVolume(volume);
     }
 
     void AudioManager::pause_all()
     {
         Studio::Bus* masterBus{};
-        AudioSystem::get_fmod_system()->getBus("bus:/", &masterBus);
+        AudioSystem::fmod_system()->getBus("bus:/", &masterBus);
         masterBus->setPaused(true);
     }
 
     void AudioManager::resume_all()
     {
         Studio::Bus* masterBus{};
-        AudioSystem::get_fmod_system()->getBus("bus:/", &masterBus);
+        AudioSystem::fmod_system()->getBus("bus:/", &masterBus);
         masterBus->setPaused(false);
     }
 
     void AudioManager::stop_all()
     {
         Studio::Bus* masterBus{};
-        AudioSystem::get_fmod_system()->getBus("bus:/", &masterBus);
+        AudioSystem::fmod_system()->getBus("bus:/", &masterBus);
         masterBus->stopAllEvents(FMOD_STUDIO_STOP_ALLOWFADEOUT);
     }
 } // namespace codex::ax

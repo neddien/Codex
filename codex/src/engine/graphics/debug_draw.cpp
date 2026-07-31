@@ -8,7 +8,7 @@
 namespace codex::gfx {
     Shader* DebugDraw::s_shader_ = nullptr;
 
-    void DebugDraw::init(fs::VirtualFilesystem& vfs, const std::string_view path)
+    void DebugDraw::init(fs::VirtualFilesystem& vfs, std::string_view path)
     {
         if (!s_shader_) {
             auto fh = vfs.open(std::string{ path });
@@ -120,13 +120,13 @@ namespace codex::gfx {
         vbo_->unbind();
     }
 
-    void DebugDraw::draw_line_2d(const vec2 source, const vec2 destination, const vec4 colour, const i32 lifeTime)
+    void DebugDraw::draw_line_2d(const vec2& source, const vec2& destination, const vec4& colour, i32 lifetime)
     {
         if (lines_.size() < LINE2D_MAX_COUNT)
-            lines_.emplace_back(source, destination, colour, lifeTime);
+            lines_.emplace_back(source, destination, colour, lifetime);
     }
 
-    void DebugDraw::draw_rect_2d(const rect rect, const f32 angle, const vec4 colour, const i32 lifeTime)
+    void DebugDraw::draw_rect_2d(const rect& rect, f32 angle, const vec4& colour, i32 lifetime)
     {
         if (lines_.size() + 4 < LINE2D_MAX_COUNT) {
             const auto min = vec2{ rect.x - rect.w / 2.0f, rect.y - rect.h / 2.0f };
@@ -142,25 +142,67 @@ namespace codex::gfx {
             }
 
             for (usize i = 1; i < array_length(lines); ++i)
-                lines_.emplace_back(lines[i - 1], lines[i], colour, lifeTime);
-            lines_.emplace_back(lines[3], lines[0], colour, lifeTime);
+                lines_.emplace_back(lines[i - 1], lines[i], colour, lifetime);
+            lines_.emplace_back(lines[3], lines[0], colour, lifetime);
         }
     }
 
-    void DebugDraw::draw_circle_2d(const vec2 centrePos, const i32 radius, const f32 angle, const i32 segments,
-                                   const vec4 colour, const i32 lifeTime)
+    void DebugDraw::draw_circle_2d(const vec2& centre_pos, f32 radius, f32 angle, i32 segments, const vec4& colour,
+                                   i32 lifetime)
     {
         if (lines_.size() + segments < LINE2D_MAX_COUNT) {
             const auto segment_angle   = 360.0f / segments;
-            auto       current_segment = glm::rotate(vec2{ 0.0f, radius }, -angle);
+            vec2       current_segment = glm::rotate(vec2{ 0.0f, radius }, -angle);
             for (auto i = 0; i < segments; ++i) {
-                const auto src  = current_segment;
+                const vec2 src  = current_segment;
                 current_segment = glm::rotate(current_segment, math::to_radf(segment_angle));
-                lines_.emplace_back(centrePos + src, centrePos + current_segment, colour, lifeTime);
+                lines_.emplace_back(centre_pos + src, centre_pos + current_segment, colour, lifetime);
             }
 
-            lines_.emplace_back(centrePos, centrePos + glm::rotate(vec2{ radius, 0.0f }, math::to_radf(angle)), colour,
-                                lifeTime);
+            // lines_.emplace_back(centre_pos, centre_pos + glm::rotate(vec2{ radius, 0.0f }, math::to_radf(angle)),
+            //                     colour, lifetime);
+        }
+    }
+
+    void DebugDraw::draw_arc_2d(const vec2& centre_pos, f32 start_deg, f32 end_deg, f32 radius, i32 segments,
+                                const vec4& colour, i32 lifetime)
+    {
+        if (lines_.size() + segments < LINE2D_MAX_COUNT) {
+            const auto segment_angle   = (end_deg - start_deg) / segments;
+            vec2       current_segment = glm::rotate(
+                vec2{
+                    radius,
+                    .0f,
+                },
+                math::to_radf(start_deg));
+
+            lines_.emplace_back(centre_pos, centre_pos + current_segment, colour, lifetime);
+
+            for (i32 i = 0; i < segments; ++i) {
+                const vec2 src  = current_segment;
+                current_segment = glm::rotate(current_segment, math::to_radf(segment_angle));
+                lines_.emplace_back(centre_pos + src, centre_pos + current_segment, colour, lifetime);
+            }
+
+            lines_.emplace_back(centre_pos, centre_pos + current_segment, colour, lifetime);
+        }
+    }
+
+    void DebugDraw::draw_cone_2d(const vec2& centre_pos, f32 radius, f32 angle, i32 segments, const vec4& colour,
+                                 i32 lifetime)
+    {
+        if (lines_.size() + segments < LINE2D_MAX_COUNT) {
+            const auto segment_angle   = angle / segments;
+            vec2       current_segment = glm::rotate(vec2{ 0.0f, radius }, -angle);
+            // lines_.emplace_back(centre_pos, );
+            for (auto i = 0; i < segments; ++i) {
+                const vec2 src  = current_segment;
+                current_segment = glm::rotate(current_segment, math::to_radf(segment_angle));
+                lines_.emplace_back(centre_pos + src, centre_pos + current_segment, colour, lifetime);
+            }
+
+            lines_.emplace_back(centre_pos, centre_pos + glm::rotate(vec2{ radius, 0.0f }, math::to_radf(angle)),
+                                colour, lifetime);
         }
     }
 } // namespace codex::gfx

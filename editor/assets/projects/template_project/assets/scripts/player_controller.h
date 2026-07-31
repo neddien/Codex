@@ -35,4 +35,7 @@ private:
 
     RF_PROPERTY(DisplayName = "Projectile Prefab", Category = "Shooting")
     Asset<scene::Prefab> projectile_;
+
+    RF_PROPERTY(DisplayName = "ent", Category = "None")
+    Entity entity_;
 };

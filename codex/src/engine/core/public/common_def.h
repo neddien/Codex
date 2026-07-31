@@ -93,6 +93,11 @@ namespace codex {
     using f128    = long double;
     using object  = void*;
 
+    template <typename T>
+    using opt = std::optional<T>;
+    template <typename T, typename U>
+    using pair = std::pair<T, U>;
+
     constexpr object nullobj = nullptr;
 
     template <typename Derived, typename Base>

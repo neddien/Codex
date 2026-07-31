@@ -13,7 +13,7 @@ namespace codex::editor {
         Box<SceneEditorView> scene_editor_view_ = nullptr;
 
     private:
-        static std::optional<scene::EditorCamera> s_camera_;
+        static opt<scene::EditorCamera> s_camera_;
         static ImFont*                            s_large_icon_font_;
         static ImFont*                            s_xl_icon_font_;
         static ImFont*                            s_console_font_;
