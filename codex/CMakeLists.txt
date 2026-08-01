@@ -426,9 +426,6 @@ target_compile_definitions(
 
 # ======================= # INSTALLATION # ======================= #
 if(DEFINED CX_PLATFORM_WINDOWS)
-  install(TARGETS glm CodexEngine DESTINATION bin)
-  install(DIRECTORY "${_fmt_bin_dir}/" DESTINATION bin FILES_MATCHING PATTERN "fmt*.dll")
-  install(DIRECTORY "${_sdl_bin_dir}/" DESTINATION bin FILES_MATCHING PATTERN "SDL2*.dll")
   install(FILES "${FMOD_CORE_DLL_PATH}" "${FMOD_STUDIO_DLL_PATH}" DESTINATION bin)
 
   # Program Files (or same location as the binary) for unmodifiable file data.
@@ -438,9 +435,6 @@ elseif(DEFINED CX_PLATFORM_UNIX)
     TARGETS CodexEngine
             CodexEngine-static
     DESTINATION lib)
-
-  install(DIRECTORY "${_fmt_lib_dir}/" DESTINATION lib FILES_MATCHING PATTERN "libfmt*.so*")
-  install(DIRECTORY "${_sdl_lib_dir}/" DESTINATION lib FILES_MATCHING PATTERN "libSDL2*.so*")
 
   # Install FMOD libraries and create SONAME symlinks.
   install(FILES "${FMOD_CORE_LIB_DIR}/${FMOD_CORE_LIB_FILE}" DESTINATION lib)

@@ -156,9 +156,6 @@ foreach(PROJECT_DIR ${PROJECT_DIRS})
           ${CMAKE_COMMAND} -E copy
           "$<TARGET_FILE_DIR:CodexEngine>/CodexEngine.lib"
           "${CMAKE_CURRENT_SOURCE_DIR}/assets/projects/${PROJECT_DIR}/lib/CodexEngine.lib"
-        COMMAND
-          ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:fmt>"
-          "${CMAKE_CURRENT_SOURCE_DIR}/assets/projects/${PROJECT_DIR}/lib/"
         COMMENT ":: Copying object libraries to ${PROJECT_DIR}/lib/...")
     endif()
 

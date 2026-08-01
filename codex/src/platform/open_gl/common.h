@@ -14,7 +14,7 @@
 #include <glad/glad.h>
 #endif
 
-#define MGL_ASSERT(...) CX_ASSERT(__VA_ARGS__)
+#define MGL_ASSERT(x, msg) CX_ASSERT(x, msg)
 
 #define GL_ClearError() while (glGetError() != 0)
 #ifdef MGL_DEBUG

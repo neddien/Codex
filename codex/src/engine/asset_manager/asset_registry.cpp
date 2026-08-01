@@ -238,7 +238,7 @@ namespace codex {
                 orphan_metas_.push_back(Box<AssetMetadata>::make(std::move(metadata)));
 
                 // Delete orphaned meta from disk
-                if (vfs_.rm(path))
+                if (vfs_.rm(path.generic_string()))
                     log(Debug, "Orphan meta deleted: {}", path.generic_string());
                 else
                     log(Debug, "Failed to delete orphaned meta: {}", path.generic_string());
@@ -266,7 +266,7 @@ namespace codex {
 
         const auto ext = path.extension();
         // It's a possible asset
-        auto loader = AssetManager::loader_by_ext(ext);
+        auto loader = AssetManager::loader_by_ext(ext.generic_string());
         if (!loader) {
             log(Error, "no loader associated with extension: {}", ext.generic_string());
             co_return;
@@ -464,8 +464,9 @@ namespace codex {
         for (const Box<AssetMetadata>& e : metas_) {
             // TODO: You should probably do asset_root + e->path.path() when switching away from /editor
             if (!e->null_asset) {
-                const std::string source = stdfs::path{ root_path_ } / e->storage_path;
-                if (!vfs_.cp(source, stdfs::path{ vfs_path } / e->path.uuid().to_string())) {
+                const stdfs::path source = stdfs::path{ root_path_ } / e->storage_path;
+                const stdfs::path dest   = stdfs::path{ vfs_path } / e->path.uuid().to_string();
+                if (!vfs_.cp(source.generic_string(), dest.generic_string())) {
                     // TODO: I think you're supposed to throw an exception here instead of just returning
                     log(Error, "Failed to copy asset file: {} for asset cooking", e->path);
                     co_return;

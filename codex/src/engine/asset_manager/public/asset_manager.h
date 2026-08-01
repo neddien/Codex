@@ -8,7 +8,6 @@
 #include <engine/core/public/system.h>
 #include <engine/core/public/uuid.h>
 #include <engine/filesystem/public/file_handle.h>
-#include <engine/graphics/public/texture2d.h>
 #include <engine/memory/public/memory.h>
 
 namespace codex {

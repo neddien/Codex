@@ -108,10 +108,10 @@ namespace codex::fs {
         std::shared_lock lock{ mutex_ };
 
         LPFILETIME mtime{};
-        const u64  time = (u64)mtime.dwHighDateTime << (sizeof(u32) * 8) | (u64)mtime.dwLowDateTime;
-        if (!GetFileTime(handle_, nullptr, nullptr, &mtime))
+        if (!GetFileTime(handle_, nullptr, nullptr, mtime))
             return 0;
 
+        const u64 timex = (u64)mtime->dwHighDateTime << (sizeof(u32) * 8) | (u64)mtime->dwLowDateTime;
         return util::chron::nt_to_unix(timex);
     }
 

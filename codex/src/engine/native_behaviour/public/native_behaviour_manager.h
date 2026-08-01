@@ -29,7 +29,7 @@ namespace codex {
 
         // While NBMan does implement the System<T> trait meaning its ctors are already defined
         // but we're gonna need to define them here explicitly to prevent the compiler from
-        // synthesizes them inline and cuasing compile errors in the public domain because of DLib.
+        // synthesizing them into inline and causing compile errors in the public domain because of DLib.
         // More specifically editor projects fail to compile.
     public:
         NBMan() noexcept;

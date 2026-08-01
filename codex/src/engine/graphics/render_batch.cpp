@@ -1,6 +1,7 @@
 #include "render_batch.h"
 
 #include <platform/open_gl/graphics_capabilities.h>
+#include <platform/open_gl/texture.h>
 
 namespace codex::gfx {
     RenderBatch::RenderBatch(const i32 max_quad_count, Shader* shader)

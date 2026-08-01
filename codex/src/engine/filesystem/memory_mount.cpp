@@ -332,7 +332,7 @@ namespace codex::fs {
                 std::scoped_lock guard{ dit->second.mutex };
 
                 dit->second.desc      = std::move(sit->second.desc);
-                dit->second.desc.path = ndpath;
+                dit->second.desc.path = ndpath.generic_string();
             }
             // f : d
             else if (auto dit = dirs_.find(ndpath_str); dit != dirs_.end()) {

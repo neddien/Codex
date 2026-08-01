@@ -24,7 +24,7 @@ namespace codex {
             u8  rev;
             u16 build;
 
-            [[nodiscard]] constexpr std::string to_string() const noexcept
+            [[nodiscard]] inline std::string to_string() const noexcept
             {
                 return fmt::format("{}.{}.{}+{}", maj, min, rev, build);
             }

@@ -26,6 +26,7 @@
 #include <typeinfo>
 #include <utility>
 #include <variant>
+#include <optional>
 
 // Concurrency
 #include <atomic>
@@ -35,6 +36,7 @@
 #include <mutex>
 #include <shared_mutex>
 #include <thread>
+#include <semaphore>
 
 // Legacy
 #include <charconv>
@@ -42,11 +44,11 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <ctime>
 
 // Collections
 #include <array>
 #include <bitset>
-#include <flat_map>
 #include <initializer_list>
 #include <map>
 #include <queue>
@@ -54,6 +56,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include <stack>
 
 // Reflection
 #include <source_location>
@@ -75,7 +78,6 @@
 #endif
 
 #define WIN32_LEAN_AND_MEAN
-#include <shl_obj.h>
 #include <windows.h>
 #if defined(CreateWindow)
 #undef CreateWindow
