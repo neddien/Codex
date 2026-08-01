@@ -32,7 +32,7 @@
         },
         "native_modules": []
     },
-    "vfs_root": "/editor",
+    "vfs_root": "/edit",
     "last_asset_path": "",
     "last_open_scene": "scenes/scene1.cxscene"
 }

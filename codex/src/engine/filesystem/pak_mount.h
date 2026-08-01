@@ -16,7 +16,7 @@ namespace codex::fs {
         [[nodiscard]] i32                      priority() const noexcept override;
         bool                                   mkdir(const std::string& rel_path) noexcept override;
         [[nodiscard]] std::vector<std::string> list(const std::string& rel_path,
-                                                    const ListOptions opts = ListOptions::None) const noexcept override;
+                                                    const ListOptions  opts = ListOptions::None) const override;
         [[nodiscard]] bool                     directory(const std::string& rel_path) const noexcept override;
         [[nodiscard]] bool                     empty(const std::string& rel_path) const noexcept override;
         [[nodiscard]] u64                      chunk_size() const noexcept;

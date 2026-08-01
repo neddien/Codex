@@ -4,12 +4,13 @@
 #include <engine/audio/public/audio.h>
 
 // Core
+#include <engine/core/public/archive.h>
+#include <engine/core/public/binary_archive.h>
 #include <engine/core/public/common_def.h>
 #include <engine/core/public/exception.h>
 #include <engine/core/public/geometry.h>
 #include <engine/core/public/input.h>
 #include <engine/core/public/serialization_manager.h>
-#include <engine/core/public/archive.h>
 
 // Asset Manager
 #include <engine/asset_manager/public/asset_manager.h>

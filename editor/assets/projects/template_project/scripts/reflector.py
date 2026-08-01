@@ -53,12 +53,10 @@ class PropertyInfo:
             "bool": "Bool",
             "std::string": "String",
             "std::basic_string<char>": "String",
-            "Vector3f": "Vector3f",
-            "Vector4f": "Vector4f",
-            "Vector2f": "Vector2f",
-            "Vector3": "Vector3",
-            "Vector4": "Vector4",
-            "Vector2": "Vector2",
+            "vec4": "Vector4f",
+            "vec2": "Vector2f",
+            "ivec4": "Vector4",
+            "ivec2": "Vector2",
         }
 
         return type_map.get(base_type, "UserDefined")
@@ -398,12 +396,12 @@ class LibclangReflectionParser:
             '-Df32=float',
             '-Df64=double',
             '-Dusize=size_t',
-            '-DVector3f=float[3]',
-            '-DVector2f=float[2]',
-            '-DVector4f=float[4]',
-            '-DVector3=double[3]',
-            '-DVector2=double[2]',
-            '-DVector4=double[4]',
+            '-Dvec3=float[3]',
+            '-Dvec2=float[2]',
+            '-Dvec4=float[4]',
+            '-Divec3=int[3]',
+            '-Divec2=int[2]',
+            '-Divec4=int[4]',
         ])
 
         # On non-Windows, add clang's built-in headers for stddef.h etc.
@@ -711,6 +709,34 @@ static bool s_{self.class_info.name}_Registered = []() {{
     return true;
 }}();"""
 
+    @staticmethod
+    def _canonical_base(prop: PropertyInfo) -> str:
+        """Strip const/&/* qualifiers off the canonical type spelling."""
+        return prop.canonical_type.replace('const ', '').replace('&', '').replace('*', '').strip()
+
+    def _is_entity_property(self, prop: PropertyInfo) -> bool:
+        """A scalar codex::Entity field (drag-drop entity reference)."""
+        if prop.is_array:
+            return False
+        return self._canonical_base(prop) in ('codex::Entity', 'Entity')
+
+    def _generate_entity_field(self, prop: PropertyInfo) -> List[str]:
+        # An Entity is not serializable as a whole outside of Scene, so a reflected Entity
+        # field is stored as a UUID reference. On load the target may not exist yet (it can
+        # appear later in the scene), so the UUID is queued in pending_entity_refs_ and
+        # resolved once the whole scene has loaded, by NativeBehaviourComponent::attach_pending().
+        # A null UUID (0) resolves to an invalid Entity, so no special-casing is needed here.
+        name = prop.name
+        ref = f"__cx_{name}_ref"
+        return [
+            f'    {{',
+            f'        codex::UUID {ref} = (ar.saving() && static_cast<bool>({name})) ? {name}.uuid() : codex::UUID{{ 0 }};',
+            f'        ar("{name}", {ref});',
+            f'        if (ar.loading())',
+            f'            pending_entity_refs_[std::addressof({name})] = {ref};',
+            f'    }}',
+        ]
+
     def _generate_archive_method(self) -> str:
         # One bidirectional method: ar("key", field) saves or loads depending on the
         # backend. Containers (e.g. std::vector) are handled automatically by the Archive
@@ -725,7 +751,10 @@ static bool s_{self.class_info.name}_Registered = []() {{
             lines.append("")
 
         for prop in self.class_info.properties:
-            lines.append(f'    ar("{prop.name}", {prop.name});')
+            if self._is_entity_property(prop):
+                lines.extend(self._generate_entity_field(prop))
+            else:
+                lines.append(f'    ar("{prop.name}", {prop.name});')
 
         lines.append("}")
         return "\n".join(lines)
@@ -736,7 +765,13 @@ static bool s_{self.class_info.name}_Registered = []() {{
             f'    static codex::rf::TypeInfo type_info("{self.class_info.name}");',
             "    static bool initialized = false;",
             "    ",
-            "    if (!initialized) {"
+            "    if (!initialized) {",
+            # Properties are addressed by an instance-relative offset, not an absolute
+            # address: TypeInfo is per-type (a static) but an address is per-instance, so
+            # a stored address would freeze to whichever instance first ran this and alias
+            # every other instance. The offset is instance-invariant, computed here from a
+            # live `this` (never offsetof, which is UB on these non-standard-layout types).
+            "        const codex::uintptr base = reinterpret_cast<codex::uintptr>(this);"
         ]
 
         for prop in self.class_info.properties:
@@ -749,7 +784,7 @@ static bool s_{self.class_info.name}_Registered = []() {{
             lines.append(f'        type_info.add_property(')
             lines.append(f'            "{prop.name}",')
             lines.append(f'            codex::rf::type_of({prop.name}),')
-            lines.append(f'            offsetof({self.class_info.name}, {prop.name}),')
+            lines.append(f'            reinterpret_cast<codex::uintptr>(std::addressof({prop.name})) - base,')
             lines.append(f'            "{display_name}",')
             lines.append(f'            "{category}",')
             lines.append(f'            "{tooltip}",')
@@ -777,12 +812,12 @@ static bool s_{self.class_info.name}_Registered = []() {{
             "bool": "false",
             "std::string": '""',
             "std::basic_string<char>": '""',
-            "Vector3": "Vector3()",
-            "Vector4": "Vector4()",
-            "Vector2": "Vector2()",
-            "Vector3f": "Vector3f()",
-            "Vector4f": "Vector4f()",
-            "Vector2f": "Vector2f()",
+            "ivec3": "ivec3()",
+            "ivec4": "ivec4()",
+            "ivec2": "ivec2()",
+            "vec3": "vec3()",
+            "vec4": "vec4()",
+            "vec2": "vec2()",
         }
         return defaults.get(clean_type, f"{clean_type}()")
 

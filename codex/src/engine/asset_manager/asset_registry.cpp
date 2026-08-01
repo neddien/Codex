@@ -11,6 +11,7 @@ namespace codex {
     namespace stdfs = std::filesystem;
 
     namespace {
+        // TODO: These utility functions need to be consolidated.
         stdfs::path remove_prefix(const stdfs::path& path, const stdfs::path& prefix)
         {
             auto [p, pre] = std::mismatch(path.begin(), path.end(), prefix.begin(), prefix.end());
@@ -45,6 +46,56 @@ namespace codex {
         return ~crc;
     };
 
+    AssetMetadata::AssetMetadata(const AssetMetadata& other) noexcept
+        : path{ other.path }
+        , storage_path{ other.storage_path }
+        , type{ other.type }
+        , checksum{ other.checksum }
+        , last_modified{ other.last_modified }
+        , size{ other.size }
+        , dependencies{ other.dependencies }
+        , null_asset{ other.null_asset }
+        , dirty{ other.dirty }
+    {
+        if (other.import_settings)
+            import_settings = other.import_settings->clone();
+    }
+
+    AssetMetadata::AssetMetadata(AssetMetadata&& other) noexcept
+        : path{ std::move(other.path) }
+        , storage_path(std::move(other.storage_path))
+        , type{ std::move(other.type) }
+        , checksum{ other.checksum }
+        , last_modified{ other.last_modified }
+        , size{ other.size }
+        , import_settings{ std::move(other.import_settings) }
+        , dependencies{ std::move(other.dependencies) }
+        , null_asset{ other.null_asset }
+        , dirty{ other.dirty }
+    {
+    }
+
+    AssetMetadata& AssetMetadata::operator=(const AssetMetadata& other) noexcept
+    { return AssetMetadata{ other }.swap(*this); }
+
+    AssetMetadata& AssetMetadata::operator=(AssetMetadata&& other) noexcept
+    { return AssetMetadata{ std::move(other) }.swap(*this); }
+
+    AssetMetadata& AssetMetadata::swap(AssetMetadata& other) noexcept
+    {
+        std::swap(path, other.path);
+        std::swap(storage_path, other.storage_path);
+        std::swap(type, other.type);
+        std::swap(last_modified, other.last_modified);
+        std::swap(checksum, other.checksum);
+        std::swap(size, other.size);
+        import_settings.swap(other.import_settings);
+        std::swap(dependencies, other.dependencies);
+        std::swap(null_asset, other.null_asset);
+        std::swap(dirty, other.dirty);
+        return *this;
+    }
+
     AssetRegistry::AssetRegistry(fs::VirtualFilesystem& vfs, std::string_view root_path) noexcept
         : vfs_{ vfs }
         , root_path_{ root_path }
@@ -60,6 +111,8 @@ namespace codex {
     void AssetRegistry::move_asset(const AssetPath& path, const std::string& new_path)
     {
         std::scoped_lock guard{ mutex_ };
+        (void)path;
+        (void)new_path;
     }
 
     void AssetRegistry::repath(const AssetPath& path, const std::string& new_path)
@@ -418,6 +471,10 @@ namespace codex {
 
         // TODO: Threaded Parallel range based loop
         // Drop the const here cause we're only serializing.
+        usize meta_count = std::accumulate(metas_.begin(), metas_.end(), 0, [](u64 acc, const Box<AssetMetadata>& meta)
+                                           { return (meta and not meta->null_asset) ? ++acc : acc; });
+
+        binsd.begin_array("metadatas", meta_count);
         for (Box<AssetMetadata>& e : const_cast<AssetRegistry*>(this)->metas_) {
             if (!e->null_asset) {
                 auto cpy = Box<AssetMetadata>::make(*e);
@@ -428,6 +485,7 @@ namespace codex {
                 cpy->archive(ar);
             }
         }
+        binsd.end_array();
 
         std::vector<u8> buffer = binsd.take_buffer();
         auto            fh = vfs_.open(vfs_path, { fs::FileMode::Create | fs::FileMode::Write | fs::FileMode::Trunc });
@@ -472,6 +530,39 @@ namespace codex {
                     co_return;
                 }
             }
+        }
+    }
+
+    void AssetRegistry::from_manifest(const std::string& path) noexcept
+    {
+        std::scoped_lock guard{ mutex_ };
+
+        if (!vfs_.exists(path)) {
+            if (vfs_.is_directory(path)) {
+                log(Error, "{}: is a directory not a manifest file");
+            }
+        }
+
+        if (auto fh = vfs_.open(path, { fs::FileMode::Read }); fh) {
+            std::vector<u8> buf(fh->size());
+
+            fh->read(buf.data(), buf.size());
+
+            BinaryArchiveBackend binsd{ buf };
+            Archive              ar{ binsd };
+
+            usize meta_count;
+            binsd.begin_array("metadatas", meta_count);
+            for (usize i = 0; i < meta_count; ++i) {
+                AssetMetadata meta;
+                meta.archive(ar);
+                append_meta_nolock(std::move(meta));
+            }
+            binsd.end_array();
+
+            log(Info, "Asset registry loaded from manifest");
+        } else {
+            log(Error, "Failed to create registry from manifest file: {}", path);
         }
     }
 

@@ -5,12 +5,14 @@
     "type": "Texture2D",
     "checksum": 1622483018,
     "size": 15587,
-    "last_modified": 1782504462,
+    "last_modified": 1782926031,
     "dependencies": [],
     "import_settings": {
         "filter_mode": "Nearest",
         "mipmap_mode": "None",
         "wrap_mode": "Mirror",
-        "format": "None"
+        "format": "None",
+        "chroma_inner_tolerance": 30.0,
+        "chroma_outer_tolerance": 70.0
     }
 }

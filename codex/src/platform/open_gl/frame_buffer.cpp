@@ -30,7 +30,7 @@ namespace codex::opengl {
                     case TextureFormat::Depth32F: return GL_DEPTH_ATTACHMENT;
                     case TextureFormat::Depth24Stencil8:
                     case TextureFormat::Depth32FStencil8: return GL_DEPTH_STENCIL_ATTACHMENT;
-                    default: CX_ASSERT(false, "Bad texture format."); return (GLenum)GL_INVALID_ENUM;
+                    default: cxassert(false, "Bad texture format."); return (GLenum)GL_INVALID_ENUM;
                 }
             }
 
@@ -161,10 +161,10 @@ namespace codex::opengl {
 
         if (!colour_attachments_.empty()) {
             GL_Call(glBindFramebuffer(GL_FRAMEBUFFER, renderer_id_));
-            CX_ASSERT(colour_attachments_.size() < MAX_COLOUR_ATTACHMENT_COUNT,
-                      "Cannot have more than " + std::to_string(MAX_COLOUR_ATTACHMENT_COUNT) + " colour attachments.");
-            CX_ASSERT(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE,
-                      "Error: Framebuffer is not complete.");
+            cxassert(colour_attachments_.size() < MAX_COLOUR_ATTACHMENT_COUNT,
+                     "Cannot have more than {} colour attachments.", MAX_COLOUR_ATTACHMENT_COUNT);
+            cxassert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE,
+                     "Error: Framebuffer is not complete.");
 
             GLenum buffers[MAX_COLOUR_ATTACHMENT_COUNT];
             for (int i = 0; i < MAX_COLOUR_ATTACHMENT_COUNT; ++i)
@@ -198,7 +198,7 @@ namespace codex::opengl {
 
     int FrameBuffer::read_pixel(const u32 index, const i32 x, const i32 y)
     {
-        CX_ASSERT(index < colour_attachment_ids_.size(), "Index outside bounds of attachments.");
+        cxassert(index < colour_attachment_ids_.size(), "Index outside bounds of attachments.");
         GL_Call(glReadBuffer(GL_COLOR_ATTACHMENT0 + index));
         int pixel_data;
         GL_Call(glReadPixels(x, y, 1, 1, GL_RED_INTEGER, GL_INT, &pixel_data));
@@ -241,7 +241,7 @@ namespace codex::opengl {
             case TextureFormat::Depth24Stencil8: return GL_UNSIGNED_INT_24_8;
             case TextureFormat::RGB32F: return GL_FLOAT;
             case TextureFormat::RGBA8: return GL_UNSIGNED_BYTE;
-            default: CX_ASSERT(false, "Bad texture format.");
+            default: cxassert(false, "Bad texture format.");
         }
         return (GLenum)0;
     }

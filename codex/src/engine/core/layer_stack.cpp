@@ -3,10 +3,17 @@
 namespace codex {
     LayerStack::~LayerStack()
     {
-        for (auto layer : layers_) {
+        clear();
+    }
+
+    void LayerStack::clear() noexcept
+    {
+        for (auto* layer : layers_) {
             layer->on_detach();
             delete layer;
         }
+        layers_.clear();
+        layer_pointer_ = 0;
     }
 
     void LayerStack::push_layer(Layer* layer)

@@ -4,16 +4,25 @@
 #include <platform/open_gl/geometry.h>
 
 namespace codex::math {
-    using Matrix4f = glm::mat4;
-    using Matrix2f = glm::mat2;
-    using Vector2f = glm::vec2;
-    using Vector3f = glm::vec3;
-    using Vector4f = glm::vec4;
-    using Vector2  = glm::ivec2;
-    using Vector3  = glm::ivec3;
-    using Vector4  = glm::ivec4;
-    using Rect     = opengl::Rect;
-    using Rectf    = opengl::Rectf;
+    using mat4  = glm::mat4;
+    using mat2  = glm::mat2;
+    using vec2  = glm::vec2;
+    using vec3  = glm::vec3;
+    using vec4  = glm::vec4;
+    using ivec2 = glm::ivec2;
+    using ivec3 = glm::ivec3;
+    using ivec4 = glm::ivec4;
+    using quat  = glm::quat;
+    using fquat = glm::fquat;
+    using rect  = opengl::rect;
+    using irect = opengl::irect;
+
+    struct transform
+    {
+        vec3 position{ 0.0f };
+        vec3 rotation{ 0.0f };
+        vec3 scale{ 1.0f, 1.0f, 1.0f };
+    };
 } // namespace codex::math
 
 using namespace codex::math;

@@ -19,7 +19,7 @@ namespace codex::sys {
     struct ProcessInfo
     {
         std::string                command;
-        std::optional<std::string> cwd              = std::nullopt;
+        opt<std::string> cwd              = std::nullopt;
         bool                       redirect_stdin   = false;
         bool                       redirect_stdout  = false;
         bool                       redirect_stderr  = false;
@@ -27,6 +27,7 @@ namespace codex::sys {
         bool                       create_window    = true;
         bool                       separate_console = false;
         bool                       shell_open       = false;
+        bool                       detached         = false;
         WindowState                window_state     = WindowState::Normal;
         std::function<void(i32)>   on_exit          = nullptr;
     };

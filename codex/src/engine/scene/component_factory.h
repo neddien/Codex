@@ -1,7 +1,7 @@
 #pragma once
 
-#include <engine/core/public/exception.h>
 #include <engine/core/public/archive.h>
+#include <engine/core/public/exception.h>
 #include <engine/native_behaviour/public/native_behaviour.h>
 #include <engine/scene/public/components.h>
 #include <engine/scene/public/entity.h>
@@ -22,6 +22,7 @@ namespace codex {
             deser_factories_[std::string{ type_name }] = [](Archive& ar, Entity entity)
             {
                 T component;
+                component.parent_ = entity;
                 component.archive(ar);
                 entity.add_or_replace_component<T>(std::move(component));
             };
@@ -70,11 +71,13 @@ namespace codex {
         CX_REGISTER_COMPONENT(RigidBody2DComponent);
         CX_REGISTER_COMPONENT(BoxCollider2DComponent);
         CX_REGISTER_COMPONENT(CircleCollider2DComponent);
+        CX_REGISTER_COMPONENT(RevoluteJoint2DComponent);
         CX_REGISTER_COMPONENT(GridRendererComponent);
         CX_REGISTER_COMPONENT(TilemapComponent);
         CX_REGISTER_COMPONENT(TilesetAnimationComponent);
         CX_REGISTER_COMPONENT(AudioSourceComponent);
         CX_REGISTER_COMPONENT(AudioListenerComponent);
+        CX_REGISTER_COMPONENT(HierarchyComponent);
     }
 
     template <typename... Components>
@@ -88,7 +91,7 @@ namespace codex {
         ComponentGroup<IDComponent, TransformComponent, TagComponent, SpriteRendererComponent, NativeBehaviourComponent,
                        CameraComponent, RigidBody2DComponent, BoxCollider2DComponent, CircleCollider2DComponent,
                        GridRendererComponent, TilemapComponent, TilesetAnimationComponent, AudioSourceComponent,
-                       AudioListenerComponent>;
+                       AudioListenerComponent, HierarchyComponent, RevoluteJoint2DComponent>;
 
     ///////////////////////////////////////////////////////////////////////////////
 } // namespace codex

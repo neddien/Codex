@@ -12,10 +12,10 @@ namespace codex::ax {
 
     struct SpatialAttributes
     {
-        Vector3f position{};
-        Vector3f velocity{};
-        Vector3f forward{ .0f, .0f, 1.0f };
-        Vector3f up{ .0f, 1.0f, .0f };
+        vec3 position{};
+        vec3 velocity{};
+        vec3 forward{ .0f, .0f, 1.0f };
+        vec3 up{ .0f, 1.0f, .0f };
     };
 
     class CODEX_API SoundHandle
@@ -23,7 +23,7 @@ namespace codex::ax {
     public:
         void set_volume(const f32 volume);
         void set_pitch(const f32 pitch);
-        void set_position(const Vector3& position);
+        void set_position(const ivec3& position);
         void set_paused(const bool paused);
         void stop();
         bool is_playing() const;

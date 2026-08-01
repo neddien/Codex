@@ -28,7 +28,6 @@
 			</Grid.RowDefinitions>
 			
 			<UserControls:MenuBar Grid.Row="0"></UserControls:MenuBar>
-			<Rectangle Fill="{DynamicResource PrimaryColour}" Grid.Row="1"></Rectangle>
 		</Grid>
 		
 		<!-- Middle Grid -->
@@ -135,7 +134,6 @@
 		
 		<!-- Bottom Grid -->
 		<Grid x:Name="Bottom_Grid" Grid.Row="2">
-			<Rectangle Fill="{DynamicResource PrimaryColour}"></Rectangle>
 		</Grid>
 	</Grid>
 </Window>

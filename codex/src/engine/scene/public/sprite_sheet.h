@@ -25,7 +25,7 @@ namespace codex {
                     x = space;
                 }
                 sprite_coords_.emplace_back(x, y);
-                sprites_.emplace_back(texture, Rectf((f32)x, (f32)y, (f32)sprite_width, (f32)sprite_height));
+                sprites_.emplace_back(texture, rect((f32)x, (f32)y, (f32)sprite_width, (f32)sprite_height));
                 x += sprite_width + space;
             }
         }
@@ -41,7 +41,7 @@ namespace codex {
 
     private:
         ResRef<gfx::Texture2D> texture_;
-        std::vector<Vector2f>  sprite_coords_;
+        std::vector<vec2>  sprite_coords_;
         std::vector<Sprite>    sprites_;
         i32                    width_;
         i32                    height_;

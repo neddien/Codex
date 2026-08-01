@@ -7,7 +7,6 @@
 
 namespace codex::editor {
     using namespace codex::events;
-
     void PropertiesView::on_init()
     {
     }
@@ -63,6 +62,10 @@ namespace codex::editor {
                 } else if (
                     !entity.has_component<AudioListenerComponent>() && ImGui::MenuItem("Audio Listener Component")) {
                     entity.add_component<AudioListenerComponent>();
+                    ImGui::CloseCurrentPopup();
+                } else if (!entity.has_component<RevoluteJoint2DComponent>() &&
+                           ImGui::MenuItem("Revolute Joint 2D Component")) {
+                    entity.add_component<RevoluteJoint2DComponent>();
                     ImGui::CloseCurrentPopup();
                 }
                 ImGui::EndPopup();
@@ -155,35 +158,60 @@ namespace codex::editor {
                                     case I32:
                                     case U32: {
                                         ImGui::DragInt(prop_id.c_str(), type_info.property_value<i32>(v, prop.name));
-                                        break;
-                                    }
+                                    } break;
                                     case F32:
                                     case F64:
                                     case F128: {
                                         ImGui::DragFloat(prop_id.c_str(), type_info.property_value<f32>(v, prop.name));
-                                        break;
-                                    }
+                                    } break;
                                     case String: {
                                         ImGui::InputText(prop_id.c_str(),
                                                          type_info.property_value<std::string>(v, prop.name));
-                                        break;
-                                    }
+                                    } break;
                                     case Boolean: {
                                         ImGui::Checkbox(prop_id.c_str(), type_info.property_value<bool>(v, prop.name));
-                                        break;
-                                    }
+                                    } break;
                                     case Vector2f: {
                                         SceneEditorView::draw_vec2_control(
-                                            prop_id.c_str(), *type_info.property_value<math::Vector2f>(v, prop.name),
+                                            prop_id.c_str(), *type_info.property_value<math::vec2>(v, prop.name),
                                             d->column_width);
-                                        break;
-                                    }
+                                    } break;
                                     case Vector3f: {
                                         SceneEditorView::draw_vec3_control(
-                                            prop_id.c_str(), *type_info.property_value<math::Vector3f>(v, prop.name),
+                                            prop_id.c_str(), *type_info.property_value<math::vec3>(v, prop.name),
                                             d->column_width);
-                                        break;
-                                    }
+                                    } break;
+                                    case PrefabAsset: {
+                                        auto*     asset = type_info.property_value<Asset<scene::Prefab>>(v, prop.name);
+                                        AssetPath path  = asset->path();
+                                        if (render_asset_path_box(prop_id.c_str(), "Prefab", path))
+                                            *asset = AssetManager::load<scene::Prefab>(path.uuid());
+                                    } break;
+                                    case EntityHandle: {
+                                        Entity* entity = type_info.property_value<Entity>(v, prop.name);
+                                        cxassert(entity,
+                                                 "RF Entity must be valid for RF controls to render inside the Editor");
+
+                                        // TODO: Move to a reusable function for RevJoint and this?
+                                        const auto label = *entity && entity->has_component<TagComponent>()
+                                                               ? entity->get_component<TagComponent>().tag
+                                                               : std::string{ "None (drop an entity here)" };
+                                        ImGui::Button((label + "###nb:enthd:btn").c_str(),
+                                                      { ImGui::GetContentRegionAvail().x, 0.0f });
+                                        if (ImGui::BeginDragDropTarget()) {
+                                            if (const auto* payload = ImGui::AcceptDragDropPayload("CX_ENTITY")) {
+                                                const auto dropped = *static_cast<const Entity*>(payload->Data);
+                                                *entity            = dropped;
+                                            }
+                                            ImGui::EndDragDropTarget();
+                                        }
+                                        if (*entity && ImGui::BeginPopupContextItem("rj2d:bodyb:ctx")) {
+                                            if (ImGui::MenuItem("Clear"))
+                                                *entity = Entity{};
+                                            ImGui::EndPopup();
+                                        }
+                                        ImGui::Columns(1);
+                                    } break;
                                     default: break; // throw CodexException("Should not happen."); break;
                                 }
                                 ImGui::Columns(1);
@@ -228,8 +256,8 @@ namespace codex::editor {
 
                     // Texture coordinates
                     const auto tex_coords = sprite.texture_coords();
-                    Vector2f   pos{ tex_coords.x, tex_coords.y };
-                    Vector2f   size{ tex_coords.w, tex_coords.h };
+                    vec2       pos{ tex_coords.x, tex_coords.y };
+                    vec2       size{ tex_coords.w, tex_coords.h };
                     SceneEditorView::draw_vec2_control("Texture position: ", pos, d->column_width);
                     SceneEditorView::draw_vec2_control("Texture size: ", size, d->column_width);
                     sprite.set_texture_coords({ pos.x, pos.y, size.x, size.y });
@@ -254,7 +282,7 @@ namespace codex::editor {
                     f32 temp_colour[4]{ colour.x, colour.y, colour.z, colour.w };
                     ImGui::ColorPicker4("##color_picker_src", temp_colour, flags);
                     colour = { temp_colour[0], temp_colour[1], temp_colour[2], temp_colour[3] };
-                    sprite.set_colour(Vector4f{ temp_colour[0], temp_colour[1], temp_colour[2], temp_colour[3] });
+                    sprite.set_colour(vec4{ temp_colour[0], temp_colour[1], temp_colour[2], temp_colour[3] });
                     ImGui::Columns(1);
 
                     static i32 z_index;
@@ -481,6 +509,84 @@ namespace codex::editor {
                         ImGui::DragFloat("###gravity_drag", &c.gravity_scale);
                         ImGui::Columns(1);
                     }
+
+                    ImGui::Dummy(ImVec2(0.0f, 10.0f));
+
+                    // Collision filtering (Box2D b2Filter): 16 layer bits, 16 mask bits and a
+                    // group-index override. Godot-style grid of toggle buttons, one per bit.
+                    {
+                        // Renders 16 toggle buttons (2 rows of 8); a set bit is highlighted.
+                        auto bit_grid = [&d](const char* id, u16& bits) {
+                            constexpr int cols = 8;
+                            const ImVec2  sz{ 18.0f, 18.0f };
+                            ImGui::PushID(id);
+                            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 2.0f, 2.0f });
+                            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{ 2.0f, 2.0f });
+                            for (int i = 0; i < 16; ++i) {
+                                const u16  bit = static_cast<u16>(1u << i);
+                                const bool set = (bits & bit) != 0;
+                                if (i % cols != 0)
+                                    ImGui::SameLine();
+                                if (set) {
+                                    const auto col = ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive);
+                                    ImGui::PushStyleColor(ImGuiCol_Button, col);
+                                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, col);
+                                }
+                                ImGui::PushID(i);
+                                if (ImGui::Button(std::to_string(i + 1).c_str(), sz))
+                                    bits ^= bit;
+                                ImGui::PopID();
+                                if (set)
+                                    ImGui::PopStyleColor(2);
+                                if (ImGui::IsItemHovered()) {
+                                    const auto& name = d->project.physics_layer_names[i];
+                                    if (name.empty())
+                                        ImGui::SetTooltip("Layer %d", i + 1);
+                                    else
+                                        ImGui::SetTooltip("%s", name.c_str());
+                                }
+                            }
+                            ImGui::PopStyleVar(2);
+                            ImGui::PopID();
+                        };
+
+                        ImGui::Columns(2);
+                        ImGui::SetColumnWidth(0, d->column_width);
+                        ImGui::Text("Collision Layer");
+                        ImGui::NextColumn();
+                        bit_grid("rb2d:layer", c.filter.layer_bits);
+                        ImGui::Columns(1);
+
+                        ImGui::Dummy(ImVec2(0.0f, 4.0f));
+
+                        ImGui::Columns(2);
+                        ImGui::SetColumnWidth(0, d->column_width);
+                        ImGui::Text("Collision Mask");
+                        ImGui::NextColumn();
+                        bit_grid("rb2d:mask", c.filter.mask_bits);
+                        ImGui::Columns(1);
+
+                        ImGui::Dummy(ImVec2(0.0f, 8.0f));
+
+                        // Group index override. Same non-zero value on two bodies forces the
+                        // outcome (positive: always collide, negative: never); otherwise the
+                        // layer/mask test above decides.
+                        ImGui::Columns(2);
+                        ImGui::SetColumnWidth(0, d->column_width);
+                        ImGui::Text("Group index");
+                        ImGui::SameLine();
+                        ImGui::TextDisabled("(?)");
+                        if (ImGui::IsItemHovered())
+                            ImGui::SetTooltip("Two bodies sharing the SAME non-zero value:\n"
+                                              "  > 0  always collide\n"
+                                              "  < 0  never collide\n"
+                                              "Different values (or 0) fall back to layer/mask.");
+                        ImGui::NextColumn();
+                        int group = c.filter.group_index;
+                        if (ImGui::DragInt("###group_index", &group, 1.0f, -32768, 32767))
+                            c.filter.group_index = static_cast<i16>(group);
+                        ImGui::Columns(1);
+                    }
                 }
                 if (remove)
                     d->selected_entity.entity.remove_component<RigidBody2DComponent>();
@@ -584,7 +690,7 @@ namespace codex::editor {
                                                                  // mode
                         f32 temp_colour[4]{ c.colour.x, c.colour.y, c.colour.z, c.colour.w };
                         ImGui::ColorPicker4("##grid_colour_picker", temp_colour, flags);
-                        c.colour = Vector4f{ temp_colour[0], temp_colour[1], temp_colour[2], temp_colour[3] };
+                        c.colour = vec4{ temp_colour[0], temp_colour[1], temp_colour[2], temp_colour[3] };
                         ImGui::Columns(1);
                     }
                 }
@@ -783,6 +889,38 @@ namespace codex::editor {
                             ImGui::Dummy(ImVec2(0.0f, 4.0f));
                         }
 
+                        // Sprite size (the on-screen quad size; 0 falls back to one tile).
+                        {
+                            vec2 sprite_size = c.sprite.size();
+                            SceneEditorView::draw_vec2_control("Sprite size", sprite_size, d->column_width);
+                            ImGui::Dummy(ImVec2(0.0f, 4.0f));
+
+                            if (sprite_size != c.sprite.size())
+                                c.sprite.set_size(sprite_size);
+                        }
+
+                        // Active animation
+                        if (!c.animations.empty()) {
+                            ImGui::Columns(2);
+                            ImGui::SetColumnWidth(0, d->column_width);
+                            ImGui::Text("Active animation");
+                            ImGui::NextColumn();
+
+                            if (c.active_animation >= c.animations.size())
+                                c.active_animation = 0;
+                            if (ImGui::BeginCombo("##tsanim_active", c.animations[c.active_animation].name.c_str())) {
+                                for (usize i = 0; i < c.animations.size(); ++i) {
+                                    if (ImGui::Selectable(
+                                            (c.animations[i].name + "##tsanim_active_" + std::to_string(i)).c_str(),
+                                            i == c.active_animation))
+                                        c.active_animation = static_cast<u32>(i);
+                                }
+                                ImGui::EndCombo();
+                            }
+                            ImGui::Columns(1);
+                            ImGui::Dummy(ImVec2(0.0f, 4.0f));
+                        }
+
                         // Add animation button
                         {
                             if (ImGui::Button("Add an animation")) {
@@ -842,7 +980,42 @@ namespace codex::editor {
                                 ImGui::Columns(1);
                             }
 
-                            // Animation preview (first frame tile)
+                            {
+                                ImGui::Columns(2);
+                                ImGui::SetColumnWidth(0, d->column_width);
+                                ImGui::Text("Playback Mode");
+                                ImGui::NextColumn();
+                                std::string_view playmode;
+                                switch (anim.playback_mode) {
+                                    using enum TilesetAnimationComponent::Animation::PlaybackMode;
+                                    case kNormal: playmode = "Normal"; break;
+                                    case kReverse: playmode = "Reverse"; break;
+                                    case kPingPong: playmode = "Ping Pong"; break;
+                                    case kOneShot: playmode = "One Shot"; break;
+                                    case kOneShotReverse: playmode = "One Shot Reverse"; break;
+                                    default: playmode = "None"; break;
+                                }
+
+                                if (ImGui::BeginCombo("##plybck_md", playmode.data())) {
+                                    using enum TilesetAnimationComponent::Animation::PlaybackMode;
+                                    if (ImGui::Selectable("Normal")) {
+                                        anim.playback_mode = kNormal;
+                                    } else if (ImGui::Selectable("Reverse")) {
+                                        anim.playback_mode = kReverse;
+                                    } else if (ImGui::Selectable("Ping Pong")) {
+                                        anim.playback_mode = kPingPong;
+                                    } else if (ImGui::Selectable("One Shot")) {
+                                        anim.playback_mode = kOneShot;
+                                    } else if (ImGui::Selectable("One Shot Reverse")) {
+                                        anim.playback_mode = kOneShotReverse;
+                                    }
+
+                                    ImGui::EndCombo();
+                                }
+                                ImGui::Columns(1);
+                            }
+
+                            // Live animation preview
                             {
                                 ImGui::Columns(2);
                                 ImGui::SetColumnWidth(0, d->column_width);
@@ -851,15 +1024,37 @@ namespace codex::editor {
 
                                 ImGui::BeginGroup();
                                 if (c.sprite) {
-                                    auto   texture = c.sprite.texture();
-                                    f32    tex_w   = static_cast<f32>(texture->width());
-                                    f32    tex_h   = static_cast<f32>(texture->height());
-                                    f32    tile_x  = anim.starting_tile.x * c.grid_size.x;
-                                    f32    tile_y  = anim.starting_tile.y * c.grid_size.y;
-                                    ImVec2 uv0     = { tile_x / tex_w, 1.0f - tile_y / tex_h };
-                                    ImVec2 uv1     = { (tile_x + c.grid_size.x) / tex_w,
-                                                       1.0f - (tile_y + c.grid_size.y) / tex_h };
-                                    ImGui::Image((ImTextureID)(texture->gl_id()), { 100.0f, 100.0f }, uv0, uv1);
+                                    // Drive the preview off the UI clock so it plays even in
+                                    // edit mode, independent of scene playback state.
+                                    // The active animation previews the component's real playback
+                                    // state so it matches the viewport frame-for-frame; the others
+                                    // run off the UI clock.
+                                    const bool is_active =
+                                        !c.animations.empty() && &anim == &c.animations[c.active_animation];
+                                    u32 frame = 0;
+                                    if (anim.frame_count > 0) {
+                                        if (is_active)
+                                            frame = anim.current_frame % anim.frame_count;
+                                        else if (anim.frame_rate > 0.0f)
+                                            frame = static_cast<u32>(
+                                                        ImGui::GetTime() * static_cast<double>(anim.frame_rate)) %
+                                                    anim.frame_count;
+                                    }
+
+                                    auto texture = c.sprite.texture();
+                                    f32  tex_w   = static_cast<f32>(texture->width());
+                                    f32  tex_h   = static_cast<f32>(texture->height());
+                                    f32  tile_x  = (anim.starting_tile.x + static_cast<f32>(frame)) * c.grid_size.x;
+                                    f32  tile_y  = anim.starting_tile.y * c.grid_size.y;
+                                    // Mirror the engine's texture mapping exactly (RenderBatch::upload_quad
+                                    // + the quad shader sample v = pixel_y / tex_h with no flip): the
+                                    // on-screen top of the quad samples tile_y + grid_h, the bottom tile_y.
+                                    ImVec2 uv0 = { tile_x / tex_w, (tile_y + c.grid_size.y) / tex_h };
+                                    ImVec2 uv1 = { (tile_x + c.grid_size.x) / tex_w, tile_y / tex_h };
+                                    ImGui::Image(reinterpret_cast<ImTextureID>(texture->gl_id()), { 100.0f, 100.0f },
+                                                 uv0, uv1);
+                                    if (anim.frame_count > 0)
+                                        ImGui::Text("Frame %u / %u", frame + 1, anim.frame_count);
                                 } else {
                                     ImGui::Text("No bound texture.");
                                 }
@@ -1050,13 +1245,13 @@ namespace codex::editor {
 
                         // Refresh when the event path changes.
                         if (cached_params_event != c.event_path) {
-                            cached_params       = ax::AudioManager::get_event_parameters(c.event_path);
+                            cached_params       = ax::AudioManager::event_parameters(c.event_path);
                             cached_params_event = c.event_path;
 
                             // Populate defaults for parameters not yet in the map.
                             for (const auto& p : cached_params) {
                                 if (!c.parameters.contains(p.name))
-                                    c.parameters[p.name] = p.defaultValue;
+                                    c.parameters[p.name] = p.default_value;
                             }
                         }
 
@@ -1092,6 +1287,128 @@ namespace codex::editor {
                 }
                 if (remove)
                     d->selected_entity.entity.remove_component<AudioListenerComponent>();
+            }
+            if (d->selected_entity.entity.has_component<RevoluteJoint2DComponent>()) {
+                ImGui::Dummy(ImVec2(0.0f, 10.0f));
+
+                auto& rj2d = d->selected_entity.entity.get_component<RevoluteJoint2DComponent>();
+
+                bool remove = false;
+                bool open   = ImGui::CollapsingHeader("Revolute Joint 2D Component", ImGuiTreeNodeFlags_DefaultOpen);
+                if (ImGui::BeginPopupContextItem()) {
+                    if (ImGui::MenuItem("Remove Component"))
+                        remove = true;
+                    ImGui::EndPopup();
+                }
+                if (open) {
+                    ImGui::Dummy(ImVec2(0.0f, 10.0f));
+
+                    const f32 column_width = d->column_width;
+
+                    // Body B: drag an entity from the scene hierarchy onto the slot.
+                    {
+                        ImGui::Columns(2);
+                        ImGui::SetColumnWidth(0, column_width);
+                        ImGui::Text("Body B");
+                        ImGui::NextColumn();
+
+                        Entity rjent = d->active_scene.lock()->entity_by_uuid(rj2d.body_b);
+
+                        const auto label = rjent && rjent.has_component<TagComponent>()
+                                               ? rjent.get_component<TagComponent>().tag
+                                               : std::string{ "None (drop an entity here)" };
+                        ImGui::Button((label + "###rj2d:bodyb:btn").c_str(),
+                                      { ImGui::GetContentRegionAvail().x, 0.0f });
+                        if (ImGui::BeginDragDropTarget()) {
+                            if (const auto* payload = ImGui::AcceptDragDropPayload("CX_ENTITY")) {
+                                const auto dropped = *static_cast<const Entity*>(payload->Data);
+                                if (dropped == d->selected_entity.entity)
+                                    log(Warn, "A revolute joint cannot connect an entity to itself.");
+                                else if (!dropped.has_component<RigidBody2DComponent>())
+                                    log(Warn, "Cannot use '{}' as Body B: it has no Rigid Body 2D component.",
+                                        dropped.get_component<TagComponent>().tag);
+                                else
+                                    rj2d.body_b = dropped.uuid();
+                            }
+                            ImGui::EndDragDropTarget();
+                        }
+                        if (rjent && ImGui::BeginPopupContextItem("rj2d:bodyb:ctx")) {
+                            if (ImGui::MenuItem("Clear"))
+                                rj2d.body_b = UUID{ 0 };
+                            ImGui::EndPopup();
+                        }
+                        ImGui::Columns(1);
+                    }
+
+                    SceneEditorView::draw_vec2_control("Local Anchor A", rj2d.local_anchor_a, column_width);
+                    SceneEditorView::draw_vec2_control("Local Anchor B", rj2d.local_anchor_b, column_width);
+
+                    // Enable limit
+                    {
+                        ImGui::Columns(2);
+                        ImGui::SetColumnWidth(0, column_width);
+                        ImGui::Text("Enable limit");
+                        ImGui::NextColumn();
+                        ImGui::Checkbox("###rj2d:limit:chbx", &rj2d.enable_limit);
+                        ImGui::Columns(1);
+                    }
+                    // Lower angle
+                    {
+                        ImGui::Columns(2);
+                        ImGui::SetColumnWidth(0, column_width);
+                        ImGui::Text("Lower angle");
+                        ImGui::NextColumn();
+                        ImGui::DragFloat("###rj2d:lwrangl:dragf", &rj2d.lower_angle);
+                        ImGui::Columns(1);
+                    }
+                    // Upper angle
+                    {
+                        ImGui::Columns(2);
+                        ImGui::SetColumnWidth(0, column_width);
+                        ImGui::Text("Upper angle");
+                        ImGui::NextColumn();
+                        ImGui::DragFloat("###rj2d:uprangl:dragf", &rj2d.upper_angle);
+                        ImGui::Columns(1);
+                    }
+                    // Enable motor
+                    {
+                        ImGui::Columns(2);
+                        ImGui::SetColumnWidth(0, column_width);
+                        ImGui::Text("Enable motor");
+                        ImGui::NextColumn();
+                        ImGui::Checkbox("###rj2d:enablmtor:chbx", &rj2d.enable_motor);
+                        ImGui::Columns(1);
+                    }
+                    // Motor speed
+                    {
+                        ImGui::Columns(2);
+                        ImGui::SetColumnWidth(0, column_width);
+                        ImGui::Text("Motor speed");
+                        ImGui::NextColumn();
+                        ImGui::DragFloat("###rj2d:mtorsped:dragf", &rj2d.motor_speed);
+                        ImGui::Columns(1);
+                    }
+                    // Max motor torque
+                    {
+                        ImGui::Columns(2);
+                        ImGui::SetColumnWidth(0, column_width);
+                        ImGui::Text("Max motor torque");
+                        ImGui::NextColumn();
+                        ImGui::DragFloat("###rj2d:mxmtorsped:dragf", &rj2d.max_motor_torque);
+                        ImGui::Columns(1);
+                    }
+                    // Collide connected
+                    {
+                        ImGui::Columns(2);
+                        ImGui::SetColumnWidth(0, column_width);
+                        ImGui::Text("Collide connected");
+                        ImGui::NextColumn();
+                        ImGui::Checkbox("###rj2d:coldcon:chbx", &rj2d.collide_connected);
+                        ImGui::Columns(1);
+                    }
+                }
+                if (remove)
+                    d->selected_entity.entity.remove_component<RevoluteJoint2DComponent>();
             }
         }
 
@@ -1170,7 +1487,7 @@ namespace codex::editor {
         bool has_thumbnail = false;
         if (accepted_type == "Texture2D" && !path.path().empty()) {
             if (auto asset = AssetManager::load<gfx::Texture2D>(path).as_shared()) {
-                dl->AddImage((ImTextureID)asset->gl_id(), tl, br, { 0, 1 }, { 1, 0 });
+                dl->AddImage(reinterpret_cast<ImTextureID>(asset->gl_id()), tl, br, { 0, 1 }, { 1, 0 });
                 has_thumbnail = true;
             }
         }

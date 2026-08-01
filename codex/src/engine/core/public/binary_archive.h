@@ -34,14 +34,14 @@ namespace codex {
         void trivial(const std::string_view key, std::string& value) override;
 
     public:
-        void               begin_object(const std::string_view key) override {}
+        void               begin_object([[maybe_unused]] const std::string_view key) override {}
         void               end_object() override {}
-        void               begin_array(const std::string_view key, usize& count) override;
+        void               begin_array([[maybe_unused]] const std::string_view key, usize& count) override;
         void               end_array() override {}
-        void               begin_map(const std::string_view key, usize& count) override;
+        void               begin_map([[maybe_unused]] const std::string_view key, usize& count) override;
         void               map_key(std::string& key) override;
         void               end_map() override {}
-        [[nodiscard]] bool optional(const std::string_view key, const bool present_on_save) override;
+        [[nodiscard]] bool optional([[maybe_unused]] const std::string_view key, const bool present_on_save) override;
 
     private:
         void ensure(const usize bytes) const;

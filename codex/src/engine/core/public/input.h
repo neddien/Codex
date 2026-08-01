@@ -299,19 +299,19 @@ namespace codex {
         bool mouse_dragging_   = false;
 
     public:
-        static Input*  get();
-        static void    dispose();
-        static bool    is_key_down(const Key key);
-        static bool    is_mouse_down(const Mouse button);
-        static Vector2 screen_mouse_pos() noexcept;
+        static Input* get();
+        static void   dispose();
+        static bool   is_key_down(const Key key);
+        static bool   is_mouse_down(const Mouse button);
+        static ivec2  screen_mouse_pos() noexcept;
 
     public:
-        static inline i32      mouse_x() noexcept { return s_instance_->mouse_pos_x_; }
-        static inline i32      mouse_y() noexcept { return s_instance_->mouse_pos_y_; }
-        static inline Vector2f mouse_delta() noexcept
+        static inline i32  mouse_x() noexcept { return s_instance_->mouse_pos_x_; }
+        static inline i32  mouse_y() noexcept { return s_instance_->mouse_pos_y_; }
+        static inline vec2 mouse_delta() noexcept
         {
-            return Vector2f((f32)s_instance_->mouse_last_pos_x_ - (f32)s_instance_->mouse_pos_x_,
-                            (f32)s_instance_->mouse_last_pos_y_ - (f32)s_instance_->mouse_pos_y_);
+            return vec2((f32)s_instance_->mouse_last_pos_x_ - (f32)s_instance_->mouse_pos_x_,
+                        (f32)s_instance_->mouse_last_pos_y_ - (f32)s_instance_->mouse_pos_y_);
         }
         static inline f32 mouse_delta_x() noexcept
         {
@@ -321,7 +321,7 @@ namespace codex {
         {
             return (f32)s_instance_->mouse_last_pos_y_ - (f32)s_instance_->mouse_pos_y_;
         }
-        static inline Vector2 mouse_pos() noexcept { return Vector2(mouse_x(), mouse_y()); }
+        static inline ivec2 mouse_pos() noexcept { return ivec2(mouse_x(), mouse_y()); }
 
         static inline i32  scroll_x() noexcept { return s_instance_->mouse_scroll_x_; }
         static inline i32  scroll_y() noexcept { return s_instance_->mouse_scroll_y_; }

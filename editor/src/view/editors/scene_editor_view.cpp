@@ -6,6 +6,9 @@
 #include <editor_project.h>
 #include <nfd.h>
 
+#include <engine/scene/public/prefab.h>
+#include <launcher_settings.h>
+
 #include "panels/asset_properties_view.h"
 #include "panels/content_browser_view.h"
 #include "panels/project_settings_view.h"
@@ -20,9 +23,9 @@ namespace codex::editor {
     namespace stdfs = std::filesystem;
 
     namespace {
-        constexpr std::string_view project_assets_vfs_root = "/editor/project/assets";
+        constexpr std::string_view project_assets_vfs_root = "/edit/project/assets";
 
-        std::optional<stdfs::path> project_asset_vfs_path(const stdfs::path& host_path, const stdfs::path& project_path)
+        opt<stdfs::path> project_asset_vfs_path(const stdfs::path& host_path, const stdfs::path& project_path)
         {
             std::error_code ec;
             const auto      assets_root = stdfs::weakly_canonical(project_path / "assets", ec);
@@ -56,121 +59,22 @@ namespace codex::editor {
     } // namespace
 
     void EditorPanelDeleter::operator()(EditorPanel* panel) noexcept
-    {
-        delete panel;
-    }
+    { delete panel; }
 
     void SceneEditorView::on_attach()
     {
-        auto mount    = Shared<fs::MemoryMount>::make(0);
-        auto disk_mnt = Shared<fs::DiskMount>::make("/tmp/cxvfs", 0);
-
-        {
-            auto handle = disk_mnt->open("my_lovely_dog.txt", { fs::FileMode::Create | fs::FileMode::Write });
-            if (handle) {
-                handle->write_async("bbruh", 5).resume().await_sync();
-            } else {
-                warn("Failed to open my_lovely_dog.txt for writing");
-            }
-        }
-
-        // Write a file and create an explicit empty directory directly on the mount.
-        mount->open("my/lovely/dog.txt", { fs::FileMode::Write | fs::FileMode::Create })
-            ->write("rexxinator is my sweet dog.", 28);
-        mount->mkdir("my/lovely/empty_dir");
-
-        fs::VirtualFilesystem vfs;
-        vfs.mkdir("/bruh");
-        vfs.mount(mount, "/bruh");
-        vfs.mount(disk_mnt, "/disk", true);
-
-        // Read the file back through the VFS.
-        {
-            auto handle = vfs.open("/bruh/my/lovely/dog.txt", { fs::FileMode::Read });
-            if (handle) {
-                char buf[32]{};
-                handle->read(buf, handle->size());
-                info("read: {}", buf);
-            } else {
-                warn("Failed to open /bruh/my/lovely/dog.txt for reading");
-            }
-        }
-
-        {
-            auto handle = vfs.open("/disk/my_lovely_dog.txt", { fs::FileMode::Read });
-            if (handle) {
-                char buf[32]{};
-                handle->read_async(buf, handle->size()).resume().await_sync();
-                info("read: {}", buf);
-            } else {
-                warn("Failed to open /disk/my_lovely_dog.txt for reading");
-            }
-        }
-
-        // Create a directory through the VFS (propagates to mount).
-        vfs.mkdir("/bruh/photos");
-
-        // List /bruh — should show "my" (from mount files) and "photos" (trie node + mount dir).
-        info("list /bruh:");
-        for (const auto& e : vfs.list("/bruh"))
-            info("  {}", e);
-
-        // List /bruh/my/lovely — should show "dog.txt" and "empty_dir".
-        info("list /bruh/my/lovely:");
-        for (const auto& e : vfs.list("/bruh/my/lovely"))
-            info("  {}", e);
-
-        // List /disk — should show "dog.txt" and "empty_dir".
-        info("list /disk:");
-        for (const auto& e : vfs.list("/disk"))
-            info("  {}", e);
-
-        {
-            auto pak_handle = vfs.open("/disk/my_pak.cpkz", { fs::FileMode::Create | fs::FileMode::Read |
-                                                              fs::FileMode::Write | fs::FileMode::Trunc });
-
-            if (pak_handle) {
-                if (vfs.export_to_pak(pak_handle,
-                                      fs::PakProperties{
-                                          .enable_compression = true,
-                                          .name               = "editor_tmp",
-                                          .flags   = fs::PakFlags::Compressed | fs::PakFlags::CompressionTypeLZ4,
-                                          .version = { 0xff, 0xff, 0xff },
-                                      })) {
-                    info("Paked created at: {}", pak_handle->path());
-                } else {
-                    warn("Failed to cook the VFS");
-                }
-            } else {
-                warn("Failed  to open pak handle");
-            }
-        }
-
-        auto pak_handle = vfs.open("/disk/my_pak.cpkz", { fs::FileMode::Read });
-        if (pak_handle) {
-            auto pak_mount = Shared<fs::PakMount>::make(pak_handle, 0);
-            vfs.mount(std::move(pak_mount), "/cxpkz", true);
-        } else {
-            warn("Failed to open pak handle");
-        }
-
-        info("list /cxpkz:");
-        for (const auto& e : vfs.list("/cxpkz", fs::ListOptions::Recursive)) {
-            info("  {}", e);
-        }
-
-        auto handle = vfs.open("/cxpkz/disk/doc/AssetManager.md");
-        if (handle) {
-            std::string buffer;
-            buffer.resize(handle->size());
-            handle->read(buffer.data(), handle->size());
-            info("read: {}", buffer);
-        } else {
-            warn("failed to open /cxpkz/bruh/my/lovely/dog.txt");
-        }
-
-        descriptor_ =
-            Shared<SceneEditorDescriptor>::from(new SceneEditorDescriptor{ .editor_scene = Shared<Scene>::make() });
+        descriptor_               = Shared<SceneEditorDescriptor>::from(new SceneEditorDescriptor{
+            .project              = {},
+            .active_scene         = {},
+            .editor_scene         = Shared<Scene>::make(),
+            .runtime_scene        = {},
+            .current_scene_path   = {},
+            .script_module_path   = {},
+            .selected_entity      = {},
+            .current_project_path = {},
+            .registry_state_mutex = {},
+            .registry_state_cv    = {},
+        });
         descriptor_->active_scene = descriptor_->editor_scene;
 
         // Panels
@@ -209,9 +113,7 @@ namespace codex::editor {
     }
 
     void SceneEditorView::on_detach()
-    {
-        unload_project();
-    }
+    { unload_project(); }
 
     void SceneEditorView::on_update(const f32 dt)
     {
@@ -221,14 +123,13 @@ namespace codex::editor {
         // Load NBMan on main thread once async compilation succeeds,
         // then attach any pending scripts (from deserialization or recompilation).
         if (d->pending_nb_load.exchange(false)) {
-            NBMan::load(d->script_module_path, *scene);
+            load_script_module(*scene);
             ConsoleMan::append_message("-- Script module load finished.");
 
-            auto nbc_view = scene->entities_with_component<NativeBehaviourComponent>();
-            /*
-            for (auto& e : nbc_view)
-                e.get_component<NativeBehaviourComponent>().attach_pending_scripts();
-            */
+            // Attach scripts that were pending because the module wasn't loaded yet
+            // (e.g. the scene deserialized before the first compile finished), so
+            // they show up in the inspector without having to enter play mode.
+            scene->attach_pending_behaviours();
         }
 
         // Auto-hide compilation notification after 3 seconds.
@@ -264,16 +165,16 @@ namespace codex::editor {
                     }
                 }
 
-                visualize_lines();
+                if (d->visualize_lines)
+                    visualize_lines();
 
                 gfx::Renderer::stencil_test(false);
                 scene->on_editor_update(dt, Editor::viewport_camera());
 
                 if (d->selected_entity.entity && d->outline_shader &&
                     d->selected_entity.entity.has_component<SpriteRendererComponent>()) {
-                    const auto&                tc  = d->selected_entity.entity.get_component<TransformComponent>();
-                    const auto&                src = d->selected_entity.entity.get_component<SpriteRendererComponent>();
-                    const scene::EditorCamera& camera = Editor::viewport_camera();
+                    const auto& tc  = d->selected_entity.entity.get_component<TransformComponent>();
+                    const auto& src = d->selected_entity.entity.get_component<SpriteRendererComponent>();
 
                     gfx::Renderer::stencil_mask(0xff);
                     gfx::Renderer::stencil_op(opengl::Enum::Keep, opengl::Enum::Keep, opengl::Enum::Replace);
@@ -292,7 +193,7 @@ namespace codex::editor {
 
                             // TODO: Get rid of this and optimize this?
                             const auto transform =
-                                tc.to_matrix() * glm::scale(glm::identity<Matrix4f>(), { size.x, size.y, 1.0f });
+                                tc.world_mat() * glm::scale(glm::identity<mat4>(), { size.x, size.y, 1.0f });
                             gfx::BatchRenderer2D::render_sprite(src.sprite(), transform,
                                                                 static_cast<i32>(d->selected_entity.entity));
 
@@ -319,7 +220,7 @@ namespace codex::editor {
 
                             // TODO: Get rid of this and optimize this?
                             const auto transform =
-                                tc.to_matrix() * glm::scale(glm::identity<Matrix4f>(), { size.x, size.y, 1.0f });
+                                tc.world_mat() * glm::scale(glm::identity<mat4>(), { size.x, size.y, 1.0f });
                             gfx::BatchRenderer2D::render_sprite(src.sprite(), transform,
                                                                 static_cast<i32>(d->selected_entity.entity));
 
@@ -341,7 +242,9 @@ namespace codex::editor {
             }
             case Scene::State::Simulate: {
                 CX_DEBUG_PROFILE_SCOPE("on_update::on_simulation_update")
-                visualize_lines();
+
+                if (d->visualize_lines)
+                    visualize_lines();
                 scene->on_simulation_update(dt, Editor::viewport_camera());
                 break;
             }
@@ -350,17 +253,17 @@ namespace codex::editor {
         auto [mx, my] = ImGui::GetMousePos();
         mx -= viewport_bounds_[0].x;
         my -= viewport_bounds_[0].y;
-        const Vector2f viewport_size = viewport_bounds_[1] - viewport_bounds_[0];
-        const i32      mouse_x       = (i32)mx;
-        const i32      mouse_y       = (i32)my;
+        const vec2 viewport_size = viewport_bounds_[1] - viewport_bounds_[0];
+        const i32  mouse_x       = (i32)mx;
+        const i32  mouse_y       = (i32)my;
 
         if (Input::is_mouse_down(Mouse::LeftMouse) && mouse_x >= 0 && mouse_y >= 0 && mouse_x <= (i32)viewport_size.x &&
             mouse_y <= (i32)viewport_size.y && !gizmo_active_) {
             if (d->active_scene.lock()->state() != Scene::State::Play && !gizmo_active_ &&
                 (!d->selected_entity.entity || !d->selected_entity.entity.has_component<TilemapComponent>())) {
-                Vector2f scale = { framebuffer_->properties().width / viewport_size.x,
-                                   framebuffer_->properties().height / viewport_size.y };
-                Vector2f pos   = { mouse_x, viewport_size.y - mouse_y };
+                vec2 scale = { framebuffer_->properties().width / viewport_size.x,
+                               framebuffer_->properties().height / viewport_size.y };
+                vec2 pos   = { mouse_x, viewport_size.y - mouse_y };
                 pos *= scale;
                 pos          = glm::round(pos);
                 const i32 id = framebuffer_->read_pixel(1, (i32)pos.x, (i32)pos.y);
@@ -435,7 +338,7 @@ namespace codex::editor {
             for (auto& e : dbg::Profiler::get_profilers()) {
                 const auto info = e.second.info();
                 const auto dur  = e.second.elapsed_as<std::milli, f32>().count();
-                ImGui::Text("%s: %fms", info.name.c_str(), dur);
+                ImGui::Text("%s: %fms", info.name.c_str(), static_cast<double>(dur));
             }
             ImGui::End();
         }
@@ -458,8 +361,6 @@ namespace codex::editor {
                         compile_project();
                     }
                     if (ImGui::MenuItem("Clear build files")) {
-                        auto& d = descriptor_;
-
                         sys::ProcessInfo p_info;
 
 #ifdef CX_PLATFORM_WINDOWS
@@ -469,12 +370,11 @@ namespace codex::editor {
 #elif defined(CX_PLATFORM_OSX)
                         p_info.command = "./build.py --preset osx-any-debug --clear";
 #endif
-                        p_info.on_exit = [this](i32 exitCode)
+                        p_info.on_exit = []([[maybe_unused]] i32 exitCode)
                         {
-                            auto& d = descriptor_;
                             // TODO: Scene should also be thread safe since this callback is being called from a
                             // different thread.
-                            // Scene::LoadScriptModule(d->script_module_path); // TODO: COME BACK
+                            // Scene::LoadScriptModule(descriptor_->script_module_path); // TODO: COME BACK
                             ConsoleMan::append_message("-- Clear finished.");
                         };
                         p_info.redirect_stdout = true;
@@ -491,39 +391,7 @@ namespace codex::editor {
                     }
                     if (ImGui::MenuItem("Package & Export Project", "Ctrl+Shift+E")) {
                         if (d->registry_state == AssetRegistryState::Succeeded) {
-                            if (!d->vfs->is_directory("/editor/project/assets/package")) {
-                                if (d->vfs->exists("/editor/project/assets/pacakge"))
-                                    d->vfs->rm("/editor/project/assets/package");
-                                d->vfs->mkdir("/editor/project/assets/package");
-                            }
-                            AssetManager::registry()
-                                .write_manifest_async("/editor/project/assets/package/__registry.manifest.bin")
-                                .await_sync();
-                            Engine::project().save_to_vfs(*d->vfs,
-                                                          "/editor/project/assets/package/__engine.project.bin");
-                            AssetManager::registry()
-                                .export_assets_async("/editor/project/assets/package/data")
-                                .await_sync();
-
-                            if (auto fh =
-                                    d->vfs->open("/editor/tmp/asset_registry.cxpkz",
-                                                 { fs::FileMode::Create | fs::FileMode::Trunc | fs::FileMode::Write });
-                                fh) {
-                                bool proceed = true;
-                                if (!d->vfs->export_to_pak(fh, {}, "/editor/project/assets/package")) {
-                                    log(Error, "Failed to package cooked assets!");
-                                    proceed = false;
-                                }
-                                if (proceed &&
-                                    !d->vfs->mv("/editor/tmp/asset_registry.cxpkz", "/editor/project/assets/package")) {
-                                    log(Error, "Failed to move packaged registry!");
-                                }
-
-                                if (proceed)
-                                    log(Info, "Project successfully packaged!");
-                            } else {
-                                log(Error, "Failed to create /editor/tmp/asset_registry.cxpkz!");
-                            }
+                            cook_and_export_project();
                         }
                     }
                     if (ImGui::MenuItem("Save Scene", "Ctrl+Shift+S")) {
@@ -541,7 +409,8 @@ namespace codex::editor {
 
                                     if (!vfs_path) {
                                         log(Error, "Scenes must be saved inside the project's assets directory");
-                                    } else if (save_scene_to_vfs(*d->vfs, *d->active_scene.lock(), *vfs_path)) {
+                                    } else if (save_scene_to_vfs(EditorApplication::vfs(), *d->active_scene.lock(),
+                                                                 *vfs_path)) {
                                         d->selected_entity.deselect();
                                         d->current_scene_path = *vfs_path;
                                     } else {
@@ -550,31 +419,32 @@ namespace codex::editor {
                                 } else if (result == NFD_ERROR)
                                     log(Error, "Failed to open scene save dialog: {}", NFD_GetError());
                             } else {
-                                if (!save_scene_to_vfs(*d->vfs, *d->active_scene.lock(), d->current_scene_path))
+                                if (!save_scene_to_vfs(EditorApplication::vfs(), *d->active_scene.lock(),
+                                                       d->current_scene_path))
                                     log(Error, "Failed to save scene to VFS path '{}'",
                                         d->current_scene_path.generic_string());
                             }
                         }
                     }
                     if (ImGui::MenuItem("Save", "Ctrl+S")) {
-                        // TODO: This guy is supposed to save everything, including scenes and stuff
-                        // Handle the "Save" action
-                        static std::string save_path;
-                        if (save_path.empty()) {
-                            nfdu8char_t*      outPath   = nullptr;
-                            nfdu8filteritem_t filters[] = { { "Codex Project", "cxproj" } };
-                            if (NFD_SaveDialogU8(&outPath, filters, 1, nullptr, "default.cxproj") == NFD_OKAY) {
-                                save_path = outPath;
-                                NFD_FreePathU8(outPath);
-                                // TODO: project->Save(path);
-                                d->selected_entity.deselect();
-                                SerializationManager::save_to_file(*d->active_scene.lock(), save_path.c_str(),
-                                                                   SerializationManager::Format::Json);
-                            }
-                        } else {
+                        // Save everything: the active scene to its file, then the project itself.
+                        if (d->registry_state == AssetRegistryState::Succeeded) {
                             d->selected_entity.deselect();
-                            SerializationManager::save_to_file(*d->active_scene.lock(), save_path.c_str(),
-                                                               SerializationManager::Format::Json);
+
+                            if (!d->current_scene_path.empty()) {
+                                if (!save_scene_to_vfs(EditorApplication::vfs(), *d->active_scene.lock(),
+                                                       d->current_scene_path))
+                                    log(Error, "Failed to save scene to VFS path '{}'",
+                                        d->current_scene_path.generic_string());
+                            } else {
+                                log(Warn, "No scene file to save to; use 'Save Scene' to pick a location");
+                            }
+
+                            if (!d->current_project_file.empty())
+                                SerializationManager::save_to_file(d->project, d->current_project_file,
+                                                                   SerializationManager::Format::Json);
+                            else
+                                log(Error, "No project file to save to");
                         }
                     }
                     if (ImGui::MenuItem("Exit", "Alt+F4")) {
@@ -608,9 +478,36 @@ namespace codex::editor {
                                                viewport_max_region.y + viewport_offset.y };
 
             auto current_viewport_window_size = ImGui::GetContentRegionAvail();
-            viewport_size_ = Vector2f{ current_viewport_window_size.x, current_viewport_window_size.y };
-            ImGui::Image((ImTextureID)(framebuffer_->colour_attachment_id_at(0)), current_viewport_window_size,
-                         { 0, 1 }, { 1, 0 });
+            viewport_size_                    = vec2{ current_viewport_window_size.x, current_viewport_window_size.y };
+            ImGui::Image(reinterpret_cast<ImTextureID>(framebuffer_->colour_attachment_id_at(0)),
+                         current_viewport_window_size, { 0, 1 }, { 1, 0 });
+
+            if (ImGui::BeginDragDropTarget()) {
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CX_ASSET")) {
+                    const UUID uuid = *static_cast<const UUID*>(payload->Data);
+                    if (const AssetMetadata* meta = AssetManager::registry().asset_metadata(uuid);
+                        meta && meta->type == "Prefab") {
+                        if (auto prefab = AssetManager::load<scene::Prefab>(uuid); prefab) {
+                            Entity entity = active_scene->instantiate_prefab(*prefab);
+
+                            auto mouse_pos = ivec2{ ImGui::GetMousePos().x, ImGui::GetMousePos().y };
+                            mouse_pos.x -= viewport_bounds_[0].x;
+                            mouse_pos.y -= viewport_bounds_[0].y;
+                            mouse_pos.y = (viewport_bounds_[1] - viewport_bounds_[0]).y - mouse_pos.y;
+                            if (mouse_pos.x >= 0 && mouse_pos.y >= 0 && mouse_pos.x <= viewport_size_.x &&
+                                mouse_pos.y <= viewport_size_.y) {
+                                entity.get_component<TransformComponent>().position =
+                                    scene::Camera::screen_coordinates_to_world(camera, mouse_pos, camera.pos());
+                            }
+
+                            d->selected_entity.select(entity);
+                        } else {
+                            log(Error, "Failed to load dropped prefab asset {}", uuid);
+                        }
+                    }
+                }
+                ImGui::EndDragDropTarget();
+            }
 
             viewport_focused_ = ImGui::IsWindowFocused();
             viewport_hovered_ = ImGui::IsWindowHovered();
@@ -619,7 +516,7 @@ namespace codex::editor {
 
             // Guizmo
             if (active_scene->state() != Scene::State::Play) {
-                if (d->selected_entity.entity) {
+                if (d->selected_entity.entity && d->selected_entity.entity.has_component<TransformComponent>()) {
                     ImGuizmo::SetOrthographic(true);
                     ImGuizmo::SetDrawlist();
 
@@ -632,7 +529,7 @@ namespace codex::editor {
                     auto view_mat = camera.view_matrix();
 
                     auto& tc        = d->selected_entity.entity.get_component<TransformComponent>();
-                    auto  transform = tc.to_matrix();
+                    auto  transform = tc.world_mat();
 
                     ImGuizmo::Manipulate(glm::value_ptr(view_mat), glm::value_ptr(proj_mat),
                                          (ImGuizmo::OPERATION)gizmo_mode_, ImGuizmo::MODE::LOCAL,
@@ -641,9 +538,30 @@ namespace codex::editor {
                     gizmo_active_ = ImGuizmo::IsOver();
 
                     if (gizmo_active_ && ImGuizmo::IsUsing()) {
-                        Vector3f rotation;
-                        codex::math::transform_decompose(transform, tc.position, rotation, tc.scale);
-                        tc.rotation += glm::degrees(rotation) - tc.rotation;
+                        const bool simulating = d->active_scene.lock()->state() != Scene::State::Edit;
+                        if (simulating && d->selected_entity.entity.has_component<RigidBody2DComponent>()) {
+                            // Drive the Rigid Body rather than the transform directly since the transform
+                            // is owned by the physics engine in Rigid Bodies.
+                            auto& rb2d = d->selected_entity.entity.get_component<RigidBody2DComponent>();
+
+                            struct transform final_transform;
+                            math::transform_decompose(transform, final_transform.position, final_transform.rotation,
+                                                      final_transform.scale);
+                            final_transform.rotation = glm::degrees(final_transform.rotation);
+                            rb2d.set_transform(final_transform);
+                        } else {
+                            // Convert back from gizmo world TRS to parent relative local TRS
+                            auto local_new = transform;
+                            if (d->selected_entity.entity.has_component<HierarchyComponent>()) {
+                                auto& hc = d->selected_entity.entity.get_component<HierarchyComponent>();
+                                if (hc.parent)
+                                    local_new = glm::inverse(hc.parent.transform().world_mat()) * transform;
+                            }
+
+                            vec3 rotation;
+                            codex::math::transform_decompose(local_new, tc.position, rotation, tc.scale);
+                            tc.rotation = glm::degrees(rotation);
+                        }
                     }
                 }
             }
@@ -654,7 +572,7 @@ namespace codex::editor {
         // Render info
         {
             ImGui::Begin("RHI Info");
-            // switch (Engine::RenderingHardwareInterface::CurrentAPI()) {
+            // switch (Engine::RHI::current_api()) {
             //     case GraphicsAPI::OpenGL:
             //     {
             //         if (ImGui::TreeNodeEx("OpenGL"))
@@ -662,14 +580,14 @@ namespace codex::editor {
             //     break;
             //     case GraphicsAPI::Vulkan:
             //     {
-            //         if (ImGui::TreeNodeEx("OpenGL"))
+            //         if (ImGui::TreeNodeEx("Vulkan"))
             //     }
             //     break;
             // }
 
             if (ImGui::CollapsingHeader("OpenGL", ImGuiTreeNodeFlags_DefaultOpen)) {
                 ImGui::Text("FPS: %u", Engine::fps());
-                ImGui::Text("Delta time: %f", Engine::delta());
+                ImGui::Text("Delta time: %f", static_cast<double>(Engine::delta()));
                 ImGui::Text("Batch count: %zu", gfx::BatchRenderer2D::batch_count());
                 ImGui::Text("Total quad count: %zu", gfx::BatchRenderer2D::quad_count());
                 ImGui::Text("Command Queue Size: 0");
@@ -680,7 +598,7 @@ namespace codex::editor {
 
         auto block_events = !viewport_focused_;
 
-        // Render our panels.
+        // Render our panels
         {
             CX_DEBUG_PROFILE_SCOPE("panel_render")
 
@@ -776,6 +694,7 @@ namespace codex::editor {
 
     bool SceneEditorView::on_key_down_event(events::KeyDownEvent& e)
     {
+        auto& d = descriptor_;
         switch (e.key()) {
             using enum codex::Key;
             using enum codex::editor::GizmoMode;
@@ -783,14 +702,15 @@ namespace codex::editor {
             case Num1: gizmo_mode_ = Translation; return true;
             case Num2: gizmo_mode_ = Rotation; return true;
             case Num3: gizmo_mode_ = Scale; return true;
+            case V: d->visualize_lines = !d->visualize_lines;
             default: break;
         }
         return false;
     }
 
-    bool SceneEditorView::on_mouse_down_event(events::MouseDownEvent& e)
+    bool SceneEditorView::on_mouse_down_event([[maybe_unused]] events::MouseDownEvent& e)
     {
-        auto mouse_pos = Vector2{ ImGui::GetMousePos().x, ImGui::GetMousePos().y };
+        auto mouse_pos = ivec2{ ImGui::GetMousePos().x, ImGui::GetMousePos().y };
         mouse_pos.x -= viewport_bounds_[0].x;
         mouse_pos.y -= viewport_bounds_[0].y;
         mouse_pos.y = (viewport_bounds_[1] - viewport_bounds_[0]).y - mouse_pos.y;
@@ -803,11 +723,8 @@ namespace codex::editor {
                     auto& camera = Editor::viewport_camera();
 
                     // Vector conversion fiesta
-                    const auto camera_dim =
-                        Vector3f{ camera.width() * camera.pan(), camera.height() * camera.pan(), 0.0f };
                     auto tile_pos = scene::Camera::screen_coordinates_to_world(camera, mouse_pos, camera.pos());
-                    tile_pos =
-                        util::snap(tile_pos, Vector3f{ tmc.grid_size, 1.0f }) + Vector3f{ tmc.grid_size / 2.0f, 0.0f };
+                    tile_pos = util::snap(tile_pos, vec3{ tmc.grid_size, 1.0f }) + vec3{ tmc.grid_size / 2.0f, 0.0f };
                     if (tmc.current_state == TilemapComponent::State::Brush) {
                         tmc.add_tile(tile_pos, tmc.current_tile);
                     } else if (tmc.current_state == TilemapComponent::State::Erase) {
@@ -820,9 +737,9 @@ namespace codex::editor {
         return false;
     }
 
-    bool SceneEditorView::on_mouse_move_event(events::MouseMoveEvent& e)
+    bool SceneEditorView::on_mouse_move_event([[maybe_unused]] events::MouseMoveEvent& e)
     {
-        auto mouse_pos = Vector2{ ImGui::GetMousePos().x, ImGui::GetMousePos().y };
+        auto mouse_pos = ivec2{ ImGui::GetMousePos().x, ImGui::GetMousePos().y };
         mouse_pos.x -= viewport_bounds_[0].x;
         mouse_pos.y -= viewport_bounds_[0].y;
         mouse_pos.y = (viewport_bounds_[1] - viewport_bounds_[0]).y - mouse_pos.y;
@@ -833,8 +750,7 @@ namespace codex::editor {
             if (Input::is_mouse_down(Mouse::MiddleMouse)) {
                 if (Input::is_mouse_dragging()) {
                     auto&      camera = Editor::viewport_camera();
-                    const auto vec =
-                        Vector3f{ Input::mouse_delta_x(), Input::mouse_delta_y() * -1.0f, .0f } * camera.pan();
+                    const auto vec = vec3{ Input::mouse_delta_x(), Input::mouse_delta_y() * -1.0f, .0f } * camera.pan();
                     if (vec.x <= 10 && vec.y <= 10)
                         camera.set_pos(camera.pos() + vec);
                     return true;
@@ -844,12 +760,8 @@ namespace codex::editor {
                     auto& tmc    = d->selected_entity.entity.get_component<TilemapComponent>();
                     auto& camera = Editor::viewport_camera();
 
-                    // Vector conversion fiesta
-                    const auto camera_dim =
-                        Vector3f{ camera.width() * camera.pan(), camera.height() * camera.pan(), 0.0f };
                     auto tile_pos = scene::Camera::screen_coordinates_to_world(camera, mouse_pos, camera.pos());
-                    tile_pos =
-                        util::snap(tile_pos, Vector3f{ tmc.grid_size, 1.0f }) + Vector3f{ tmc.grid_size / 2.0f, 0.0f };
+                    tile_pos = util::snap(tile_pos, vec3{ tmc.grid_size, 1.0f }) + vec3{ tmc.grid_size / 2.0f, 0.0f };
                     if (tmc.current_state == TilemapComponent::State::Brush) {
                         tmc.add_tile(tile_pos, tmc.current_tile);
                     } else if (tmc.current_state == TilemapComponent::State::Erase) {
@@ -864,7 +776,7 @@ namespace codex::editor {
 
     bool SceneEditorView::on_mouse_scroll_event(events::MouseScrollEvent& e)
     {
-        auto mouse_pos = Vector2{ ImGui::GetMousePos().x, ImGui::GetMousePos().y };
+        auto mouse_pos = ivec2{ ImGui::GetMousePos().x, ImGui::GetMousePos().y };
         mouse_pos.x -= viewport_bounds_[0].x;
         mouse_pos.y -= viewport_bounds_[0].y;
         mouse_pos.y = (viewport_bounds_[1] - viewport_bounds_[0]).y - mouse_pos.y;
@@ -930,6 +842,44 @@ namespace codex::editor {
         proc->launch();
     }
 
+    void SceneEditorView::load_script_module(Scene& scene)
+    {
+        auto& d = descriptor_;
+
+        // Load a uniquely named copy of the module instead of the build output.
+        // Loading the build output in place breaks hot-reload: Windows locks a
+        // loaded DLL so the next build could not overwrite it, and dlopen would
+        // silently reuse a stale image if the file is replaced at the same path.
+        const stdfs::path tmp_dir = d->current_project_path / "tmp";
+
+        std::error_code ec;
+        stdfs::create_directories(tmp_dir, ec);
+
+        // Best-effort cleanup of copies from previous loads; a still-loaded (and
+        // on Windows, locked) copy simply fails to delete and is skipped.
+        {
+            std::vector<stdfs::path> stale;
+            for (const auto& entry : stdfs::directory_iterator(tmp_dir, ec))
+                if (entry.path().filename().string().starts_with("nb_"))
+                    stale.push_back(entry.path());
+            for (const auto& path : stale)
+                stdfs::remove(path, ec);
+        }
+
+        const auto        stamp = std::chrono::system_clock::now().time_since_epoch().count();
+        const stdfs::path tmp_module =
+            tmp_dir / fmt::format("nb_{}_{}", stamp, d->script_module_path.filename().string());
+
+        stdfs::copy_file(d->script_module_path, tmp_module, stdfs::copy_options::overwrite_existing, ec);
+        if (ec) {
+            error("Failed to copy script module to '{}': {}", tmp_module.string(), ec.message());
+            NBMan::load(d->script_module_path, scene); // degrade to loading in place
+            return;
+        }
+
+        NBMan::load(tmp_module, scene);
+    }
+
     void SceneEditorView::on_scene_play() noexcept
     {
         auto& d = descriptor_;
@@ -940,7 +890,7 @@ namespace codex::editor {
 
         d->active_scene   = d->runtime_scene;
         auto active_scene = d->active_scene.lock();
-        assert(active_scene);
+        cxensure(active_scene, "active_scene should not be null right after being set from runtime_scene");
 
         active_scene->set_state(Scene::State::Play);
         active_scene->on_runtime_start();
@@ -956,7 +906,7 @@ namespace codex::editor {
 
         d->active_scene   = d->runtime_scene;
         auto active_scene = d->active_scene.lock();
-        assert(active_scene);
+        cxensure(active_scene, "active_scene should not be null right after being set from runtime_scene");
 
         active_scene->set_state(Scene::State::Simulate);
         active_scene->on_simulation_start();
@@ -979,33 +929,103 @@ namespace codex::editor {
     }
 
     void SceneEditorView::initialize_panel(EditorPanel& panel) const noexcept
-    {
-        panel.on_init();
-    }
+    { panel.on_init(); }
 
     void SceneEditorView::visualize_lines() const noexcept
     {
         CX_DEBUG_PROFILE_SCOPE("SceneEditorView::visualize_lines")
 
-        const auto& d = descriptor_;
+        const auto&                d      = descriptor_;
+        const scene::EditorCamera& camera = Editor::viewport_camera();
 
         // Visualize colliders
         {
             const auto box_colliders = d->active_scene.lock()->entities_with_component<BoxCollider2DComponent>();
             for (const auto& e : box_colliders) {
-                const auto& bc = e.get_component<BoxCollider2DComponent>();
-                const auto& tc = e.get_component<TransformComponent>();
-                debug_draw_.draw_rect_2d({ bc.offset.x + tc.position.x, bc.offset.y + tc.position.y,
-                                           bc.size.x * tc.scale.x * 2.0f, bc.size.y * tc.scale.y * 2.0f },
-                                         tc.rotation.z);
+                const auto&     bc             = e.get_component<BoxCollider2DComponent>();
+                const auto&     tc             = e.transform();
+                const transform w_tr           = tc.world_transform();
+                const vec2      rotated_offset = glm::rotate(bc.offset, math::to_radf(w_tr.rotation.z));
+#if 0
+                debug_draw_.draw_half_circle_2d({}, 50.0f, 90.0f);
+#endif
+                debug_draw_.draw_rect_2d({ rotated_offset.x + w_tr.position.x, rotated_offset.y + w_tr.position.y,
+                                           bc.size.x * w_tr.scale.x * 2.0f, bc.size.y * w_tr.scale.y * 2.0f },
+                                         w_tr.rotation.z);
             }
 
             const auto circle_colliders = d->active_scene.lock()->entities_with_component<CircleCollider2DComponent>();
             for (const auto& e : circle_colliders) {
-                const auto& cc = e.get_component<CircleCollider2DComponent>();
-                const auto& tc = e.get_component<TransformComponent>();
-                debug_draw_.draw_circle_2d(Vector3f{ cc.offset, 0.0f } + tc.position,
-                                           cc.radius * tc.scale.x * tc.scale.y, tc.rotation.z);
+                const auto&     cc             = e.get_component<CircleCollider2DComponent>();
+                const auto&     tc             = e.transform();
+                const transform w_tr           = tc.world_transform();
+                const vec2      rotated_offset = glm::rotate(cc.offset, math::to_radf(w_tr.rotation.z));
+                debug_draw_.draw_circle_2d(vec3{ rotated_offset, 0.0f } + w_tr.position,
+                                           cc.radius * w_tr.scale.x * w_tr.scale.y, w_tr.rotation.z);
+            }
+
+            const auto rj2d_colliders = d->active_scene.lock()->entities_with_component<RevoluteJoint2DComponent>();
+            for (const auto& e : rj2d_colliders) {
+                auto&                     rj2d  = e.get_component<RevoluteJoint2DComponent>();
+                const TransformComponent& trs_a = e.transform();
+
+                const vec3 world_local_anchor_a = trs_a.world_mat() * vec4(rj2d.local_anchor_a, .0f, 1.0f);
+                debug_draw_.draw_circle_2d(vec2(world_local_anchor_a), 4 * camera.pan());
+
+                if (rj2d.enable_limit) {
+                    Entity referenced = d->active_scene.lock()->entity_by_uuid(rj2d.body_b);
+                    if (referenced) {
+                        // Same extraction Scene::construct_physics_body uses to feed b2BodyDef::angle,
+                        // so the gizmo reads the exact angles the solver sees.
+                        const auto world_angle_deg = [](const mat4& m)
+                        { return glm::degrees(glm::atan2(m[0].y, m[0].x)); };
+
+                        // Box2D clamps jointAngle = angleB - angleA - referenceAngle to [lower, upper].
+                        // bodyA is the referenced body, bodyB is the entity holding the component.
+                        const f32 angle_a = world_angle_deg(referenced.transform().world_mat());
+                        const f32 angle_b = world_angle_deg(trs_a.world_mat());
+
+                        // referenceAngle is baked from the REST pose when the joint is created, so it
+                        // cannot be recovered from the live transforms once the solver moves things.
+                        // The editor scene still holds that rest pose (the runtime scene is a UUID-
+                        // preserving clone of it), so read the reference straight out of it.
+                        // While editing, the live pose IS the rest pose, so the reference falls out of
+                        // the current angles directly.
+                        f32 reference = angle_b - angle_a;
+                        if (d->active_scene.lock()->state() != Scene::State::Edit) {
+                            Shared<Scene> rest_scene = d->editor_scene; // copy, so access stays non-const
+                            if (rest_scene) {
+                                const Entity rest_self = rest_scene->entity_by_uuid(e.uuid());
+                                const Entity rest_con  = rest_scene->entity_by_uuid(rj2d.body_b);
+                                if (rest_self && rest_con)
+                                    reference = world_angle_deg(rest_self.transform().world_mat()) -
+                                                world_angle_deg(rest_con.transform().world_mat());
+                            }
+                        }
+
+                        const f32  ref_world = angle_a + reference;
+                        const f32  radius    = 25.0f * camera.pan();
+                        const vec2 centre    = vec2(world_local_anchor_a);
+
+                        // Limit cone: fixed to bodyA, so it only swings when the parent rotates.
+                        debug_draw_.draw_arc_2d(centre, ref_world + rj2d.lower_angle, ref_world + rj2d.upper_angle,
+                                                radius, 20, { 0.0f, 1.0f, 0.0f, 1.0f });
+
+                        // Current-angle needle: fixed to bodyB, meets a cone edge exactly at the limit.
+                        debug_draw_.draw_line_2d(centre,
+                                                 centre + glm::rotate(vec2{ radius, 0.0f }, glm::radians(angle_b)),
+                                                 { 1.0f, 1.0f, 0.0f, 1.0f });
+                    }
+                }
+
+                Entity bodyb = d->active_scene.lock()->entity_by_uuid(rj2d.body_b);
+                if (bodyb) {
+                    const TransformComponent& trs_b = bodyb.transform();
+
+                    const vec3 world_local_anchor_b = trs_b.world_mat() * vec4(rj2d.local_anchor_b, .0f, 1.0f);
+                    debug_draw_.draw_circle_2d(vec2(world_local_anchor_b), 4 * camera.pan());
+                    debug_draw_.draw_line_2d(vec2(world_local_anchor_a), vec2(world_local_anchor_b));
+                }
             }
         }
 
@@ -1013,11 +1033,12 @@ namespace codex::editor {
         {
             const auto cameras = d->active_scene.lock()->entities_with_component<CameraComponent>();
             for (const auto& e : cameras) {
-                const auto& tc = e.get_component<TransformComponent>();
-                const auto& cc = e.get_component<CameraComponent>();
-
+                const auto&     tc   = e.get_component<TransformComponent>();
+                const auto&     cc   = e.get_component<CameraComponent>();
+                const transform w_tr = tc.world_transform();
                 debug_draw_.draw_rect_2d(
-                    { tc.position.x, tc.position.y, (f32)cc.camera.width(), (f32)cc.camera.height() }, tc.rotation.z);
+                    { w_tr.position.x, w_tr.position.y, (f32)cc.camera.width(), (f32)cc.camera.height() },
+                    w_tr.rotation.z);
             }
         }
     }
@@ -1033,6 +1054,7 @@ namespace codex::editor {
             return;
         }
 
+        d->current_project_file = cxproj;
         d->current_project_path = cxproj;
         d->current_project_path = d->current_project_path.parent_path();
 
@@ -1040,9 +1062,9 @@ namespace codex::editor {
         stdfs::current_path(d->current_project_path);
 
         auto project_mount = Shared<fs::DiskMount>::make(d->current_project_path / "assets", 0);
-        d->vfs->mount(std::move(project_mount), "/editor/project/assets", true);
+        EditorApplication::vfs().mount(std::move(project_mount), std::string{ project_assets_vfs_root }, true);
 
-        AssetManager::init(*d->vfs, "/editor/project/assets");
+        AssetManager::init(EditorApplication::vfs(), project_assets_vfs_root);
 
         d->registry_state = AssetRegistryState::Scanning;
         Engine::worker_pool().submit(
@@ -1050,7 +1072,7 @@ namespace codex::editor {
             {
                 std::scoped_lock guard{ descriptor_->registry_state_mutex };
                 auto             watch = dbg::profile_scope();
-                AssetManager::registry().scan_async("/editor/project/assets").await_sync();
+                AssetManager::registry().scan_async(std::string{ project_assets_vfs_root }).await_sync();
                 log(Info, "AssetRegistry::scan() took {}ms", watch.elapsed_as<std::milli, f32>().count());
                 descriptor_->registry_state       = AssetRegistryState::Succeeded;
                 descriptor_->registry_state_ready = true;
@@ -1112,9 +1134,9 @@ namespace codex::editor {
 
     void SceneEditorView::unload_project()
     {
-        auto& d = descriptor_;
-
         AssetManager::dispose();
+        ax::AudioManager::unload_all();
+        EditorApplication::vfs().unmount(std::string{ project_assets_vfs_root });
 
         if (NBMan::instance_loaded())
             NBMan::unload(!is_shutting_down_);
@@ -1127,10 +1149,10 @@ namespace codex::editor {
     {
         CX_DEBUG_PROFILE_SCOPE("SceneEditorView::render_grid")
 
-        const auto camera_dim = Vector2{ camera.width() * camera.pan(), camera.height() * camera.pan() };
-        const auto camera_pos = camera.pos() - Vector3f{ camera_dim / 2, 0.0f };
-        const auto start_pos  = glm::ceil(camera_pos / Vector3f{ c.cell_size, 1.0f }) * Vector3f{ c.cell_size, 0.0f };
-        const auto count      = camera_dim / Vector2{ c.cell_size } + 1;
+        const auto camera_dim = ivec2{ camera.width() * camera.pan(), camera.height() * camera.pan() };
+        const auto camera_pos = camera.pos() - vec3{ camera_dim / 2, 0.0f };
+        const auto start_pos  = glm::ceil(camera_pos / vec3{ c.cell_size, 1.0f }) * vec3{ c.cell_size, 0.0f };
+        const auto count      = camera_dim / ivec2{ c.cell_size } + 1;
 
         for (auto i = 0; i < count.x; ++i) {
             renderer.draw_line_2d({ start_pos.x + i * c.cell_size.x, camera_pos.y },
@@ -1146,7 +1168,7 @@ namespace codex::editor {
     void SceneEditorView::load_outline_shader()
     {
         std::string shader_src;
-        if (auto fh = EditorApplication::vfs().open("/editor/share/gl_shaders/batch_renderer2d_quad_outline.glsl",
+        if (auto fh = EditorApplication::vfs().open("/edit/share/gl_shaders/batch_renderer2d_quad_outline.glsl",
                                                     { fs::FileMode::Read });
             fh) {
             shader_src.resize(fh->size());
@@ -1174,7 +1196,7 @@ namespace codex::editor {
         CX_DEBUG_PROFILE_SCOPE("on_update::viewport_resize")
 
         auto scene = d->active_scene.lock();
-        assert(scene);
+        cxensure(scene, "active_scene should not be null while viewport is resizing");
 
         scene::Camera* camera = nullptr;
         if (scene->state() == Scene::State::Play) {
@@ -1184,7 +1206,7 @@ namespace codex::editor {
             camera = &Editor::viewport_camera();
 
         static auto prev_viewport = viewport_size_;
-        if (viewport_size_ != prev_viewport || viewport_size_ != Vector2f{ camera->width(), camera->height() }) {
+        if (viewport_size_ != prev_viewport || viewport_size_ != vec2{ camera->width(), camera->height() }) {
             camera->set_width(viewport_size_.x);
             camera->set_height(viewport_size_.y);
             prev_viewport = viewport_size_;
@@ -1194,8 +1216,190 @@ namespace codex::editor {
         }
     }
 
-    void SceneEditorView::draw_vec3_control(const char* label, Vector3f& values, const f32 column_wdith,
-                                            const f32 speed, const f32 reset_value)
+    void SceneEditorView::cook_and_export_project()
+    {
+        constexpr std::string_view output_root = "/edit/project/assets/package";
+        constexpr std::string_view cook_root   = "/edit/project/assets/package/.cook";
+
+        auto& d   = descriptor_;
+        auto& vfs = EditorApplication::vfs();
+
+        const auto      output_host_path = d->current_project_path / "assets/package";
+        std::error_code ec;
+        stdfs::remove_all(output_host_path, ec);
+        if (ec) {
+            log(Error, "Failed to clean export directory '{}': {}", output_host_path.generic_string(), ec.message());
+            return;
+        }
+
+        const auto require_directory = [&](const std::string& path)
+        {
+            if (!vfs.mkdir(path, true)) {
+                log(Error, "Failed to create export directory: {}", path);
+                return false;
+            }
+            return true;
+        };
+        const auto require_copy = [&](const std::string& source, const std::string& destination, bool recursive = false)
+        {
+            if (!vfs.cp(source, destination, recursive)) {
+                log(Error, "Failed to copy shipped file: {} -> {}", source, destination);
+                return false;
+            }
+            return true;
+        };
+
+        if (!require_directory(std::string{ output_root }) || !require_directory(std::string{ output_root } + "/bin") ||
+            !require_directory(std::string{ output_root } + "/lib") ||
+            !require_directory(std::string{ output_root } + "/data") ||
+            !require_directory(std::string{ output_root } + "/config") ||
+            !require_directory(std::string{ cook_root } + "/assets/data"))
+            return;
+
+#ifdef CX_PLATFORM_WINDOWS
+        constexpr std::string_view launcher_name = "CodexLauncher.exe";
+        constexpr std::string_view runtime_name  = "ShippedRuntime.exe";
+#else
+        constexpr std::string_view launcher_name = "CodexLauncher";
+        constexpr std::string_view runtime_name  = "ShippedRuntime";
+#endif
+
+        if (!require_copy("/edit/install/bin/" + std::string{ launcher_name },
+                          std::string{ output_root } + "/bin/" + std::string{ launcher_name }) ||
+            !require_copy("/edit/install/bin/" + std::string{ runtime_name },
+                          std::string{ output_root } + "/bin/" + std::string{ runtime_name }))
+            return;
+
+#ifdef CX_PLATFORM_WINDOWS
+        for (const auto& entry : vfs.list("/edit/install/data/shipped/bin", fs::ListOptions::FilesOnly)) {
+            if (!require_copy("/edit/install/data/shipped/bin/" + entry, std::string{ output_root } + "/bin/" + entry))
+                return;
+        }
+#else
+        constexpr auto executable_permissions =
+            stdfs::perms::owner_exec | stdfs::perms::group_exec | stdfs::perms::others_exec;
+        for (const std::string_view binary : { launcher_name, runtime_name }) {
+            const auto binary_path = output_host_path / "bin" / binary;
+            stdfs::permissions(binary_path, executable_permissions, stdfs::perm_options::add, ec);
+            if (ec) {
+                log(Error, "Failed to make shipped binary executable '{}': {}", binary_path.generic_string(),
+                    ec.message());
+                return;
+            }
+        }
+
+        const auto installed_lib_path   = stdfs::path{ CE_INSTALL_DIR } / "data/shipped/lib";
+        const auto exported_lib_path    = output_host_path / "lib";
+        const auto library_copy_options = stdfs::copy_options::recursive | stdfs::copy_options::overwrite_existing |
+                                          stdfs::copy_options::copy_symlinks;
+        for (const auto& entry : stdfs::directory_iterator{ installed_lib_path, ec }) {
+            if (ec) {
+                log(Error, "Failed to read installed library directory '{}': {}", installed_lib_path.generic_string(),
+                    ec.message());
+                return;
+            }
+
+            stdfs::copy(entry.path(), exported_lib_path / entry.path().filename(), library_copy_options, ec);
+            if (ec) {
+                log(Error, "Failed to copy shipped library '{}': {}", entry.path().generic_string(), ec.message());
+                return;
+            }
+        }
+        if (ec) {
+            log(Error, "Failed to read installed library directory '{}': {}", installed_lib_path.generic_string(),
+                ec.message());
+            return;
+        }
+#endif
+
+        for (const std::string resource : { "gl_shaders", "fonts", "images" }) {
+            const std::string source = "/edit/install/data/" + resource;
+            if (vfs.exists(source) && !require_copy(source, std::string{ output_root } + "/data", true))
+                return;
+        }
+
+        EngineProject project    = Engine::project();
+        auto*         boot_scene = AssetManager::registry().asset_metadata(d->project.last_open_scene);
+        if (!boot_scene) {
+            log(Error, "Cannot cook project: boot scene '{}' is not registered", d->project.last_open_scene);
+            return;
+        }
+
+        project.engine_properties.video_properties.window_flags =
+            WindowFlags::Visible | WindowFlags::Resizable | WindowFlags::PositionCentre;
+        project.engine_properties.video_properties.window_title = project.name;
+        project.engine_properties.cwd                           = "./";
+        project.boot_scene                                      = boot_scene->path;
+        project.assets_root                                     = "/run/project/assets";
+        project.config_root                                     = "/run/config";
+
+        const std::string module_filename = d->script_module_path.filename().generic_string();
+        project.native_modules.clear();
+        project.native_modules.push_back(module_filename);
+        stdfs::copy_file(d->script_module_path, output_host_path / "lib" / module_filename,
+                         stdfs::copy_options::overwrite_existing, ec);
+        if (ec) {
+            log(Error, "Failed to copy project native module '{}': {}", d->script_module_path.generic_string(),
+                ec.message());
+            return;
+        }
+
+        try {
+            project.save_to_vfs(vfs, std::string{ output_root } + "/data/project.cxds");
+        }
+        catch (const std::exception& ex) {
+            log(Error, "Failed to write project.cxds: {}", ex.what());
+            return;
+        }
+
+        std::string settings_error;
+        if (!shipped::save_video_settings(output_host_path / "config/video.json",
+                                          shipped::VideoSettings::from(project.engine_properties.video_properties),
+                                          &settings_error)) {
+            log(Error, "Failed to write video settings: {}", settings_error);
+            return;
+        }
+        if (!shipped::save_launcher_settings(output_host_path / "config/launcher.json", {}, &settings_error)) {
+            log(Error, "Failed to write launcher settings: {}", settings_error);
+            return;
+        }
+
+        AssetManager::registry()
+            .write_manifest_async(std::string{ cook_root } + "/assets/__registry.manifest.bin")
+            .await_sync();
+        AssetManager::registry().export_assets_async(std::string{ cook_root } + "/assets/data").await_sync();
+
+        if (vfs.exists("/edit/project/assets/audio") &&
+            !require_copy("/edit/project/assets/audio", std::string{ cook_root } + "/assets/audio", true))
+            return;
+
+        constexpr std::string_view temporary_pak = "/edit/tmp/registry.cxpk";
+        auto                       pak = vfs.open(std::string{ temporary_pak },
+                                                  { fs::FileMode::Create | fs::FileMode::Trunc | fs::FileMode::Write });
+        if (!pak) {
+            log(Error, "Failed to create temporary registry.cxpk");
+            return;
+        }
+        if (!vfs.export_to_pak(pak, {}, std::string{ cook_root })) {
+            log(Error, "Failed to package cooked assets");
+            return;
+        }
+        pak.reset();
+
+        if (!vfs.mv(std::string{ temporary_pak }, std::string{ output_root } + "/data/registry.cxpk")) {
+            log(Error, "Failed to move registry.cxpk into the export");
+            return;
+        }
+
+        stdfs::remove_all(output_host_path / ".cook", ec);
+        if (ec)
+            log(Warn, "Export succeeded, but temporary cook data could not be removed: {}", ec.message());
+        else
+            log(Info, "Project exported successfully to '{}'", output_host_path.generic_string());
+    }
+
+    void SceneEditorView::draw_vec3_control(const char* label, vec3& values, const f32 column_wdith, const f32 speed,
+                                            const f32 reset_value)
     {
         ImGuiIO& io        = ImGui::GetIO();
         auto     bold_font = io.Fonts->Fonts[0];
@@ -1264,8 +1468,8 @@ namespace codex::editor {
         ImGui::PopID();
     }
 
-    void SceneEditorView::draw_vec2_control(const char* label, Vector2f& values, const f32 column_width,
-                                            const f32 speed, const f32 reset_value)
+    void SceneEditorView::draw_vec2_control(const char* label, vec2& values, const f32 column_width, const f32 speed,
+                                            const f32 reset_value)
     {
         ImGuiIO& io        = ImGui::GetIO();
         auto     bold_font = io.Fonts->Fonts[0];
@@ -1320,7 +1524,8 @@ namespace codex::editor {
         ImGui::PopID();
     }
 
-    void SceneEditorView::draw_asset_path(const AssetPath& path, const f32 column_width)
+    void SceneEditorView::draw_asset_path([[maybe_unused]] const AssetPath& path,
+                                          [[maybe_unused]] const f32        column_width)
     {
     }
 } // namespace codex::editor

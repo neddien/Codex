@@ -9,13 +9,15 @@ namespace codex::editor {
         // which will ship with all editor projects
         engine_project.boot_scene        = AssetPath{};
         engine_project.engine_properties = EngineProperties{
+            .cwd   = {},
+            .args  = {},
             .flags = EngineFlags::InitAll,
-            .window_properties =
-                WindowProperties{
-                    .title  = "Codex Application",
-                    .width  = 1920,
-                    .height = 1080,
-                    .vsync  = true,
+            .video_properties =
+                VideoProperties{
+                    .window_title  = "Codex Application",
+                    .window_width  = 1920,
+                    .window_height = 1080,
+                    .vsync         = true,
                 },
         };
     }
@@ -26,5 +28,6 @@ namespace codex::editor {
         ar("vfs_root", vfs_root);
         ar("last_asset_path", last_asset_path);
         ar("last_open_scene", last_open_scene);
+        ar("physics_layer_names", physics_layer_names);
     }
 } // namespace codex::editor

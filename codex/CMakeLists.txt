@@ -1,6 +1,6 @@
 project("CodexEngine")
 
-# ============= # Version      # ============= #
+# ============= # Version # ============= #
 set(CX_VER_MAJ 0)
 set(CX_VER_MIN 1)
 set(CX_VER_REV 0)
@@ -107,17 +107,19 @@ endif()
 
 if(DEFINED CX_COMPILER_GNUC)
   if(DEFINED CX_BUILD_TYPE_RELEASE OR DEFINED CX_BUILD_TYPE_SHIPPING)
-    target_compile_options(CodexEngine PRIVATE -Wall -Wextra -Werror -pedantic)
+    target_compile_options(CodexEngine PRIVATE -Wall -Wextra -Werror -pedantic
+                                               ${CX_STRICT_WARNINGS_GNU})
     target_compile_options(CodexEngine-static PRIVATE -Wall -Wextra -Werror
-                                                      -pedantic)
+                                                      -pedantic ${CX_STRICT_WARNINGS_GNU})
   endif()
   target_compile_definitions(CodexEngine PUBLIC CX_COMPILER_GNUC)
   target_compile_definitions(CodexEngine-static PUBLIC CX_COMPILER_GNUC)
 elseif(DEFINED CX_COMPILER_CLANG)
   if(DEFINED CX_BUILD_TYPE_RELEASE OR DEFINED CX_BUILD_TYPE_SHIPPING)
-    target_compile_options(CodexEngine PRIVATE -Wall -Wextra -Werror -pedantic)
+    target_compile_options(CodexEngine PRIVATE -Wall -Wextra -Werror -pedantic
+                                               ${CX_STRICT_WARNINGS_CLANG})
     target_compile_options(CodexEngine-static PRIVATE -Wall -Wextra -Werror
-                                                      -pedantic)
+                                                      -pedantic ${CX_STRICT_WARNINGS_CLANG})
   endif()
   target_compile_definitions(CodexEngine PUBLIC CX_COMPILER_CLANG)
   target_compile_definitions(CodexEngine-static PUBLIC CX_COMPILER_CLANG)
@@ -128,8 +130,8 @@ elseif(DEFINED CX_COMPILER_CLANG)
   # target_link_options(CodexEngine-static PUBLIC -fsanitize=address)
 elseif(DEFINED CX_COMPILER_MSVC)
   if(DEFINED CX_BUILD_TYPE_RELEASE OR DEFINED CX_BUILD_TYPE_SHIPPING)
-    target_compile_options(CodexEngine PRIVATE /Wall /W4 /WX)
-    target_compile_options(CodexEngine-static PRIVATE /Wall /W4 /WX)
+    target_compile_options(CodexEngine PRIVATE /Wall /W4 /WX ${CX_STRICT_WARNINGS_MSVC})
+    target_compile_options(CodexEngine-static PRIVATE /Wall /W4 /WX ${CX_STRICT_WARNINGS_MSVC})
   endif()
   target_compile_definitions(CodexEngine PUBLIC CX_COMPILER_MSVC)
   target_compile_definitions(CodexEngine-static PUBLIC CX_COMPILER_MSVC)
@@ -187,10 +189,15 @@ if(CX_GRAPHICS_API STREQUAL "OpenGL")
   # glad
   set(GLAD_INCLUDE_DIR "vendor/glad/include")
   set(GLAD_SOURCE_DIR "vendor/glad/src")
-  target_include_directories(CodexEngine PUBLIC ${GLAD_INCLUDE_DIR})
+  target_include_directories(CodexEngine SYSTEM PUBLIC ${GLAD_INCLUDE_DIR})
   target_sources(CodexEngine PRIVATE ${GLAD_SOURCE_DIR}/glad.cpp)
-  target_include_directories(CodexEngine-static PUBLIC ${GLAD_INCLUDE_DIR})
+  target_include_directories(CodexEngine-static SYSTEM PUBLIC ${GLAD_INCLUDE_DIR})
   target_sources(CodexEngine-static PRIVATE ${GLAD_SOURCE_DIR}/glad.cpp)
+
+  # glad.cpp is generated vendor code compiled directly as our own source, so
+  # the SYSTEM include dir above doesn't exempt the file itself from our
+  # strict/-Werror flags.
+  set_source_files_properties("${GLAD_SOURCE_DIR}/glad.cpp" PROPERTIES COMPILE_OPTIONS "-w")
 
   # OpenGL
   target_sources(CodexEngine PRIVATE ${PLATFORM_OPENGL_SOURCES})
@@ -217,7 +224,7 @@ else()
   target_link_libraries(CodexEngine-static PUBLIC SDL2::SDL2 SDL2::SDL2main)
 endif()
 
-# fmt (shared — must be loaded by the engine at startup so dlopen'd plugins
+# fmt (shared - must be loaded by the engine at startup so dlopen'd plugins
 # can resolve fmt symbols without needing their own copy)
 target_link_libraries(CodexEngine PUBLIC fmt::fmt)
 target_link_libraries(CodexEngine-static PUBLIC fmt::fmt)
@@ -234,10 +241,6 @@ target_link_libraries(CodexEngine-static PUBLIC spdlog::spdlog)
 target_link_libraries(CodexEngine PUBLIC nlohmann_json::nlohmann_json)
 target_link_libraries(CodexEngine-static PUBLIC nlohmann_json::nlohmann_json)
 
-# ImGui, core from Conan, backends compiled by us because they are
-# thin platform-specific adapters that imgui intentionally excludes from the
-# library. conanfile.py copies every backend into IMGUI_BACKENDS_DIR at
-# generate() time only the backends.
 string(TOUPPER "${CMAKE_BUILD_TYPE}" _cx_cfg)
 set(_fmt_lib_dir "${fmt_LIB_DIRS_${_cx_cfg}}")
 set(_fmt_bin_dir "${fmt_BIN_DIRS_${_cx_cfg}}")
@@ -247,7 +250,8 @@ set(_sdl_bin_dir "${sdl_BIN_DIRS_${_cx_cfg}}")
 # conanfile.py copies the backends into the Conan output folder (builds/conan,
 # per scripts/build.py) at generate() time. Locate them by that same convention;
 # override with -DIMGUI_BACKENDS_DIR=<path> if you relocate the output folder.
-set(IMGUI_BACKENDS_DIR "${CMAKE_SOURCE_DIR}/builds/conan/imgui_backends"
+string(TOLOWER "${CMAKE_BUILD_TYPE}" _cx_cfg_lower)
+set(IMGUI_BACKENDS_DIR "${CMAKE_SOURCE_DIR}/builds/conan-${_cx_cfg_lower}/imgui_backends"
     CACHE PATH "Directory of imgui backend sources copied by conanfile.py")
 
 if(NOT EXISTS "${IMGUI_BACKENDS_DIR}/imgui_impl_opengl3.cpp")
@@ -258,12 +262,22 @@ endif()
 
 foreach(_cx_tgt CodexEngine CodexEngine-static)
     target_link_libraries(${_cx_tgt} PUBLIC imgui::imgui)
-    target_include_directories(${_cx_tgt} PUBLIC "${IMGUI_BACKENDS_DIR}")
+    target_include_directories(${_cx_tgt} SYSTEM PUBLIC "${IMGUI_BACKENDS_DIR}")
     target_sources(${_cx_tgt} PRIVATE
         "${IMGUI_BACKENDS_DIR}/imgui_impl_opengl3.cpp"
         "${IMGUI_BACKENDS_DIR}/imgui_impl_sdl2.cpp"
         "${IMGUI_BACKENDS_DIR}/imgui_stdlib.cpp")
 endforeach()
+
+# These are vendored ImGui backend .cpp files compiled directly into our
+# targets (not reached purely via #include), so the SYSTEM include dir above
+# doesn't exempt them from our own -Werror/strict flags. -w overrides
+# everything earlier on the command line and disables warnings outright.
+set_source_files_properties(
+    "${IMGUI_BACKENDS_DIR}/imgui_impl_opengl3.cpp"
+    "${IMGUI_BACKENDS_DIR}/imgui_impl_sdl2.cpp"
+    "${IMGUI_BACKENDS_DIR}/imgui_stdlib.cpp"
+    PROPERTIES COMPILE_OPTIONS "-w")
 
 # glm
 target_link_libraries(CodexEngine PUBLIC glm::glm)
@@ -290,10 +304,10 @@ target_link_libraries(CodexEngine-static PUBLIC abseil::abseil)
 
 # Link OpenGL (IF UNIX LIKE)
 find_package(OpenGL REQUIRED)
-target_include_directories(CodexEngine PUBLIC ${OPENGL_INCLUDE_DIR})
+target_include_directories(CodexEngine SYSTEM PUBLIC ${OPENGL_INCLUDE_DIR})
 target_link_libraries(CodexEngine PRIVATE ${OPENGL_LIBRARIES})
 
-target_include_directories(CodexEngine-static PUBLIC ${OPENGL_INCLUDE_DIR})
+target_include_directories(CodexEngine-static SYSTEM PUBLIC ${OPENGL_INCLUDE_DIR})
 target_link_libraries(CodexEngine-static PRIVATE ${OPENGL_LIBRARIES})
 
 # entt
@@ -336,10 +350,10 @@ if(DEFINED CX_PLATFORM_LINUX)
     IMPORTED_LOCATION "${FMOD_STUDIO_LIB_DIR}/${FMOD_STUDIO_LIB_FILE}"
     IMPORTED_SONAME "${FMOD_STUDIO_SONAME}")
 
-  target_include_directories(CodexEngine PUBLIC "${FMOD_DIR}/api/core/inc"
-                                                "${FMOD_DIR}/api/studio/inc")
-  target_include_directories(CodexEngine-static PUBLIC "${FMOD_DIR}/api/core/inc"
-                                                       "${FMOD_DIR}/api/studio/inc")
+  target_include_directories(CodexEngine SYSTEM PUBLIC "${FMOD_DIR}/api/core/inc"
+                                                        "${FMOD_DIR}/api/studio/inc")
+  target_include_directories(CodexEngine-static SYSTEM PUBLIC "${FMOD_DIR}/api/core/inc"
+                                                               "${FMOD_DIR}/api/studio/inc")
   target_link_libraries(CodexEngine PRIVATE fmod fmodstudio)
   target_link_libraries(CodexEngine-static PRIVATE fmod fmodstudio)
 elseif(DEFINED CX_PLATFORM_WINDOWS)
@@ -380,10 +394,10 @@ elseif(DEFINED CX_PLATFORM_WINDOWS)
     IMPORTED_IMPLIB "${FMOD_STUDIO_LIB_DIR}/${FMOD_STUDIO_LIB}"
     IMPORTED_LOCATION "${FMOD_STUDIO_LIB_DIR}/${FMOD_STUDIO_DLL}")
 
-  target_include_directories(CodexEngine PUBLIC "${FMOD_DIR}/api/core/inc"
-                                                "${FMOD_DIR}/api/studio/inc")
-  target_include_directories(CodexEngine-static PUBLIC "${FMOD_DIR}/api/core/inc"
-                                                       "${FMOD_DIR}/api/studio/inc")
+  target_include_directories(CodexEngine SYSTEM PUBLIC "${FMOD_DIR}/api/core/inc"
+                                                        "${FMOD_DIR}/api/studio/inc")
+  target_include_directories(CodexEngine-static SYSTEM PUBLIC "${FMOD_DIR}/api/core/inc"
+                                                               "${FMOD_DIR}/api/studio/inc")
   target_link_libraries(CodexEngine PRIVATE fmod fmodstudio)
   target_link_libraries(CodexEngine-static PRIVATE fmod fmodstudio)
 
@@ -428,9 +442,18 @@ target_compile_definitions(
 if(DEFINED CX_PLATFORM_WINDOWS)
   install(FILES "${FMOD_CORE_DLL_PATH}" "${FMOD_STUDIO_DLL_PATH}" DESTINATION bin)
 
+  # Private dependency bundle consumed by the editor's project cooker. Keep it
+  # separate from the installation's general bin directory so unrelated files
+  # are never included in a shipped project.
+  install(TARGETS CodexEngine DESTINATION data/shipped/bin)
+  install(DIRECTORY "${_fmt_bin_dir}/" DESTINATION data/shipped/bin FILES_MATCHING PATTERN "fmt*.dll")
+  install(DIRECTORY "${_sdl_bin_dir}/" DESTINATION data/shipped/bin FILES_MATCHING PATTERN "SDL2*.dll")
+  install(FILES "${FMOD_CORE_DLL_PATH}" "${FMOD_STUDIO_DLL_PATH}" DESTINATION data/shipped/bin)
+
   # Program Files (or same location as the binary) for unmodifiable file data.
   # App Data for modifidable file data.
 elseif(DEFINED CX_PLATFORM_UNIX)
+  set_target_properties(CodexEngine PROPERTIES INSTALL_RPATH "$ORIGIN")
   install(
     TARGETS CodexEngine
             CodexEngine-static
@@ -446,6 +469,23 @@ elseif(DEFINED CX_PLATFORM_UNIX)
     execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
       \"${FMOD_STUDIO_LIB_FILE}\"
       \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/lib/${FMOD_STUDIO_SONAME}\")
+  ")
+
+  # Private dependency bundle consumed by the editor's project cooker. This
+  # prevents a /usr/local installation from causing all of /usr/local/lib to
+  # be copied into every exported project.
+  install(TARGETS CodexEngine DESTINATION data/shipped/lib)
+  install(DIRECTORY "${_fmt_lib_dir}/" DESTINATION data/shipped/lib FILES_MATCHING PATTERN "libfmt*.so*")
+  install(DIRECTORY "${_sdl_lib_dir}/" DESTINATION data/shipped/lib FILES_MATCHING PATTERN "libSDL2*.so*")
+  install(FILES "${FMOD_CORE_LIB_DIR}/${FMOD_CORE_LIB_FILE}" DESTINATION data/shipped/lib)
+  install(FILES "${FMOD_STUDIO_LIB_DIR}/${FMOD_STUDIO_LIB_FILE}" DESTINATION data/shipped/lib)
+  install(CODE "
+    execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
+      \"${FMOD_CORE_LIB_FILE}\"
+      \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/data/shipped/lib/${FMOD_CORE_SONAME}\")
+    execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
+      \"${FMOD_STUDIO_LIB_FILE}\"
+      \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/data/shipped/lib/${FMOD_STUDIO_SONAME}\")
   ")
 
   # /etc/appname for global configuration files. /usr/local/share/appname for

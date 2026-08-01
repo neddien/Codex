@@ -41,18 +41,39 @@
 
 #ifdef CX_CONFIG_DEBUG
 #define MGL_DEBUG
-#define CX_ASSERT(x, msg)                                                                                              \
-    if (!(x)) {                                                                                                        \
-        std::cerr << "[CODEX-DEBUG] :: Assertion failed: " << msg << "\n\tStack trace:"                                \
-                  << "\n\t\tFunction: " << __FUNCTION__ << "\n\t\tFile: " << __FILE__ << "\n\t\tLine: " << __LINE__    \
-                  << std::endl;                                                                                        \
-        CX_DEBUG_TRAP();                                                                                               \
-    }
+
+// Use cxensure() (in log.h) if you don't want your assert to collapse on Debug/Shipping builds
+#define cxassert(x, fmt_str, ...)                                                                                      \
+    do {                                                                                                               \
+        if (!(x)) {                                                                                                    \
+            ::codex::detail::dispatch_log(::codex::LogLevel::Fatal,                                                    \
+                                          fmt::format(fmt::runtime("Assertion failed: {} ({}:{}, in {})"),             \
+                                                      fmt::format(fmt::runtime(fmt_str) __VA_OPT__(, ) __VA_ARGS__),   \
+                                                      __FILE__, __LINE__, __FUNCTION__));                              \
+            CX_DEBUG_TRAP();                                                                                           \
+        }                                                                                                              \
+    } while (0)
 #else
-#define CX_ASSERT(x, msg) ;
+#define cxassert(x, ...) (void)(x)
 #endif
 
 #define CX_MACRO_STRINGFY(x) #x
+
+#define CX_DEFAULT_LOGGER(name)                                                                                        \
+    using __cx_intrinsics_logger = codex::Loggable<name>;                                                              \
+    using __cx_intrinsics_logger::log;                                                                                 \
+    using __cx_intrinsics_logger::info;                                                                                \
+    using __cx_intrinsics_logger::warn;                                                                                \
+    using __cx_intrinsics_logger::error;                                                                               \
+    using __cx_intrinsics_logger::fatal;                                                                               \
+    using __cx_intrinsics_logger::debug;                                                                               \
+    using __cx_intrinsics_logger::trace;                                                                               \
+    using __cx_intrinsics_logger::Info;                                                                                \
+    using __cx_intrinsics_logger::Warn;                                                                                \
+    using __cx_intrinsics_logger::Error;                                                                               \
+    using __cx_intrinsics_logger::Fatal;                                                                               \
+    using __cx_intrinsics_logger::Verbose;                                                                             \
+    using __cx_intrinsics_logger::Debug;
 
 namespace codex {
     using usize   = std::size_t;
@@ -72,6 +93,11 @@ namespace codex {
     using f128    = long double;
     using object  = void*;
 
+    template <typename T>
+    using opt = std::optional<T>;
+    template <typename T, typename U>
+    using pair = std::pair<T, U>;
+
     constexpr object nullobj = nullptr;
 
     template <typename Derived, typename Base>
@@ -80,26 +106,18 @@ namespace codex {
     concept StringLike = std::constructible_from<std::string_view, T> || std::constructible_from<std::wstring_view, T>;
 
     [[nodiscard]] constexpr auto bit(const auto nr) noexcept
-    {
-        return 1ul << nr;
-    }
+    { return 1ul << nr; }
 
     [[nodiscard]] constexpr std::string_view enum_name(const auto val) noexcept
-    {
-        return magic_enum::enum_name(val);
-    }
+    { return magic_enum::enum_name(val); }
 
     template <typename T>
     [[nodiscard]] constexpr auto enum_from(const std::string_view str) noexcept
-    {
-        return magic_enum::enum_cast<T>(str);
-    }
+    { return magic_enum::enum_cast<T>(str); }
 
     template <typename T>
     [[nodiscard]] constexpr auto enum_cast(const auto val) noexcept
-    {
-        return magic_enum::enum_cast<T>(val);
-    }
+    { return magic_enum::enum_cast<T>(val); }
 
     template <typename Fn>
     constexpr auto bind_event_delegate(auto* self, Fn delegate)
@@ -109,9 +127,7 @@ namespace codex {
 
     template <typename T, usize __Count>
     [[nodiscard]] constexpr auto array_length(T (&arr)[__Count]) noexcept
-    {
-        return __Count;
-    }
+    { return __Count; }
 
     struct InvalidState
     {
@@ -128,27 +144,23 @@ namespace codex {
 
 namespace std {
     template <>
-    struct hash<codex::math::Vector2f>
+    struct hash<codex::math::vec2>
     {
-        [[nodiscard]] std::size_t operator()(const codex::math::Vector2f& vec) const noexcept
-        {
-            return hash<codex::f32>()(vec.x) ^ hash<codex::f32>()(vec.y);
-        }
+        [[nodiscard]] std::size_t operator()(const codex::math::vec2& vec) const noexcept
+        { return hash<codex::f32>()(vec.x) ^ hash<codex::f32>()(vec.y); }
     };
 
     template <>
-    struct hash<codex::math::Vector3f>
+    struct hash<codex::math::vec3>
     {
-        [[nodiscard]] std::size_t operator()(const codex::math::Vector3f& vec) const noexcept
-        {
-            return hash<codex::f32>()(vec.x) ^ hash<codex::f32>()(vec.y) ^ hash<codex::f32>()(vec.z);
-        }
+        [[nodiscard]] std::size_t operator()(const codex::math::vec3& vec) const noexcept
+        { return hash<codex::f32>()(vec.x) ^ hash<codex::f32>()(vec.y) ^ hash<codex::f32>()(vec.z); }
     };
 
     template <>
-    struct hash<codex::math::Vector4f>
+    struct hash<codex::math::vec4>
     {
-        [[nodiscard]] std::size_t operator()(const codex::math::Vector4f& vec) const noexcept
+        [[nodiscard]] std::size_t operator()(const codex::math::vec4& vec) const noexcept
         {
             return hash<codex::f32>()(vec.x) ^ hash<codex::f32>()(vec.y) ^ hash<codex::f32>()(vec.z) ^
                    hash<codex::f32>()(vec.w);
@@ -156,9 +168,9 @@ namespace std {
     };
 
     template <>
-    struct hash<codex::math::Rectf>
+    struct hash<codex::math::rect>
     {
-        [[nodiscard]] std::size_t operator()(const codex::math::Rectf& rect) const noexcept
+        [[nodiscard]] std::size_t operator()(const codex::math::rect& rect) const noexcept
         {
             return hash<codex::f32>()(rect.x) ^ hash<codex::f32>()(rect.y) ^ hash<codex::f32>()(rect.w) ^
                    hash<codex::f32>()(rect.h);
@@ -168,68 +180,52 @@ namespace std {
 
 namespace fmt {
     template <>
-    struct formatter<codex::math::Vector2f> : formatter<std::string_view>
+    struct formatter<codex::math::vec2> : formatter<std::string_view>
     {
-        auto format(const codex::math::Vector2f& vec, format_context& ctx) const
-        {
-            return format_to(ctx.out(), "({}, {})", vec.x, vec.y);
-        }
+        auto format(const codex::math::vec2& vec, format_context& ctx) const
+        { return format_to(ctx.out(), "({}, {})", vec.x, vec.y); }
     };
     template <>
-    struct formatter<codex::math::Vector2> : formatter<std::string_view>
+    struct formatter<codex::math::ivec2> : formatter<std::string_view>
     {
-        auto format(const codex::math::Vector2& vec, format_context& ctx) const
-        {
-            return format_to(ctx.out(), "({}, {})", vec.x, vec.y);
-        }
+        auto format(const codex::math::ivec2& vec, format_context& ctx) const
+        { return format_to(ctx.out(), "({}, {})", vec.x, vec.y); }
     };
     template <>
-    struct formatter<codex::math::Vector3f> : formatter<std::string_view>
+    struct formatter<codex::math::vec3> : formatter<std::string_view>
     {
-        auto format(const codex::math::Vector3f& vec, format_context& ctx) const
-        {
-            return format_to(ctx.out(), "({}, {}, {})", vec.x, vec.y, vec.z);
-        }
+        auto format(const codex::math::vec3& vec, format_context& ctx) const
+        { return format_to(ctx.out(), "({}, {}, {})", vec.x, vec.y, vec.z); }
     };
     template <>
-    struct formatter<codex::math::Vector3> : formatter<std::string_view>
+    struct formatter<codex::math::ivec3> : formatter<std::string_view>
     {
-        auto format(const codex::math::Vector3& vec, format_context& ctx) const
-        {
-            return format_to(ctx.out(), "({}, {}, {})", vec.x, vec.y, vec.z);
-        }
+        auto format(const codex::math::ivec3& vec, format_context& ctx) const
+        { return format_to(ctx.out(), "({}, {}, {})", vec.x, vec.y, vec.z); }
     };
     template <>
-    struct formatter<codex::math::Vector4f> : formatter<std::string_view>
+    struct formatter<codex::math::vec4> : formatter<std::string_view>
     {
-        auto format(const codex::math::Vector4f& vec, format_context& ctx) const
-        {
-            return format_to(ctx.out(), "({}, {}, {}, {})", vec.x, vec.y, vec.z, vec.w);
-        }
+        auto format(const codex::math::vec4& vec, format_context& ctx) const
+        { return format_to(ctx.out(), "({}, {}, {}, {})", vec.x, vec.y, vec.z, vec.w); }
     };
     template <>
-    struct formatter<codex::math::Vector4> : formatter<std::string_view>
+    struct formatter<codex::math::ivec4> : formatter<std::string_view>
     {
-        auto format(const codex::math::Vector4& vec, format_context& ctx) const
-        {
-            return format_to(ctx.out(), "({}, {}, {}, {})", vec.x, vec.y, vec.z, vec.w);
-        }
+        auto format(const codex::math::ivec4& vec, format_context& ctx) const
+        { return format_to(ctx.out(), "({}, {}, {}, {})", vec.x, vec.y, vec.z, vec.w); }
     };
     template <>
-    struct formatter<codex::math::Rectf> : formatter<std::string_view>
+    struct formatter<codex::math::rect> : formatter<std::string_view>
     {
-        auto format(const codex::math::Rectf& rect, format_context& ctx) const
-        {
-            return format_to(ctx.out(), "({}, {}, {}, {})", rect.x, rect.y, rect.w, rect.h);
-        }
+        auto format(const codex::math::rect& rect, format_context& ctx) const
+        { return format_to(ctx.out(), "({}, {}, {}, {})", rect.x, rect.y, rect.w, rect.h); }
     };
     template <>
-    struct formatter<codex::math::Rect> : formatter<std::string_view>
+    struct formatter<codex::math::irect> : formatter<std::string_view>
     {
-        auto format(const codex::math::Rect& rect, format_context& ctx) const
-        {
-            return format_to(ctx.out(), "({}, {}, {}, {})", rect.x, rect.y, rect.w, rect.h);
-        }
+        auto format(const codex::math::irect& rect, format_context& ctx) const
+        { return format_to(ctx.out(), "({}, {}, {}, {})", rect.x, rect.y, rect.w, rect.h); }
     };
 } // namespace fmt
 

@@ -166,7 +166,6 @@ namespace CodexEditor.CoreAPI
 			public IntPtr hIconSm;
 		}
 		[DllImport("user32.dll", SetLastError = true)]
-		public static extern bool GetClientRect(IntPtr hWnd, ref RECT lpRect);
 		[StructLayout(LayoutKind.Sequential)]
 		public struct RECT
 		{

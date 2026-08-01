@@ -12,7 +12,9 @@
 #include <glm/ext/scalar_constants.hpp>  // glm::pi
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/type_ptr.hpp> // glm::value_ptr
+#include <glm/gtx/euler_angles.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtx/rotate_vector.hpp> // glm::rotate(glm::vecX)
 #include <glm/mat4x4.hpp>            // glm::mat4

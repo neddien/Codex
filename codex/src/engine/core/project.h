@@ -33,12 +33,12 @@ namespace codex {
                 return (u64)maj << (64 - 8) | (u64)min << (64 - 8 * 2) | (u64)rev << (64 - 8 * 3) |
                        (u64)build << (64 - 8 * 4);
             }
-            [[nodiscard]] constexpr void from_u64(const u64 ver) noexcept
+            constexpr void from_u64(u64 ver) noexcept
             {
-                maj   = (u8)(maj >> (64 - 8));
-                min   = (u8)(min >> (64 - 8 * 2));
-                rev   = (u8)(rev >> (64 - 8 * 3));
-                build = (u16)(rev >> (64 - 8 * 4));
+                maj   = (u8)(ver >> (64 - 8));
+                min   = (u8)(ver >> (64 - 8 * 2));
+                rev   = (u8)(ver >> (64 - 8 * 3));
+                build = (u16)(ver >> (64 - 8 * 4));
             }
 
         } engine_ver;

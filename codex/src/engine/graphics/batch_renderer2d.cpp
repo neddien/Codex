@@ -10,19 +10,15 @@ namespace codex::gfx {
     i32                      BatchRenderer2D::s_max_quad_count_per_batch_ = BatchRenderer2D::MAX_QUAD_COUNT_PER_BATCH;
     Shader*                  BatchRenderer2D::s_quad_shader_              = nullptr;
     const scene::Camera*     BatchRenderer2D::s_current_camera_           = nullptr;
-    Matrix4f                 BatchRenderer2D::s_current_camera_view_mat_;
-    Vector3f                 BatchRenderer2D::s_current_camera_pos_;
+    mat4                     BatchRenderer2D::s_current_camera_view_mat_;
+    vec3                     BatchRenderer2D::s_current_camera_pos_;
     std::vector<RenderBatch> BatchRenderer2D::s_batches_;
 
     Shader* BatchRenderer2D::shader() noexcept
-    {
-        return s_quad_shader_;
-    }
+    { return s_quad_shader_; }
 
     usize BatchRenderer2D::batch_count() noexcept
-    {
-        return s_batches_.size();
-    }
+    { return s_batches_.size(); }
 
     usize BatchRenderer2D::quad_count() noexcept
     {
@@ -33,16 +29,14 @@ namespace codex::gfx {
     }
 
     std::vector<RenderBatch>& BatchRenderer2D::batches() noexcept
-    {
-        return s_batches_;
-    }
+    { return s_batches_; }
 
     void BatchRenderer2D::init(fs::VirtualFilesystem& vfs, const std::string_view path)
     {
         if (!s_quad_shader_) {
             auto fh = vfs.open(std::string{ path });
             if (!fh)
-                return;
+                throw NotFoundException("{}: no such file or directory", path);
 
             std::string source(fh->size(), '\0');
             fh->read(source.data(), fh->size());
@@ -74,7 +68,7 @@ namespace codex::gfx {
     void BatchRenderer2D::begin(const scene::Camera& camera, const TransformComponent& transform)
     {
         s_current_camera_          = &camera;
-        s_current_camera_view_mat_ = glm::inverse(transform.to_matrix());
+        s_current_camera_view_mat_ = glm::inverse(transform.world_mat());
         s_current_camera_pos_      = transform.position;
         std::for_each(s_batches_.begin(), s_batches_.end(),
                       [](auto& b)
@@ -122,18 +116,18 @@ namespace codex::gfx {
         s_current_camera_ = nullptr;
     }
 
-    void BatchRenderer2D::render_rect(Texture2D* texture, const Rectf& src_rect, const Matrix4f& transform,
-                                      const Vector4f& colour, const i32 z_index, const i32 entity_id)
+    void BatchRenderer2D::render_rect(Texture2D* texture, const rect& src_rect, const mat4& transform,
+                                      const vec4& colour, const i32 z_index, const i32 entity_id)
     {
         // Check if we're in the camera viewport.
-        const Vector2f translation = transform[3];
-        const Vector2  size{ glm::length(glm::vec3(transform[0])), glm::length(glm::vec3(transform[1])) };
+        const vec2  translation = transform[3];
+        const ivec2 size{ glm::length(glm::vec3(transform[0])), glm::length(glm::vec3(transform[1])) };
         // Add ten extra pixels so fix the bug where there's a slight gap between the camera edge and the last
         // sprite inside the viewport of the camera.
-        const auto camera_dim = Vector3{ s_current_camera_->width() * s_current_camera_->pan(),
-                                         s_current_camera_->height() * s_current_camera_->pan(), 0 } +
-                                100;
-        const auto current_cam_pos = s_current_camera_pos_ - Vector3f{ camera_dim / 2 };
+        const auto camera_dim      = ivec3{ s_current_camera_->width() * s_current_camera_->pan(),
+                                            s_current_camera_->height() * s_current_camera_->pan(), 0 } +
+                                     100;
+        const auto current_cam_pos = s_current_camera_pos_ - vec3{ camera_dim / 2 };
 
         if (translation.x < current_cam_pos.x + camera_dim.x && translation.x + size.x > current_cam_pos.x &&
             translation.y < current_cam_pos.y + camera_dim.y && translation.y + size.y > current_cam_pos.y) {
@@ -142,7 +136,7 @@ namespace codex::gfx {
                     if (batch.upload_quad(texture, src_rect, transform, colour, entity_id))
                         return;
                     else
-                        std::cerr << "failed to upload quad\n";
+                        log(LogLevel::Error, "BatchRenderer2D: Failed to upload quad");
                 }
             }
 

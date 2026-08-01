@@ -8,6 +8,7 @@ namespace codex::editor {
     class ContentBrowserView : public EditorPanel, public Loggable<"ContentBrowserView">
     {
     private:
+        u64 last_registry_revision_ = 0;
         struct TreeNode
         {
             std::string                               name;

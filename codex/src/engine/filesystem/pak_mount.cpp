@@ -21,11 +21,11 @@ namespace codex::fs {
     public:
         PakFileHandle(const std::string_view path, Shared<FileHandle> handle, const PakEntry entry,
                       Shared<PakMount> owner, const FileProperties props = FileProperties{})
-            : path_{ normalize(std::string{ path }) }
-            , entry_{ entry }
+            : mutex_{}
+            , path_{ normalize(std::string{ path }) }
             , props_{ props }
             , cursor_{ 0 }
-            , mutex_{}
+            , entry_{ entry }
             , owner_{ std::move(owner) }
             , handle_{ std::move(handle) }
         {
@@ -47,6 +47,8 @@ namespace codex::fs {
         }
         usize write(const void* src, const usize len) noexcept override
         {
+            (void)src;
+            (void)len;
             // Paks are read-only.
             return 0;
         }
@@ -59,6 +61,9 @@ namespace codex::fs {
         usize write_at(const void* src, const usize len, const usize offset) noexcept override
         {
             // Paks are read-only.
+            (void)src;
+            (void)len;
+            (void)offset;
             return 0;
         }
 
@@ -182,7 +187,7 @@ namespace codex::fs {
             return true;
 
         // Check files: binary search by hash, then verify string to handle collisions.
-        const u64 hash = util::crypto::djb2_hash(npath);
+        const u64 hash = util::crypto::fnv1a(npath);
         auto      it   = std::lower_bound(entries_.begin(), entries_.end(), hash,
                                           [](const PakEntry& e, u64 h) { return e.path_hash < h; });
         while (it != entries_.end() && it->path_hash == hash) {
@@ -199,7 +204,7 @@ namespace codex::fs {
     Shared<FileHandle> PakMount::open(const std::string& path, const FileProperties props) noexcept
     {
         const auto npath = normalize(path);
-        const u64  hash  = util::crypto::djb2_hash(npath);
+        const u64  hash  = util::crypto::fnv1a(npath);
         auto       it    = std::lower_bound(entries_.begin(), entries_.end(), hash,
                                             [](const PakEntry& e, u64 h) { return e.path_hash < h; });
         while (it != entries_.end() && it->path_hash == hash) {
@@ -214,16 +219,15 @@ namespace codex::fs {
     }
 
     i32 PakMount::priority() const noexcept
-    {
-        return priority_;
-    }
+    { return priority_; }
 
     bool PakMount::mkdir(const std::string& rel_path) noexcept
     {
+        (void)rel_path;
         return false;
     }
 
-    std::vector<std::string> PakMount::list(const std::string& rel_path, const ListOptions opts) const noexcept
+    std::vector<std::string> PakMount::list(const std::string& rel_path, const ListOptions opts) const
     {
         const auto npath      = normalize(rel_path);
         const auto prefix     = npath.empty() ? std::string{} : npath + '/';
@@ -301,14 +305,10 @@ namespace codex::fs {
     }
 
     u64 PakMount::chunk_size() const noexcept
-    {
-        return header_.chunk_size;
-    }
+    { return header_.chunk_size; }
 
     std::string PakMount::mount_src() const noexcept
-    {
-        return (handle_) ? handle_->path() : "";
-    }
+    { return (handle_) ? handle_->path() : ""; }
 
     std::vector<std::string> PakMount::verify_integrity() const
     {

@@ -21,5 +21,5 @@ private:
     RF_PROPERTY()
     f32 multiplier_ = 1.0f;
     RF_PROPERTY()
-    Vector3f axies_ = { 0.0f, 1.0f, 0.0f };
+    vec3 axies_ = { 0.0f, 1.0f, 0.0f };
 };

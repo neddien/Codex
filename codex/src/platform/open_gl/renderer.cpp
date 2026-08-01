@@ -88,4 +88,9 @@ namespace codex::opengl {
     {
         GL_Call(glColorMask(r, g, b, a));
     }
+
+    void Renderer::resize_viewport(u16 new_width, u16 new_height, u16 x, u16 y) noexcept
+    {
+        GL_Call(glViewport(x, y, new_width, new_height));
+    }
 } // namespace codex::opengl

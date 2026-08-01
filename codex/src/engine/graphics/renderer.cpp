@@ -64,4 +64,9 @@ namespace codex::gfx {
     {
         get().internal_renderer_->colour_mask(r, g, b, a);
     }
+
+    void Renderer::resize_viewport(u16 new_width, u16 new_height, u16 x, u16 y) noexcept
+    {
+        get().internal_renderer_->resize_viewport(new_width, new_height, x, y);
+    }
 } // namespace codex::gfx

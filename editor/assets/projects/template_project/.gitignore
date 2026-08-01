@@ -9,3 +9,4 @@ lib/*
 .ignore_*/*
 compile_commands.json
 assets/package/
+tmp/

@@ -32,7 +32,7 @@ namespace codex::opengl {
                 case GL_UNSIGNED_SHORT:
                 case GL_SHORT: return sizeof(GLshort);
                 case GL_DOUBLE: return sizeof(GLdouble);
-                default: CX_ASSERT(false, "Unknown type."); return 0;
+                default: cxassert(false, "Unknown type."); return 0;
             }
         }
     };
@@ -59,7 +59,8 @@ namespace codex::opengl {
         {
             char msg[256];
             std::sprintf(msg, "Couldn't push! T type: %s\n", typeid(T).name());
-            CX_ASSERT(false, msg);
+            cxassert(false, msg);
+            (void)count;
         }
 
     private:

@@ -19,7 +19,7 @@ namespace codex {
         void push_overlay(Layer* overlay);
         void pop_layer(Layer* layer);
         void pop_overlay(Layer* overlay);
-        void clear() noexcept { layers_.clear(); }
+        void clear() noexcept;
 
     public:
         auto begin() noexcept { return layers_.begin(); }

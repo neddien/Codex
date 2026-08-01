@@ -1,5 +1,16 @@
 CEngine:
 	- [TODO]: Move NBMan to be owned by the Project, not the Scene.
+	- [TODO]: Add flip_x/flip_y to Sprite and swap the UVs in RenderBatch::upload_quad.
+	          Negative transform scale must never be used to mirror anything at or above a
+	          rigid body: construct_physics_body extracts the angle with atan2(world[0].y,
+	          world[0].x), and a mirrored transform has a negative determinant, so the angle
+	          comes out 180deg off and handedness (CCW/CW) inverts. Box2D cannot represent
+	          mirrored bodies at all. Flip in the renderer instead.
+	- [TODO]: Warn in construct_physics_body when a body's world transform is mirrored:
+	          det = world[0].x*world[1].y - world[1].x*world[0].y; det <= 0 -> log(Warn, tag).
+	          Collider sizing is already sign-agnostic (uses glm::length), only the angle breaks,
+	          which is why this fails silently.
 
 CEditor:
 	- [FIXME]: When loading a new project on top of an already existing one, the editor hangs waiting for a mutex idefinitely.
+	- [TODO]: Expose Sprite flip_x/flip_y as checkboxes in the properties view once the fields land.

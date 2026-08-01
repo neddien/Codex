@@ -3,6 +3,7 @@
 #include <engine/concurrency/public/mutex.h>
 #include <engine/core/public/common_third_party_libs.h>
 #include <engine/core/public/uuid.h>
+#include <engine/reflection/public/reflection.h>
 
 namespace codex {
     // Forward declarations.
@@ -31,23 +32,21 @@ namespace codex {
     public:
         constexpr Entity() = default;
         Entity(const handle_type entity, Scene* const scene)
-            : handle(static_cast<entt::entity>(entity))
+            : handle_(static_cast<entt::entity>(entity))
             , scene_(scene)
         {
         }
         Entity(const entt::entity entity, Scene* const scene)
-            : handle(entity)
+            : handle_(entity)
             , scene_(scene)
         {
         }
 
     public:
         [[nodiscard]] explicit constexpr operator handle_type() const noexcept
-        {
-            return static_cast<handle_type>(handle);
-        }
+        { return static_cast<handle_type>(handle_); }
         [[nodiscard]] inline      operator bool() const noexcept;
-        [[nodiscard]] inline bool operator==(const Entity& other) const noexcept { return other.handle == handle; }
+        [[nodiscard]] inline bool operator==(const Entity& other) const noexcept { return other.handle_ == handle_; }
 
     public:
         [[nodiscard]] UUID                      uuid() const noexcept;
@@ -79,16 +78,22 @@ namespace codex {
 
         template <typename T>
             requires(std::is_base_of_v<Component, T>)
+        [[nodiscard]] T* try_get_component();
+
+        template <typename T>
+            requires(std::is_base_of_v<Component, T>)
+        [[nodiscard]] const T* try_get_component() const;
+
+        template <typename T>
+            requires(std::is_base_of_v<Component, T>)
         [[nodiscard]] bool has_component() const;
 
     private:
-        [[nodiscard]] Component&       first_component() noexcept;
-        [[nodiscard]] const Component& first_component() const noexcept;
-
-    private:
-        entt::entity handle{ entt::null };
+        entt::entity handle_{ entt::null };
         Scene*       scene_ = nullptr;
     };
+
+    RF_REGISTER_TYPE(Entity, codex::rf::PropertyType::EntityHandle)
 } // namespace codex
 
 namespace std {
@@ -96,8 +101,6 @@ namespace std {
     struct hash<codex::Entity>
     {
         [[nodiscard]] std::size_t operator()(const codex::Entity& entity) const noexcept
-        {
-            return std::hash<codex::UUID>{}(entity.uuid());
-        }
+        { return std::hash<codex::UUID>{}(entity.uuid()); }
     };
 } // namespace std

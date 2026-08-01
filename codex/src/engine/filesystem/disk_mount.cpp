@@ -49,9 +49,16 @@ namespace codex::fs {
     bool DiskMount::cp(const std::string& src_rel_path, const std::string& dst_rel_path, const bool recursive) noexcept
     {
         std::error_code               ec;
-        std::filesystem::copy_options opts =
-            (recursive) ? std::filesystem::copy_options::recursive : std::filesystem::copy_options{};
+        std::filesystem::copy_options opts = std::filesystem::copy_options::overwrite_existing;
+
+        if (recursive)
+            opts |= std::filesystem::copy_options::recursive;
+
         std::filesystem::copy(abs(src_rel_path), abs(dst_rel_path), opts, ec);
+
+        if (ec)
+            log(Error, "Failed to copy {} -> {}: {}", src_rel_path, dst_rel_path, ec.message());
+
         return !ec;
     }
 
@@ -62,23 +69,22 @@ namespace codex::fs {
         return !ec;
     }
 
-    std::vector<std::string> DiskMount::list(const std::string& rel_path, const ListOptions opts) const noexcept
+    std::vector<std::string> DiskMount::list(const std::string& rel_path, const ListOptions opts) const
     {
         std::vector<std::string> result;
-        std::error_code          ec;
         const bool               files_only = opts & ListOptions::FilesOnly;
         const bool               dirs_only  = opts & ListOptions::DirsOnly;
         const auto               base       = abs(rel_path);
 
         if (opts & ListOptions::Recursive) {
-            for (const auto& entry : std::filesystem::recursive_directory_iterator(base, ec)) {
+            for (const auto& entry : std::filesystem::recursive_directory_iterator(base)) {
                 const bool is_dir = entry.is_directory();
                 if ((is_dir && files_only) || (!is_dir && dirs_only))
                     continue;
                 result.push_back(std::filesystem::relative(entry.path(), base).string());
             }
         } else {
-            for (const auto& entry : std::filesystem::directory_iterator(base, ec)) {
+            for (const auto& entry : std::filesystem::directory_iterator(base)) {
                 const bool is_dir = entry.is_directory();
                 if ((is_dir && files_only) || (!is_dir && dirs_only))
                     continue;

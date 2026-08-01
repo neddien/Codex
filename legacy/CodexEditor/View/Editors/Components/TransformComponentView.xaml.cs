@@ -25,8 +25,6 @@ namespace CodexEditor.View.Editors.Components
 			InitializeComponent();
 		}
 
-		private Action GetAction(Func<TransformComponent, (TransformComponent transform, Vector3)> selector,
-			Action<(TransformComponent transform, Vector3)> forEachAction)
 		{
 			if (!(DataContext is MSTransformComponent vm))
 			{

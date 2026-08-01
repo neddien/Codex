@@ -314,22 +314,22 @@ namespace codex {
         return sdl_flags;
     }
 
-    void serialize(Archive& ar, WindowProperties& properties)
+    void serialize(Archive& ar, VideoProperties& properties)
     {
-        ar("title", properties.title);
-        ar("width", properties.width);
-        ar("height", properties.height);
-        ar("pos_x", properties.pos_x);
-        ar("pos_y", properties.pos_y);
+        ar("title", properties.window_title);
+        ar("width", properties.window_width);
+        ar("height", properties.window_height);
+        ar("pos_x", properties.window_pos_x);
+        ar("pos_y", properties.window_pos_y);
         ar("frame_cap", properties.frame_cap);
         ar("vsync", properties.vsync);
         if (ar.saving()) {
-            u16 flags = (u16)properties.flags;
+            u16 flags = (u16)properties.window_flags;
             ar("flags", flags);
         } else {
             u16 flags;
             ar("flags", flags);
-            properties.flags = (WindowFlags)flags;
+            properties.window_flags = (WindowFlags)flags;
         }
         ar("borderless", properties.borderless);
     }
@@ -350,20 +350,20 @@ namespace codex {
         SDL_Quit();
     }
 
-    void Window::init(const WindowProperties& window_info, const void* native_window)
+    void Window::init(const VideoProperties& window_info, const void* native_window)
     {
-        flags_         = ToSDLWindowFlags(window_info.flags);
+        flags_         = ToSDLWindowFlags(window_info.window_flags);
         native_window_ = native_window;
-        title_         = window_info.title;
-        width_         = window_info.width;
-        height_        = window_info.height;
+        title_         = window_info.window_title;
+        width_         = window_info.window_width;
+        height_        = window_info.window_height;
 
-        if (window_info.flags & WindowFlags::PositionCentre) {
+        if (window_info.window_flags & WindowFlags::PositionCentre) {
             pos_x_ = SDL_WINDOWPOS_CENTERED;
             pos_y_ = SDL_WINDOWPOS_CENTERED;
         } else {
-            pos_x_ = window_info.pos_x;
-            pos_y_ = window_info.pos_y;
+            pos_x_ = window_info.window_pos_x;
+            pos_y_ = window_info.window_pos_y;
         }
 
         frame_cap_   = window_info.frame_cap;
@@ -388,7 +388,7 @@ namespace codex {
                                                                      // on Mac
 #endif
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
         SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
         SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
@@ -466,8 +466,7 @@ namespace codex {
             switch (sdl_event_.type) {
                 case SDL_QUIT: {
                     Engine::get().stop();
-                    break;
-                }
+                } break;
                 case SDL_WINDOWEVENT: {
                     switch (sdl_event_.window.event) {
                         case SDL_WINDOWEVENT_CLOSE: {
@@ -487,53 +486,47 @@ namespace codex {
                             break;
                         }
                     }
-                }
+                } break;
                 case SDL_MOUSEMOTION: {
                     MouseMoveEvent e{ FromSDLMouse(sdl_event_.button.button), sdl_event_.motion.x,
                                       sdl_event_.motion.y };
                     if (event_callback_) {
                         event_callback_(e);
                     }
-                    break;
-                }
+                } break;
                 case SDL_MOUSEBUTTONDOWN: {
                     MouseDownEvent e{ FromSDLMouse(sdl_event_.button.button), sdl_event_.motion.x,
                                       sdl_event_.motion.y };
                     if (event_callback_) {
                         event_callback_(e);
                     }
-                    break;
-                }
+                } break;
                 case SDL_MOUSEBUTTONUP: {
                     MouseUpEvent e{ FromSDLMouse(sdl_event_.button.button), sdl_event_.motion.x, sdl_event_.motion.y };
                     if (event_callback_) {
                         event_callback_(e);
                     }
-                    break;
-                }
+                } break;
                 case SDL_MOUSEWHEEL: {
                     MouseScrollEvent e{ FromSDLMouse(sdl_event_.button.button - 1), sdl_event_.motion.x,
                                         sdl_event_.motion.y, sdl_event_.wheel.x, sdl_event_.wheel.y };
                     if (event_callback_) {
                         event_callback_(e);
                     }
-                    break;
-                }
+                } break;
                 case SDL_KEYDOWN: {
                     KeyDownEvent e{ FromSDLKeycode(sdl_event_.key.keysym.sym),
                                     static_cast<bool>(sdl_event_.key.repeat) };
                     if (event_callback_) {
                         event_callback_(e);
                     }
-                    break;
-                }
+                } break;
                 case SDL_KEYUP: {
                     KeyUpEvent e{ FromSDLKeycode(sdl_event_.key.keysym.sym) };
                     if (event_callback_) {
                         event_callback_(e);
                     }
-                    break;
-                }
+                } break;
             }
         }
     }

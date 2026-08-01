@@ -6,7 +6,11 @@ namespace codex::editor {
     class ConsoleMan : public Layer
     {
     private:
+        // Appended from process-output threads while the UI thread renders, so
+        // every access goes through the mutex.
         static std::deque<std::string> s_output_;
+        static std::mutex              s_mutex_;
+        static bool                    s_autoscroll_;
 
     public:
         void on_attach() override;

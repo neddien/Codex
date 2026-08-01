@@ -33,12 +33,19 @@ def _build_dir(preset: str) -> str:
     return os.path.join("builds", preset)
 
 
+def _is_cmake_build_dir(name: str) -> bool:
+    return os.path.isfile(os.path.join(_build_dir(name), "CMakeCache.txt"))
+
+
 def _resolve_preset(preset: str | None, config: str | None) -> tuple[str, bool]:
     """Return ``(preset_name, needs_cmake_configure)``.
 
     Panics when no suitable preset can be found.
     """
-    existing = set(os.listdir("builds")) if os.path.isdir("builds") else set()
+    # Only directories with a CMakeCache.txt count as existing builds; builds/
+    # also holds non-CMake trees (e.g. conan-debug) and half-configured leftovers.
+    existing = {s for s in os.listdir("builds") if _is_cmake_build_dir(s)} \
+        if os.path.isdir("builds") else set()
     available = com.get_cmake_presets()
 
     if not available:
@@ -52,7 +59,7 @@ def _resolve_preset(preset: str | None, config: str | None) -> tuple[str, bool]:
         # No hints: prefer an already-generated build directory.
         common = existing.intersection(available)
         if common:
-            chosen = next(iter(common))
+            chosen = sorted(common)[0]
             com.log(f"Auto-detected existing build: {chosen}")
             return chosen, False
         com.log(f"No preset provided, defaulting to: {available[0]}")
@@ -61,13 +68,13 @@ def _resolve_preset(preset: str | None, config: str | None) -> tuple[str, bool]:
     # Config hint: prefer an already-generated build that contains the config string.
     matching_builds = {s for s in existing if config in s}
     if matching_builds:
-        chosen = next(iter(matching_builds))
+        chosen = sorted(matching_builds)[0]
         com.log(f"Found existing build: {chosen}")
         return chosen, False
 
     matching_presets = {s for s in available if config in s}
     if matching_presets:
-        chosen = next(iter(matching_presets))
+        chosen = sorted(matching_presets)[0]
         com.log(f"Building: {chosen}")
         return chosen, True
 
@@ -131,7 +138,7 @@ def cmd_build(args: argparse.Namespace) -> None:
         com.Chrono.begin()
         com.log("Conan install started.")
         res = com.run(
-            f"conan install . --output-folder=builds/conan --build=missing -s build_type={args.lib_config.lower().capitalize()}",
+            f"conan install . --output-folder=builds/conan-{args.lib_config.lower()} --build=missing -s build_type={args.lib_config.lower().capitalize()}",
             stdout=stdout,
             stderr=stdout,
         )
@@ -223,8 +230,8 @@ def _make_parser() -> argparse.ArgumentParser:
     build.add_argument(
         "--lib-config", metavar="TYPE",
         dest="lib_config",
-        help="Library build configuration for Conan (e.g. debug, release)",
-        default="debug",
+        help="Library build configuration for Conan (e.g. debug, release). Defaults to --config.",
+        default=None,
     )
     build.add_argument(
         "--no-parallel", action="store_true",
@@ -288,6 +295,8 @@ def main() -> None:
         args.run = True
     if args.command == "build" and args.run:
         args.install = True
+    if args.command == "build" and args.lib_config is None:
+        args.lib_config = args.config
 
     dispatch = {
         "list": cmd_list,
