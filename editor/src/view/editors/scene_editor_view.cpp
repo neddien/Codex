@@ -72,6 +72,7 @@ namespace codex::editor {
             .script_module_path   = {},
             .selected_entity      = {},
             .current_project_path = {},
+            .current_project_file = {},
             .registry_state_mutex = {},
             .registry_state_cv    = {},
         });

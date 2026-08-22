@@ -301,6 +301,7 @@ namespace codex {
         body->SetTransform(
             b2Vec2(transform.position.x * phys_props.scaling_factor, transform.position.y * phys_props.scaling_factor),
             math::to_radf(transform.rotation.z));
+        body->SetAwake(true);
     }
 
     void TilemapComponent::add_tile([[maybe_unused]] const vec3 pos, [[maybe_unused]] const i32 tileId)
@@ -369,7 +370,7 @@ namespace codex {
     f32 RevoluteJoint2DComponent::joint_speed() const noexcept
     {
         b2RevoluteJoint* joint = reinterpret_cast<b2RevoluteJoint*>(runtime_joint);
-        joint->GetMotorSpeed();
+        return joint->GetMotorSpeed();
     }
 
     void RevoluteJoint2DComponent::set_motor_speed(f32 deg_per_sec) noexcept
