@@ -2,7 +2,122 @@
     "version": 3,
     "configurePresets": [
         {
+            "name": "linux-gcc",
+            "hidden": false,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/builds/${presetName}",
+            "displayName": "Linux Ninja GCC",
+            "cacheVariables": {
+                "CMAKE_POLICY_VERSION_MINIMUM": "3.5",
+                "CMAKE_C_COMPILER": "gcc",
+                "CMAKE_CXX_COMPILER": "g++",
+                "CMAKE_PRESET_NAME": "${presetName}",
+                "CX_ENABLE_CEDITOR": "on",
+                "CX_ENABLE_TESTWORK": "1",
+                "CX_DEBUG_INSTALL_DIR": "${sourceDir}/installs/${presetName}",
+                "CX_RELEASE_INSTALL_DIR": "${sourceDir}/installs/${presetName}",
+                "CX_SHIPPING_INSTALL_DIR": "/usr/local"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Linux"
+            }
+        },
+        {
+            "name": "linux-clang",
+            "hidden": false,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/builds/${presetName}",
+            "displayName": "Linux Ninja Clang",
+            "cacheVariables": {
+                "CMAKE_POLICY_VERSION_MINIMUM": "3.5",
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++",
+                "CMAKE_PRESET_NAME": "${presetName}",
+                "CX_ENABLE_CEDITOR": "on",
+                "CX_ENABLE_TESTWORK": "1",
+                "CX_DEBUG_INSTALL_DIR": "${sourceDir}/installs/${presetName}",
+                "CX_RELEASE_INSTALL_DIR": "${sourceDir}/installs/${presetName}",
+                "CX_SHIPPING_INSTALL_DIR": "/usr/local"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Linux"
+            }
+        },
+        {
             "name": "windows-msvc",
+            "hidden": false,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/builds/${presetName}",
+            "displayName": "Windows Ninja MSVC",
+            "cacheVariables": {
+                "CMAKE_POLICY_VERSION_MINIMUM": "3.5",
+                "CMAKE_C_COMPILER": "cl.exe",
+                "CMAKE_CXX_COMPILER": "cl.exe",
+                "CMAKE_PRESET_NAME": "${presetName}",
+                "CX_ENABLE_CEDITOR": "on",
+                "CX_ENABLE_TESTWORK": "1",
+                "CX_DEBUG_INSTALL_DIR": "${sourceDir}/installs/${presetName}",
+                "CX_RELEASE_INSTALL_DIR": "${sourceDir}/installs/${presetName}",
+                "CX_SHIPPING_INSTALL_DIR": "C:/Program Files/Advres/Codex Editor"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            }
+        },
+        {
+            "name": "windows-clangcl",
+            "hidden": false,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/builds/${presetName}",
+            "displayName": "Windows Ninja clang-cl",
+            "cacheVariables": {
+                "CMAKE_POLICY_VERSION_MINIMUM": "3.5",
+                "CMAKE_C_COMPILER": "clang-cl.exe",
+                "CMAKE_CXX_COMPILER": "clang-cl.exe",
+                "CMAKE_PRESET_NAME": "${presetName}",
+                "CX_ENABLE_CEDITOR": "on",
+                "CX_ENABLE_TESTWORK": "1",
+                "CX_DEBUG_INSTALL_DIR": "${sourceDir}/installs/${presetName}",
+                "CX_RELEASE_INSTALL_DIR": "${sourceDir}/installs/${presetName}",
+                "CX_SHIPPING_INSTALL_DIR": "C:/Program Files/Advres/Codex Editor"
+
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            }
+        },
+        {
+            "name": "windows-vs2022",
+            "hidden": false,
+            "generator": "Visual Studio 17 2022",
+            "binaryDir": "${sourceDir}/builds/${presetName}",
+            "displayName": "Windows VS2022 MSVC",
+            "cacheVariables": {
+                "CMAKE_POLICY_VERSION_MINIMUM": "3.5",
+                "CMAKE_PRESET_NAME": "${presetName}",
+                "CX_ENABLE_CEDITOR": "on",
+                "CX_ENABLE_TESTWORK": "1",
+                "CX_DEBUG_INSTALL_DIR": "${sourceDir}/installs/${presetName}",
+                "CX_RELEASE_INSTALL_DIR": "${sourceDir}/installs/${presetName}",
+                "CX_SHIPPING_INSTALL_DIR": "C:/Program Files/Advres/Codex Editor"
+
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            }
+        },
+        {
+            "name": "windows-msvc-base",
             "hidden": true,
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/builds/${presetName}",
@@ -20,15 +135,37 @@
             }
         },
         {
-            "name": "vs2022",
+            "name": "vs2022-conan-rel",
             "hidden": false,
-            "generator": "Visual Studio 17",
+            "generator": "Visual Studio 17 2022",
             "binaryDir": "${sourceDir}/builds/${presetName}",
             "installDir": "C:/Program Files/Carbine/CEditor",
-            "displayName": "vs2022",
+            "toolchainFile": "${sourceDir}/builds/conan-release/conan_toolchain.cmake",
+            "displayName": "vs2022 Release",
             "cacheVariables": {
                 "CMAKE_POLICY_VERSION_MINIMUM": "3.5",
                 "CMAKE_PRESET_NAME": "${presetName}",
+                "CMAKE_BUILD_TYPE": "Release",
+                "CX_ENABLE_CEDITOR": "on"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            }
+        },
+        {
+            "name": "vs2022-conan-dbg",
+            "hidden": false,
+            "generator": "Visual Studio 17 2022",
+            "binaryDir": "${sourceDir}/builds/${presetName}",
+            "installDir": "C:/Program Files/Carbine/CEditor",
+            "toolchainFile": "${sourceDir}/builds/conan-debug/conan_toolchain.cmake",
+            "displayName": "vs2022 Debug",
+            "cacheVariables": {
+                "CMAKE_POLICY_VERSION_MINIMUM": "3.5",
+                "CMAKE_PRESET_NAME": "${presetName}",
+                "CMAKE_BUILD_TYPE": "Debug",
                 "CX_ENABLE_CEDITOR": "on"
             },
             "condition": {
@@ -44,11 +181,10 @@
             "binaryDir": "${sourceDir}/builds/${presetName}",
             "cacheVariables": {
                 "CMAKE_POLICY_VERSION_MINIMUM": "3.5",
-                "CMAKE_C_COMPILER": "clang.exe",
-                "CMAKE_CXX_COMPILER": "clang++.exe",
+                "CMAKE_C_COMPILER": "clang-cl.exe",
+                "CMAKE_CXX_COMPILER": "clang-cl.exe",
                 "CMAKE_PRESET_NAME": "${presetName}",
-                "CX_ENABLE_CEDITOR": "on",
-                "CMAKE_CXX_FLAGS": "-fuse-ld=link"
+                "CX_ENABLE_CEDITOR": "on"
             },
             "condition": {
                 "type": "equals",
@@ -92,7 +228,7 @@
             "name": "windows-msvc-any-debug",
             "displayName": "any Debug",
             "installDir": "${sourceDir}/installs/${presetName}",
-            "inherits": "windows-msvc",
+            "inherits": "windows-msvc-base",
             "toolchainFile": "${sourceDir}/builds/conan-debug/conan_toolchain.cmake",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
@@ -104,10 +240,10 @@
             "displayName": "any Debug",
             "installDir": "${sourceDir}/installs/${presetName}",
             "inherits": "windows-llvm",
-            "toolchainFile": "${sourceDir}/builds/conan-debug/conan_toolchain.cmake",
+            "toolchainFile": "${sourceDir}/builds/conan-debug-llvm/conan_toolchain.cmake",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
-		            "CX_ENABLE_TESTGAME": "1"
+                "CX_ENABLE_TESTWORK": "1"
             }
         },
         {
@@ -115,7 +251,7 @@
             "displayName": "any Release",
             "installDir": "${sourceDir}/installs/${presetName}",
             "inherits": "windows-llvm-any-debug",
-            "toolchainFile": "${sourceDir}/builds/conan-release/conan_toolchain.cmake",
+            "toolchainFile": "${sourceDir}/builds/conan-release-llvm/conan_toolchain.cmake",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release"
             }
@@ -125,7 +261,7 @@
             "displayName": "any Shipping",
             "installDir": "C:/Program Files/Carbine/CEditor",
             "inherits": "windows-llvm-any-debug",
-            "toolchainFile": "${sourceDir}/builds/conan-release/conan_toolchain.cmake",
+            "toolchainFile": "${sourceDir}/builds/conan-release-llvm/conan_toolchain.cmake",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Shipping"
             }
@@ -206,7 +342,8 @@
             "toolchainFile": "${sourceDir}/builds/conan-release/conan_toolchain.cmake",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
-                "CMAKE_CXX_FLAGS": "-fsanitize=address -fno-omit-frame-pointer -fsanitize=undefined", "CMAKE_C_FLAGS": "-fsanitize=address -fno-omit-frame-pointer -fsanitize=undefined" }
+                "CMAKE_CXX_FLAGS": "-fsanitize=address -fno-omit-frame-pointer -fsanitize=undefined", 
+                "CMAKE_C_FLAGS": "-fsanitize=address -fno-omit-frame-pointer -fsanitize=undefined" }
         },
         {
             "name": "osx-any-shipping",
