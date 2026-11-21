@@ -27,11 +27,14 @@ namespace codex {
     }
 
     void EngineProject::save_to_disk(const std::filesystem::path& proj_path) const
-    { (void)proj_path; }
+    {
+        (void)proj_path;
+    }
 
     void EngineProject::save_to_vfs(fs::VirtualFilesystem& vfs, const std::filesystem::path& proj_path) const
     {
-        auto fh = vfs.open(proj_path, { fs::FileMode::Create | fs::FileMode::Trunc | fs::FileMode::Write });
+        auto fh =
+            vfs.open(proj_path.generic_string(), { fs::FileMode::Create | fs::FileMode::Trunc | fs::FileMode::Write });
         if (fh) {
             BinaryArchiveBackend binsd;
             Archive              ar{ binsd };
@@ -70,5 +73,7 @@ namespace codex {
     }
 
     void EngineUserProject::archive(Archive& ar)
-    { (void)ar; }
+    {
+        (void)ar;
+    }
 } // namespace codex

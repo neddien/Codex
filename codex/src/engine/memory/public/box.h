@@ -3,7 +3,7 @@
 #include <memory>
 
 namespace codex {
-    template <typename T, typename Deleter = std::default_delete<T>>
+    template <typename T, typename Deleter>
     class Box
     {
         template <typename U, typename D>
@@ -12,15 +12,15 @@ namespace codex {
     public:
         Box() = default;
         constexpr Box(std::nullptr_t) noexcept
-            : impl_(nullptr)
+            : impl_{ nullptr }
         {
         }
         explicit Box(T* ptr) noexcept
-            : impl_(ptr)
+            : impl_{ ptr }
         {
         }
         Box(T* ptr, Deleter d) noexcept
-            : impl_(ptr, std::move(d))
+            : impl_{ ptr, std::move(d) }
         {
         }
         Box(Box&&) noexcept            = default;
@@ -30,7 +30,7 @@ namespace codex {
         template <typename U, typename D>
             requires(std::is_convertible_v<U*, T*>)
         Box(Box<U, D>&& other) noexcept
-            : impl_(std::move(other.impl_))
+            : impl_{ std::move(other.impl_) }
         {
         }
 
@@ -67,9 +67,9 @@ namespace codex {
     public:
         // Consumes this Box and reinterprets it as Box<U> via static_cast.
         template <typename U>
-        [[nodiscard]] Box<U> as() && noexcept
+        [[nodiscard]] Box<U, Deleter> as() && noexcept
         {
-            return Box<U>{ static_cast<U*>(impl_.release()) };
+            return Box<U, Deleter>{ static_cast<U*>(impl_.release()) };
         }
 
     public:
@@ -90,4 +90,7 @@ namespace codex {
     private:
         std::unique_ptr<T, Deleter> impl_;
     };
+
+    template <typename T, typename Deleter = std::default_delete<T>>
+    class Box;
 } // namespace codex

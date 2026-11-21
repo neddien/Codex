@@ -9,7 +9,7 @@
 namespace codex {
     constexpr u32 ProjectFormatVersion = 1;
 
-    struct EngineProject : public ISerializable, public Loggable<"EngineProject">
+    struct CX_API EngineProject : public ISerializable, public Loggable<"EngineProject">
     {
         // Global
         UUID        uuid;
@@ -25,7 +25,9 @@ namespace codex {
             u16 build;
 
             [[nodiscard]] inline std::string to_string() const noexcept
-            { return fmt::format("{}.{}.{}+{}", maj, min, rev, build); }
+            {
+                return fmt::format("{}.{}.{}+{}", maj, min, rev, build);
+            }
             [[nodiscard]] constexpr operator u64() const noexcept
             {
                 return (u64)maj << (64 - 8) | (u64)min << (64 - 8 * 2) | (u64)rev << (64 - 8 * 3) |

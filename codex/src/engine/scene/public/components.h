@@ -26,7 +26,7 @@ namespace codex {
     } // namespace scene
     class NativeBehaviour;
 
-    struct CODEX_API Component : public ISerializable
+    struct CX_API Component : public ISerializable
     {
         friend class Entity;
         friend class Scene;
@@ -60,7 +60,7 @@ namespace codex {
         mutable Entity parent_;
     };
 
-    struct CODEX_API IDComponent : public Component
+    struct CX_API IDComponent : public Component
     {
         CX_COMPONENT(IDComponent)
 
@@ -75,7 +75,7 @@ namespace codex {
         void archive_impl(Archive& ar) override;
     };
 
-    struct CODEX_API TagComponent : public Component
+    struct CX_API TagComponent : public Component
     {
         CX_COMPONENT(TagComponent)
 
@@ -92,7 +92,7 @@ namespace codex {
 
     // Inherits math::transform so position/rotation/scale stay directly accessible
     // and the whole pose can be assigned from a math::transform in one go.
-    struct CODEX_API TransformComponent : public Component, public math::transform
+    struct CX_API TransformComponent : public Component, public math::transform
     {
         CX_COMPONENT(TransformComponent)
 
@@ -122,7 +122,7 @@ namespace codex {
         mat4 local_{ 1.0f };
     };
 
-    struct CODEX_API SpriteRendererComponent : public Component
+    struct CX_API SpriteRendererComponent : public Component
     {
         CX_COMPONENT(SpriteRendererComponent)
 
@@ -145,7 +145,7 @@ namespace codex {
     CX_CUSTOM_EXCEPTION(ScriptException, "An unknown behaviour exception occured.")
     CX_CUSTOM_EXCEPTION(DuplicateBehaviourException, "Cannot have more than one type of behaviour on a single entity.")
 
-    struct NativeBehaviourComponent : public Component, public Loggable<"NativeBehaviourComponent">
+    struct CX_API NativeBehaviourComponent : public Component, public Loggable<"NativeBehaviourComponent">
     {
         CX_COMPONENT(NativeBehaviourComponent)
 
@@ -179,7 +179,7 @@ namespace codex {
         mutable absl::flat_hash_map<std::string, std::string> pending_;
     };
 
-    struct CODEX_API CameraComponent : public Component
+    struct CX_API CameraComponent : public Component
     {
         CX_COMPONENT(CameraComponent)
 
@@ -192,7 +192,7 @@ namespace codex {
         void archive_impl(Archive& ar) override;
     };
 
-    struct CODEX_API RigidBody2DComponent : public Component
+    struct CX_API RigidBody2DComponent : public Component
     {
         CX_COMPONENT(RigidBody2DComponent)
 
@@ -238,7 +238,7 @@ namespace codex {
         void archive_impl(Archive& ar) override;
     };
 
-    struct CODEX_API BoxCollider2DComponent : public Component
+    struct CX_API BoxCollider2DComponent : public Component
     {
         CX_COMPONENT(BoxCollider2DComponent)
 
@@ -252,7 +252,7 @@ namespace codex {
         void archive_impl(Archive& ar) override;
     };
 
-    struct CODEX_API CircleCollider2DComponent : public Component
+    struct CX_API CircleCollider2DComponent : public Component
     {
         CX_COMPONENT(CircleCollider2DComponent)
 
@@ -266,7 +266,7 @@ namespace codex {
         void archive_impl(Archive& ar) override;
     };
 
-    struct CODEX_API RevoluteJoint2DComponent : public Component
+    struct CX_API RevoluteJoint2DComponent : public Component
     {
         CX_COMPONENT(RevoluteJoint2DComponent)
 
@@ -294,7 +294,7 @@ namespace codex {
         void archive_impl(Archive& ar) override;
     };
 
-    struct CODEX_API GridRendererComponent : public Component
+    struct CX_API GridRendererComponent : public Component
     {
         CX_COMPONENT(GridRendererComponent)
 
@@ -306,7 +306,7 @@ namespace codex {
         void archive_impl(Archive& ar) override;
     };
 
-    struct CODEX_API TilemapComponent : public Component
+    struct CX_API TilemapComponent : public Component
     {
         CX_COMPONENT(TilemapComponent)
 
@@ -348,7 +348,7 @@ namespace codex {
         void archive_impl(Archive& ar) override;
     };
 
-    struct CODEX_API TilesetAnimationComponent : public Component
+    struct CX_API TilesetAnimationComponent : public Component
     {
         CX_COMPONENT(TilesetAnimationComponent)
 
@@ -414,7 +414,7 @@ namespace codex {
         void archive_impl(Archive& ar) override;
     };
 
-    struct CODEX_API AudioSourceComponent : public Component
+    struct CX_API AudioSourceComponent : public Component
     {
         CX_COMPONENT(AudioSourceComponent)
 
@@ -440,7 +440,7 @@ namespace codex {
         CX_COMPONENT(AudioListenerComponent)
     };
 
-    struct CODEX_API HierarchyComponent : public Component
+    struct CX_API HierarchyComponent : public Component
     {
         CX_COMPONENT(HierarchyComponent)
 

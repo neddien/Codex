@@ -3,7 +3,7 @@
 #include <engine/core/public/common_third_party_libs.h>
 
 namespace codex::opengl {
-    class CODEX_API Shader
+    class CX_API Shader
     {
     public:
         Shader(std::string source, std::string_view version = "330 core");

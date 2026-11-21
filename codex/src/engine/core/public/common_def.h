@@ -6,55 +6,25 @@
 
 #include <cstdint>
 #include <engine/core/public/geometry.h>
-
-#if defined(CX_PLATFORM_WINDOWS)
-#define NOINLINE     __declspec(noinline)
-#define CODEX_EXPORT __declspec(dllexport)
-#ifdef CX_BUILD_SHARED
-#define CODEX_API __declspec(dllexport)
-#elif defined(CX_BUILD_STATIC)
-#define CODEX_API
-#else
-#define CODEX_API __declspec(dllimport)
-#endif
-#elif defined(CX_PLATFORM_UNIX)
-#define NOINLINE     __attribute__((NOINLINE))
-#define CODEX_API    __attribute__((visibility("default")))
-#define CODEX_EXPORT __attribute__((visibility("default")))
-#endif
-
-#ifdef CX_COMPILER_GNUC
-#define CX_DEBUG_TRAP()    __builtin_trap()
-#define CX_PRETTY_FUNCTION __PRETTY_FUNCTION__
-#define CX_PACKED(x)       x __attribute__((__packed__))
-#elif CX_COMPILER_MSVC
-#define CX_DEBUG_TRAP()    __debugbreak()
-#define CX_PRETTY_FUNCTION __FUNCSIG__
-#define CX_PACKED(x)       __pragma(pack(push, 1)) x __pragma(pack(pop))
-#elif CX_COMPILER_CLANG
-#define CX_DEBUG_TRAP()    __builtin_debugtrap()
-#define CX_PRETTY_FUNCTION __PRETTY_FUNCTION__
-#define CX_PACKED(x)       x __attribute__((__packed__))
-#else
-#error "Unknown compiler"
-#endif
+#include <platform/platform.h>
 
 #ifdef CX_CONFIG_DEBUG
-#define MGL_DEBUG
+#    define MGL_DEBUG
 
 // Use cxensure() (in log.h) if you don't want your assert to collapse on Debug/Shipping builds
-#define cxassert(x, fmt_str, ...)                                                                                      \
-    do {                                                                                                               \
-        if (!(x)) {                                                                                                    \
-            ::codex::detail::dispatch_log(::codex::LogLevel::Fatal,                                                    \
-                                          fmt::format(fmt::runtime("Assertion failed: {} ({}:{}, in {})"),             \
-                                                      fmt::format(fmt::runtime(fmt_str) __VA_OPT__(, ) __VA_ARGS__),   \
-                                                      __FILE__, __LINE__, __FUNCTION__));                              \
-            CX_DEBUG_TRAP();                                                                                           \
-        }                                                                                                              \
-    } while (0)
+#    define cxassert(x, fmt_str, ...)                                                                                  \
+        do {                                                                                                           \
+            if (!(x)) {                                                                                                \
+                ::codex::detail::dispatch_log(                                                                         \
+                    ::codex::LogLevel::Fatal,                                                                          \
+                    fmt::format(fmt::runtime("Assertion failed: {} ({}:{}, in {})"),                                   \
+                                fmt::format(fmt::runtime(fmt_str) __VA_OPT__(, ) __VA_ARGS__), __FILE__, __LINE__,     \
+                                __FUNCTION__));                                                                        \
+                CX_DEBUG_TRAP();                                                                                       \
+            }                                                                                                          \
+        } while (0)
 #else
-#define cxassert(x, ...) (void)(x)
+#    define cxassert(x, ...) (void)(x)
 #endif
 
 #define CX_MACRO_STRINGFY(x) #x
@@ -68,12 +38,7 @@
     using __cx_intrinsics_logger::fatal;                                                                               \
     using __cx_intrinsics_logger::debug;                                                                               \
     using __cx_intrinsics_logger::trace;                                                                               \
-    using __cx_intrinsics_logger::Info;                                                                                \
-    using __cx_intrinsics_logger::Warn;                                                                                \
-    using __cx_intrinsics_logger::Error;                                                                               \
-    using __cx_intrinsics_logger::Fatal;                                                                               \
-    using __cx_intrinsics_logger::Verbose;                                                                             \
-    using __cx_intrinsics_logger::Debug;
+    using enum ::codex::LogLevel;
 
 namespace codex {
     using usize   = std::size_t;
@@ -106,18 +71,26 @@ namespace codex {
     concept StringLike = std::constructible_from<std::string_view, T> || std::constructible_from<std::wstring_view, T>;
 
     [[nodiscard]] constexpr auto bit(const auto nr) noexcept
-    { return 1ul << nr; }
+    {
+        return 1ul << nr;
+    }
 
     [[nodiscard]] constexpr std::string_view enum_name(const auto val) noexcept
-    { return magic_enum::enum_name(val); }
+    {
+        return magic_enum::enum_name(val);
+    }
 
     template <typename T>
     [[nodiscard]] constexpr auto enum_from(const std::string_view str) noexcept
-    { return magic_enum::enum_cast<T>(str); }
+    {
+        return magic_enum::enum_cast<T>(str);
+    }
 
     template <typename T>
     [[nodiscard]] constexpr auto enum_cast(const auto val) noexcept
-    { return magic_enum::enum_cast<T>(val); }
+    {
+        return magic_enum::enum_cast<T>(val);
+    }
 
     template <typename Fn>
     constexpr auto bind_event_delegate(auto* self, Fn delegate)
@@ -127,7 +100,9 @@ namespace codex {
 
     template <typename T, usize __Count>
     [[nodiscard]] constexpr auto array_length(T (&arr)[__Count]) noexcept
-    { return __Count; }
+    {
+        return __Count;
+    }
 
     struct InvalidState
     {
@@ -147,14 +122,18 @@ namespace std {
     struct hash<codex::math::vec2>
     {
         [[nodiscard]] std::size_t operator()(const codex::math::vec2& vec) const noexcept
-        { return hash<codex::f32>()(vec.x) ^ hash<codex::f32>()(vec.y); }
+        {
+            return hash<codex::f32>()(vec.x) ^ hash<codex::f32>()(vec.y);
+        }
     };
 
     template <>
     struct hash<codex::math::vec3>
     {
         [[nodiscard]] std::size_t operator()(const codex::math::vec3& vec) const noexcept
-        { return hash<codex::f32>()(vec.x) ^ hash<codex::f32>()(vec.y) ^ hash<codex::f32>()(vec.z); }
+        {
+            return hash<codex::f32>()(vec.x) ^ hash<codex::f32>()(vec.y) ^ hash<codex::f32>()(vec.z);
+        }
     };
 
     template <>
@@ -183,49 +162,65 @@ namespace fmt {
     struct formatter<codex::math::vec2> : formatter<std::string_view>
     {
         auto format(const codex::math::vec2& vec, format_context& ctx) const
-        { return format_to(ctx.out(), "({}, {})", vec.x, vec.y); }
+        {
+            return format_to(ctx.out(), "({}, {})", vec.x, vec.y);
+        }
     };
     template <>
     struct formatter<codex::math::ivec2> : formatter<std::string_view>
     {
         auto format(const codex::math::ivec2& vec, format_context& ctx) const
-        { return format_to(ctx.out(), "({}, {})", vec.x, vec.y); }
+        {
+            return format_to(ctx.out(), "({}, {})", vec.x, vec.y);
+        }
     };
     template <>
     struct formatter<codex::math::vec3> : formatter<std::string_view>
     {
         auto format(const codex::math::vec3& vec, format_context& ctx) const
-        { return format_to(ctx.out(), "({}, {}, {})", vec.x, vec.y, vec.z); }
+        {
+            return format_to(ctx.out(), "({}, {}, {})", vec.x, vec.y, vec.z);
+        }
     };
     template <>
     struct formatter<codex::math::ivec3> : formatter<std::string_view>
     {
         auto format(const codex::math::ivec3& vec, format_context& ctx) const
-        { return format_to(ctx.out(), "({}, {}, {})", vec.x, vec.y, vec.z); }
+        {
+            return format_to(ctx.out(), "({}, {}, {})", vec.x, vec.y, vec.z);
+        }
     };
     template <>
     struct formatter<codex::math::vec4> : formatter<std::string_view>
     {
         auto format(const codex::math::vec4& vec, format_context& ctx) const
-        { return format_to(ctx.out(), "({}, {}, {}, {})", vec.x, vec.y, vec.z, vec.w); }
+        {
+            return format_to(ctx.out(), "({}, {}, {}, {})", vec.x, vec.y, vec.z, vec.w);
+        }
     };
     template <>
     struct formatter<codex::math::ivec4> : formatter<std::string_view>
     {
         auto format(const codex::math::ivec4& vec, format_context& ctx) const
-        { return format_to(ctx.out(), "({}, {}, {}, {})", vec.x, vec.y, vec.z, vec.w); }
+        {
+            return format_to(ctx.out(), "({}, {}, {}, {})", vec.x, vec.y, vec.z, vec.w);
+        }
     };
     template <>
     struct formatter<codex::math::rect> : formatter<std::string_view>
     {
         auto format(const codex::math::rect& rect, format_context& ctx) const
-        { return format_to(ctx.out(), "({}, {}, {}, {})", rect.x, rect.y, rect.w, rect.h); }
+        {
+            return format_to(ctx.out(), "({}, {}, {}, {})", rect.x, rect.y, rect.w, rect.h);
+        }
     };
     template <>
     struct formatter<codex::math::irect> : formatter<std::string_view>
     {
         auto format(const codex::math::irect& rect, format_context& ctx) const
-        { return format_to(ctx.out(), "({}, {}, {}, {})", rect.x, rect.y, rect.w, rect.h); }
+        {
+            return format_to(ctx.out(), "({}, {}, {}, {})", rect.x, rect.y, rect.w, rect.h);
+        }
     };
 } // namespace fmt
 

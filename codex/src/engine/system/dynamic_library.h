@@ -7,7 +7,7 @@ namespace codex::sys {
     CX_CUSTOM_EXCEPTION(DynamicLibraryLoadException, "Failed to load dynamic library.")
     CX_CUSTOM_EXCEPTION(DynamicLibraryInvokeException, "Failed to invoke function")
 
-    class CODEX_API DLib : public Loggable<"DLib">
+    class CX_API DLib : public Loggable<"DLib">
     {
     private:
 #ifdef CX_PLATFORM_WINDOWS

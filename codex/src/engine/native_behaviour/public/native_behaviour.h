@@ -13,7 +13,7 @@ namespace codex {
     struct NativeBehaviourComponent;
     class NBMan;
 
-    class CODEX_API NativeBehaviour : public ISerializable
+    class CX_API NativeBehaviour : public ISerializable
     {
         friend class Scene;
         friend struct NativeBehaviourComponent;

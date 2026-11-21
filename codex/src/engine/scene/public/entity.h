@@ -15,7 +15,7 @@ namespace codex {
     struct TransformComponent;
     struct IDComponent;
 
-    class CODEX_API Entity
+    class CX_API Entity
     {
         friend class Scene;
         friend struct SpriteRendererComponent;

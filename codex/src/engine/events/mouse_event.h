@@ -73,7 +73,7 @@ namespace codex::events {
         i32 offset_y_;
     };
 
-    class CODEX_API MouseDownEvent : public MouseEvent
+    class CX_API MouseDownEvent : public MouseEvent
     {
     public:
         using MouseEvent::MouseEvent;
@@ -88,7 +88,7 @@ namespace codex::events {
         EVENT_CLASS_CATEGORY(EventCategoryMouse | EventCategoryInput)
     };
 
-    class CODEX_API MouseUpEvent : public MouseEvent
+    class CX_API MouseUpEvent : public MouseEvent
     {
     public:
         using MouseEvent::MouseEvent;

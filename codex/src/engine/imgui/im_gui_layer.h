@@ -7,7 +7,7 @@
 #include <imgui_stdlib.h>
 
 namespace codex::imgui {
-    class CODEX_API ImGuiLayer : public Layer
+    class CX_API ImGuiLayer : public Layer
     {
     public:
         ImGuiLayer();

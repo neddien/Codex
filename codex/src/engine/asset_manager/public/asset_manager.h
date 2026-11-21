@@ -8,7 +8,6 @@
 #include <engine/core/public/system.h>
 #include <engine/core/public/uuid.h>
 #include <engine/filesystem/public/file_handle.h>
-#include <engine/graphics/public/texture2d.h>
 #include <engine/memory/public/memory.h>
 
 namespace codex {
@@ -16,7 +15,7 @@ namespace codex {
         class VirtualFilesystem;
     }
 
-    class AssetManager : public System<AssetManager>, public Loggable<"AssetManager">
+    class CX_API AssetManager : public System<AssetManager>, public Loggable<"AssetManager">
     {
     public:
         static void init(fs::VirtualFilesystem& vfs, const std::string_view asset_root) noexcept;

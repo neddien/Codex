@@ -154,12 +154,12 @@ namespace codex {
             u8                    syslog_facility       = SyslogFacility::LogUser; // Syslog facility
         };
 
-        CODEX_API void dispatch_log(LogLevel level, const usize tag, std::string_view message) noexcept;
-        CODEX_API void dispatch_log(LogLevel level, std::string_view message) noexcept;
+        CX_API void dispatch_log(LogLevel level, const usize tag, std::string_view message) noexcept;
+        CX_API void dispatch_log(LogLevel level, std::string_view message) noexcept;
 
-        CODEX_API void init_logger(const LogInitProperties properties);
-        CODEX_API void dispose_logger();
-        CODEX_API void register_logger(const std::string_view logger_name) noexcept;
+        CX_API void init_logger(const LogInitProperties properties);
+        CX_API void dispose_logger();
+        CX_API void register_logger(const std::string_view logger_name) noexcept;
     } // namespace detail
 
     template <typename... TArgs>

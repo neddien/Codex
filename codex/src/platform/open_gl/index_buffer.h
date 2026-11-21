@@ -6,7 +6,7 @@ namespace codex::opengl {
     // Forward declerations
     class Renderer;
 
-    class CODEX_API IndexBuffer
+    class CX_API IndexBuffer
     {
         friend class Renderer;
 

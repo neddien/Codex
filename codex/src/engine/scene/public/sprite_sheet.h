@@ -6,7 +6,7 @@
 #include "sprite.h"
 
 namespace codex {
-    class CODEX_API SpriteSheet
+    class CX_API SpriteSheet
     {
     public:
         SpriteSheet(ResRef<gfx::Texture2D> texture, i32 sprite_width, i32 sprite_height, i32 sprite_count, i32 space)

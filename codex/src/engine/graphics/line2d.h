@@ -3,7 +3,7 @@
 #include <engine/core/public/geometry.h>
 
 namespace codex::gfx {
-    class CODEX_API Line2D
+    class CX_API Line2D
     {
     public:
         Line2D(const vec2 source, const vec2 destination, const vec4 colour, const i32 lifeTime)

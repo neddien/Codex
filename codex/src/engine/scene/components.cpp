@@ -23,7 +23,9 @@ namespace codex {
     }
 
     void TagComponent::archive_impl(Archive& ar)
-    { ar("tag", tag); }
+    {
+        ar("tag", tag);
+    }
 
     TransformComponent::TransformComponent(const math::transform& transform)
         : math::transform{ transform }
@@ -49,7 +51,9 @@ namespace codex {
     }
 
     void SpriteRendererComponent::archive_impl(Archive& ar)
-    { sprite_.archive(ar); }
+    {
+        sprite_.archive(ar);
+    }
 
     NativeBehaviourComponent::NativeBehaviourComponent() noexcept = default;
 
@@ -345,7 +349,9 @@ namespace codex {
     }
 
     void IDComponent::archive_impl(Archive& ar)
-    { uuid.archive(ar); }
+    {
+        uuid.archive(ar);
+    }
 
     void BoxCollider2DComponent::archive_impl(Archive& ar)
     {
@@ -376,19 +382,19 @@ namespace codex {
     void RevoluteJoint2DComponent::set_motor_speed(f32 deg_per_sec) noexcept
     {
         b2RevoluteJoint* joint = reinterpret_cast<b2RevoluteJoint*>(runtime_joint);
-        joint->SetMotorSpeed(math::to_radf(deg_per_sec));
+        return joint->SetMotorSpeed(math::to_radf(deg_per_sec));
     }
 
     void RevoluteJoint2DComponent::set_max_motor_torque(f32 torque) noexcept
     {
         b2RevoluteJoint* joint = reinterpret_cast<b2RevoluteJoint*>(runtime_joint);
-        joint->SetMaxMotorTorque(torque);
+        return joint->SetMaxMotorTorque(torque);
     }
 
     void RevoluteJoint2DComponent::set_motor_enabled(bool enabled) noexcept
     {
         b2RevoluteJoint* joint = reinterpret_cast<b2RevoluteJoint*>(runtime_joint);
-        joint->EnableMotor(enabled);
+        return joint->EnableMotor(enabled);
     }
 
     void RevoluteJoint2DComponent::archive_impl(Archive& ar)

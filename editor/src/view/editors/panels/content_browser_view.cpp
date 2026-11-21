@@ -35,7 +35,9 @@ namespace codex::editor {
     }
 
     void ContentBrowserView::on_init()
-    { log(Info, "Waiting for asset registry to complete scan..."); }
+    {
+        log(Info, "Waiting for asset registry to complete scan...");
+    }
 
     void ContentBrowserView::on_imgui_render()
     {
@@ -51,7 +53,13 @@ namespace codex::editor {
             ImGui::TableNextColumn();
             ImGui::BeginChild("##cb_tree");
 
-            rebuild_tree();
+            // if tree needs to actually be rebuilt
+            // NOTE: If you want it to be real-time while not scanning the entire fs every tick
+            // use a OS-native file watcher with an event trigger!
+            // FIXME: Doing this on the main-thread is a terrible idea, an entire rebuild takes around a second
+            if (dirty_)
+                rebuild_tree();
+
             TreeNode root_node_cpy;
             {
                 std::shared_lock guard{ mutex_ };
@@ -184,6 +192,8 @@ namespace codex::editor {
                 }
             }
         }
+
+        dirty_ = false;
     }
 
     void ContentBrowserView::render_directory_tree(const TreeNode& node, std::string path)

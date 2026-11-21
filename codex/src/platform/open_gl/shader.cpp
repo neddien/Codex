@@ -80,12 +80,12 @@ namespace codex::opengl {
         bool               vertex = false, fragment = false;
         while (std::getline(stream, line))
         {
-            if (line == "#shader_type vertex")
+            if (line.starts_with("#shader_type vertex"))
             {
                 vertex   = true;
                 fragment = false;
             }
-            else if (line == "#shader_type fragment")
+            else if (line.starts_with("#shader_type fragment"))
             {
                 fragment = true;
                 vertex   = false;

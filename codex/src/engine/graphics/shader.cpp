@@ -3,6 +3,8 @@
 #include <platform/open_gl/shader.h>
 
 namespace codex::gfx {
+    Shader::Shader() = default;
+
     Shader::Shader(std::string source, const ImportSettings& settings)
         : raw_shader_{ Box<opengl::Shader>::make(std::move(source), settings.version) }
     {

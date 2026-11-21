@@ -3,7 +3,7 @@
 #include "public/camera.h"
 
 namespace codex::scene {
-    class CODEX_API EditorCamera : public Camera
+    class CX_API EditorCamera : public Camera
     {
     public:
         using Camera::Camera;

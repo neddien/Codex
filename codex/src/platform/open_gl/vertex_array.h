@@ -7,7 +7,7 @@ namespace codex::opengl {
     class VertexBuffer;
     class VertexBufferLayout;
 
-    class CODEX_API VertexArray
+    class CX_API VertexArray
     {
     public:
         VertexArray();

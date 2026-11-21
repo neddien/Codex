@@ -16,9 +16,9 @@ namespace codex::util {
             return buffer.str();
         }
 
-        [[nodiscard]] CODEX_API std::vector<u8> compress_lz4(const void* src, const usize src_size) noexcept;
+        [[nodiscard]] CX_API std::vector<u8> compress_lz4(const void* src, const usize src_size) noexcept;
 
-        CODEX_API bool decompress_lz4(const void* src, const usize compressed_size, void* const dst,
+        CX_API bool decompress_lz4(const void* src, const usize compressed_size, void* const dst,
                                       const usize original_size) noexcept;
     }; // namespace io
     namespace str {

@@ -10,7 +10,7 @@
 #include <engine/memory/public/memory.h>
 
 namespace codex::fs {
-    class VirtualFilesystem : public Loggable<"VFS">
+    class CX_API VirtualFilesystem : public Loggable<"VFS">
     {
     private:
         struct Node

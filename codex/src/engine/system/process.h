@@ -32,7 +32,7 @@ namespace codex::sys {
         std::function<void(i32)>   on_exit          = nullptr;
     };
 
-    class CODEX_API Process : public std::enable_shared_from_this<Process>
+    class CX_API Process : public std::enable_shared_from_this<Process>
     {
     public:
         using ProcessHandle = Shared<Process>;

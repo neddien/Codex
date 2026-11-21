@@ -3,7 +3,7 @@
 #include "thread_pool.h"
 
 namespace codex::cc {
-    class ThreadedExecutor
+    class CX_API ThreadedExecutor
     {
     private:
         struct Awaiter

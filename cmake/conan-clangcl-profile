@@ -1,0 +1,5 @@
+[settings]
+compiler.runtime=dynamic
+compiler.runtime_version=v145
+[conf]
+sdl/*:tools.cmake.cmaketoolchain:extra_variables={'SDL_LIBC': {'value': 'ON', 'cache': True, 'type': 'BOOL', 'docstring': 'Use the C runtime'}}

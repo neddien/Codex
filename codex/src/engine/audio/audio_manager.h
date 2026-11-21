@@ -2,8 +2,6 @@
 
 #include <future>
 
-#include <fmod_studio.hpp>
-
 #include <engine/audio/audio_system.h>
 #include <engine/core/public/exception.h>
 
@@ -18,7 +16,7 @@ namespace codex::ax {
         f32         default_value{};
     };
 
-    class CODEX_API AudioManager
+    class CX_API AudioManager
     {
     public:
         // One-shot playback

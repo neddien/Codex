@@ -62,6 +62,8 @@ namespace codex::gfx {
         }
     } // namespace
 
+    Texture2D::Texture2D() = default;
+
     Texture2D::Texture2D(const u8* buf, const usize len, const ImportSettings& import_settings)
         : buf_{ buf }
         , len_{ len }

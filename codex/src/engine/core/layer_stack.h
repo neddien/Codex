@@ -4,7 +4,7 @@
 #include "layer.h"
 
 namespace codex {
-    class CODEX_API LayerStack
+    class CX_API LayerStack
     {
     private:
         std::vector<Layer*> layers_;

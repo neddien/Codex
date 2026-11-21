@@ -107,8 +107,8 @@ namespace codex::editor {
         // glDepthFunc(GL_LESS);
 
         // TODO: Remove this hardcoded path
-        std::string_view val = std::getenv("CX_DEFAULT_LOAD_PROJECT");
-        if (!val.empty()) {
+        const char* val = std::getenv("CX_DEFAULT_LOAD_PROJECT");
+        if (val) {
             load_project(std::string{ val } + "/template.cxproj");
         }
     }
@@ -703,7 +703,7 @@ namespace codex::editor {
             case Num1: gizmo_mode_ = Translation; return true;
             case Num2: gizmo_mode_ = Rotation; return true;
             case Num3: gizmo_mode_ = Scale; return true;
-            case V: d->visualize_lines = !d->visualize_lines;
+            case V: d->visualize_lines = !d->visualize_lines; break;
             default: break;
         }
         return false;

@@ -74,7 +74,7 @@ namespace codex {
 
     void serialize(Archive& ar, EngineProperties& properties);
 
-    class CODEX_API Engine : private Loggable<"Engine">
+    class CX_API Engine : private Loggable<"Engine">
     {
         friend int ::main(int argc, char** argv);
         friend Engine* create_engine(EngineArgs args);

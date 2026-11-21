@@ -10,12 +10,12 @@ namespace codex::opengl {
 }
 
 namespace codex::gfx {
-    class CODEX_API Texture2D final : public IAsset
+    class CX_API Texture2D final : public IAsset
     {
         CX_ASSET(Texture2D)
 
     public:
-        struct ImportSettings : public IAssetImportSettings
+        struct CX_API ImportSettings : public IAssetImportSettings
         {
             CX_ASSET_IMPORT_SETTINGS(ImportSettings)
 
@@ -34,7 +34,7 @@ namespace codex::gfx {
         };
 
     public:
-        Texture2D() = default;
+        Texture2D();
         explicit Texture2D(const u8* buf, usize len, const ImportSettings& import_settings = {});
         Texture2D(const Texture2D& other);
         Texture2D(Texture2D&& other) noexcept;

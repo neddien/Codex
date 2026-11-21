@@ -4,7 +4,7 @@
 #include <engine/events/event.h>
 
 namespace codex {
-    class CODEX_API Layer
+    class CX_API Layer
     {
     protected:
         std::string debug_name_;

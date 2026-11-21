@@ -21,4 +21,4 @@ if(DEFINED CX_BUILD_TYPE_DEBUG)
     endif()
 endif()
 
-install(TARGETS CodexLauncher DESTINATION bin)
+install(TARGETS CodexLauncher DESTINATION "${CX_INSTALL_BIN}")

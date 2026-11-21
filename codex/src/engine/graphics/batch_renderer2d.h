@@ -19,7 +19,7 @@ namespace codex {
 namespace codex::gfx {
     class Renderer;
 
-    class CODEX_API BatchRenderer2D
+    class CX_API BatchRenderer2D
     {
         friend class Renderer;
 

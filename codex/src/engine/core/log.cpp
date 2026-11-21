@@ -6,7 +6,11 @@
 #include <spdlog/sinks/rotating_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/stdout_sinks.h>
+
+#ifdef CX_PLATFORM_UNIX
 #include <spdlog/sinks/syslog_sink.h>
+#endif
+
 #include <spdlog/spdlog.h>
 
 namespace codex {
@@ -67,7 +71,11 @@ namespace codex {
         {
             const time_t time_val = std::chrono::system_clock::to_time_t(msg.time);
             std::tm      tm_val{};
+#ifdef CX_PLATFORM_UNIX
             ::localtime_r(&time_val, &tm_val);
+#elif defined(CX_PLATFORM_WINDOWS)
+            ::localtime_s(&tm_val, &time_val);
+#endif
 
             char date_buf[16];
             std::strftime(date_buf, sizeof(date_buf), "%b %d", &tm_val);

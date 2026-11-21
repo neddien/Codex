@@ -16,7 +16,7 @@ namespace codex::opengl {
     struct irect;
     struct rect;
 
-    class CODEX_API Renderer
+    class CX_API Renderer
     {
     public:
         Renderer(const i32 width, const i32 height);

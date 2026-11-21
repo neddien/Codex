@@ -6,7 +6,7 @@
 #include <engine/graphics/public/texture2d.h>
 
 namespace codex {
-    class CODEX_API Sprite : public ISerializable
+    class CX_API Sprite : public ISerializable
     {
     public:
         Sprite() = default;

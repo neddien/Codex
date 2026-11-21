@@ -63,7 +63,7 @@ namespace codex::events {
         EventCategoryMouseButton = bit(4)
     };
 
-    class CODEX_API Event
+    class CX_API Event
     {
     public:
         virtual ~Event() = default;
@@ -81,7 +81,7 @@ namespace codex::events {
         bool handled = false;
     };
 
-    class CODEX_API EventDispatcher
+    class CX_API EventDispatcher
     {
     public:
         explicit EventDispatcher(Event& event)

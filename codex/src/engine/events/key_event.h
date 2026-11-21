@@ -5,7 +5,7 @@
 #include "event.h"
 
 namespace codex::events {
-    class CODEX_API KeyEvent : public Event
+    class CX_API KeyEvent : public Event
     {
     protected:
         explicit KeyEvent(const Key key)
@@ -20,7 +20,7 @@ namespace codex::events {
         Key key_;
     };
 
-    class CODEX_API KeyDownEvent : public KeyEvent
+    class CX_API KeyDownEvent : public KeyEvent
     {
     public:
         KeyDownEvent(const Key key, const bool is_repeat)
@@ -42,7 +42,7 @@ namespace codex::events {
         bool is_repeat_;
     };
 
-    class CODEX_API KeyUpEvent : public KeyEvent
+    class CX_API KeyUpEvent : public KeyEvent
     {
     public:
         explicit KeyUpEvent(const Key key)

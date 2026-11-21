@@ -18,7 +18,7 @@ namespace codex::ax {
         vec3 up{ .0f, 1.0f, .0f };
     };
 
-    class CODEX_API SoundHandle
+    class CX_API SoundHandle
     {
     public:
         void set_volume(const f32 volume);
@@ -29,7 +29,7 @@ namespace codex::ax {
         bool is_playing() const;
     };
 
-    class CODEX_API EventHandle
+    class CX_API EventHandle
     {
     private:
         FMOD::Studio::EventInstance* instance_;

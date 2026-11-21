@@ -3,7 +3,7 @@
 #include "event.h"
 
 namespace codex::events {
-    class CODEX_API WindowResizeEvent : public Event
+    class CX_API WindowResizeEvent : public Event
     {
     public:
         WindowResizeEvent(const i32 width, const i32 height)
@@ -28,7 +28,7 @@ namespace codex::events {
         i32 height_;
     };
 
-    class CODEX_API WindowCloseEvent : public Event
+    class CX_API WindowCloseEvent : public Event
     {
     public:
         WindowCloseEvent() = default;
