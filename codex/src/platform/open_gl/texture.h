@@ -181,7 +181,7 @@ namespace codex::opengl {
         f32               chroma_outer_tolerance = 70.0f;
     };
 
-    class CODEX_API Texture
+    class CX_API Texture
     {
     public:
         Texture(const u8* buf, usize len, TextureProperties properties = {});

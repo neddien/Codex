@@ -11,7 +11,7 @@ namespace codex {
         // Forward declarations
         class PrefabLoader;
 
-        class CODEX_API Prefab : public IAsset, public ISerializable
+        class CX_API Prefab : public IAsset, public ISerializable
         {
             CX_ASSET(Prefab)
 

@@ -13,12 +13,12 @@ namespace codex::gfx {
     CX_CUSTOM_EXCEPTION(ShaderException, "Bad shader.")
     CX_CUSTOM_EXCEPTION(ShaderNotFoundException, "Shader file was not found.")
 
-    class CODEX_API Shader final : public IAsset
+    class CX_API Shader final : public IAsset
     {
         CX_ASSET(Shader)
 
     public:
-        struct ImportSettings : public IAssetImportSettings
+        struct CX_API ImportSettings : public IAssetImportSettings
         {
             CX_ASSET_IMPORT_SETTINGS(ImportSettings)
 
@@ -33,7 +33,7 @@ namespace codex::gfx {
         };
 
     public:
-        Shader() = default;
+        Shader();
         explicit Shader(std::string source, const ImportSettings& settings = {});
         ~Shader() override;
 

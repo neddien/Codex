@@ -34,7 +34,7 @@ namespace codex {
         class EditorCamera;
     } // namespace scene
 
-    class CODEX_API Scene : public ISerializable, public Loggable<"Scene">, public IAsset
+    class CX_API Scene : public ISerializable, public Loggable<"Scene">, public IAsset
     {
         CX_ASSET(Scene)
 

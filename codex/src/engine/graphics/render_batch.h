@@ -22,7 +22,7 @@ namespace codex::gfx {
         i32  entity_id;
     };
 
-    class CODEX_API RenderBatch
+    class CX_API RenderBatch
     {
     public:
         RenderBatch() = default;

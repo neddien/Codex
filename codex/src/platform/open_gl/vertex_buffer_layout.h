@@ -5,7 +5,7 @@
 #include <glad/glad.h>
 
 namespace codex::opengl {
-    struct CODEX_API VertexBufferElement
+    struct CX_API VertexBufferElement
     {
     public:
         u32  type;

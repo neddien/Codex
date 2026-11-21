@@ -3,7 +3,7 @@
 #include <engine/core/public/archive.h>
 
 namespace codex::scene {
-    class CODEX_API Camera : public ISerializable
+    class CX_API Camera : public ISerializable
     {
     public:
         enum class ProjectionType

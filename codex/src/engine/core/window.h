@@ -73,7 +73,7 @@ namespace codex {
 
     void serialize(Archive& ar, VideoProperties& properties);
 
-    class CODEX_API Window : public Loggable<"Window">
+    class CX_API Window : public Loggable<"Window">
     {
         friend class Engine;
         friend class Box<Window>;

@@ -1,26 +1,19 @@
 import subprocess
 import os
 from conan import ConanFile
-from conan.tools.cmake import CMakeToolchain
+from conan.tools.cmake import CMakeConfigDeps
 from conan.tools.files import copy
 
 
 class CodexConan(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
-    generators = "CMakeDeps"
 
     def generate(self):
+        CMakeConfigDeps(self).generate()
         imgui = self.dependencies["imgui"]
-        bindings_src = os.path.join(imgui.package_folder, "res", "bindings")
-        misc_src = os.path.join(imgui.package_folder, "res", "misc", "cpp")
-        backends_dst = os.path.join(self.build_folder, "imgui_backends")
-
-        copy(self, "*", bindings_src, backends_dst)
-        copy(self, "imgui_stdlib.*", misc_src, backends_dst)
-
-        tc = CMakeToolchain(self)
-        tc.user_presets_path = False
-        tc.generate()
+        dst = os.path.join(self.generators_folder, "imgui_backends")
+        copy(self, "*", os.path.join(imgui.package_folder, "res", "bindings"), dst)
+        copy(self, "imgui_stdlib.*", os.path.join(imgui.package_folder, "res", "misc", "cpp"), dst)
 
     def requirements(self):
         self.requires("sdl/2.32.10")

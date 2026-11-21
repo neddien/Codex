@@ -282,7 +282,7 @@ namespace codex {
         X2Mouse,
     };
 
-    class CODEX_API Input : public Loggable<"Input">
+    class CX_API Input : public Loggable<"Input">
     {
     private:
         static Input*                        s_instance_;

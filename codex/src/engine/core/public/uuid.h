@@ -3,7 +3,7 @@
 #include <engine/core/public/archive.h>
 
 namespace codex {
-    class CODEX_API UUID : public ISerializable
+    class CX_API UUID : public ISerializable
     {
     public:
         UUID() noexcept;

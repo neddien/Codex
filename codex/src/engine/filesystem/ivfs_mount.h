@@ -15,7 +15,7 @@ namespace codex::fs {
     };
     CX_ENABLE_BITWISE_ENUM(ListOptions)
 
-    class IVFSMount
+    class CX_API IVFSMount
     {
     public:
         virtual ~IVFSMount() = default;

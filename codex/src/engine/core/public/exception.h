@@ -36,7 +36,7 @@ namespace codex {
         }
     };
 
-    class CODEX_API CodexException : public std::exception
+    class CX_API CodexException : public std::exception
     {
     public:
         CodexException() noexcept = default;
@@ -97,7 +97,7 @@ namespace codex {
     CX_CUSTOM_EXCEPTION(InvalidArgumentException, "Provided argument was invalid")
     CX_CUSTOM_EXCEPTION(InvalidOperationException, "Something somewhere went wrong, we're not sure why")
 
-    class CODEX_API NativeBehaviourException : public CodexException
+    class CX_API NativeBehaviourException : public CodexException
     {
         // friend class NativeBehaviour; // TODO: Might be redundant.
         friend struct NativeBehaviourComponent;

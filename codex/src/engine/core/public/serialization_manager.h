@@ -6,7 +6,7 @@ namespace codex {
     // High-level entry points. Save paths take a const object and const_cast at the boundary:
     // the single archive() function is non-const because loading mutates, but save mode
     // provably only reads the object.
-    class CODEX_API SerializationManager
+    class CX_API SerializationManager
     {
     public:
         enum class Format

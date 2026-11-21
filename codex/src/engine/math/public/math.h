@@ -16,7 +16,7 @@ namespace codex::math {
         return radians * (180.0f / PI);
     }
 
-    CODEX_API bool transform_decompose(const glm::mat4& transform, glm::vec3& translation, glm::vec3& rotation,
+    CX_API bool transform_decompose(const glm::mat4& transform, glm::vec3& translation, glm::vec3& rotation,
                                        glm::vec3& scale);
 
     template <typename T>

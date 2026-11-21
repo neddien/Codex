@@ -7,7 +7,7 @@ namespace codex {
     // exact same field order, no keys, hashes, or offset tables are needed: save appends,
     // load consumes from a cursor. Structural scopes (objects) are pure no-ops; only the
     // element/entry counts and map keys carry structural bytes.
-    class CODEX_API BinaryArchiveBackend : public IArchiveBackend
+    class CX_API BinaryArchiveBackend : public IArchiveBackend
     {
     public:
         BinaryArchiveBackend() noexcept;                                  // save mode

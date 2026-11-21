@@ -12,7 +12,7 @@ namespace codex::dbg {
         u32              line;
     };
 
-    class CODEX_API Profiler
+    class CX_API Profiler
     {
     private:
         static Profiler*                                  s_instance_;

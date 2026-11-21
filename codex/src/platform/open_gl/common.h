@@ -67,7 +67,7 @@ namespace codex::opengl {
     [[nodiscard]] u32 to_glenum(const Enum renum) noexcept;
 } // namespace codex::opengl
 
-CODEX_API codex::u32 gl_error_check();
+CX_API codex::u32 gl_error_check();
 
 /*
 inline bool GL_LogCall(const char* functionName, const char* srcFile, const int line)

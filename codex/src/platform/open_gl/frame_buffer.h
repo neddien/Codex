@@ -23,7 +23,7 @@ namespace codex::opengl {
         }
     };
 
-    class CODEX_API FrameBuffer
+    class CX_API FrameBuffer
     {
     public:
         explicit FrameBuffer(const FrameBufferProperties& props);

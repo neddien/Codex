@@ -9,7 +9,7 @@
 namespace codex {
     constexpr u32 ProjectFormatVersion = 1;
 
-    struct EngineProject : public ISerializable, public Loggable<"EngineProject">
+    struct CX_API EngineProject : public ISerializable, public Loggable<"EngineProject">
     {
         // Global
         UUID        uuid;

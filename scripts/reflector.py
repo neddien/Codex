@@ -382,7 +382,7 @@ class LibclangReflectionParser:
             '-DRF_SERIALIZABLE=',
             '-DRF_PROPERTY(...)=',
             '-DCODEX_EXPORT=',
-            '-DCODEX_API=',
+            '-DCX_API=',
             '-DCX_DEBUG_TRAP()=',
             # Define common types to avoid including heavy headers that crash libclang
             '-Du32=unsigned int',

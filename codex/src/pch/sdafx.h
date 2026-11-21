@@ -1,10 +1,12 @@
 #ifndef CODEX_PCH_H
 #define CODEX_PCH_H
 
+#include <platform/platform.h>
+
 // Turn this off.
 // TODO: Disable compilers warnings in cmake.
 #ifdef CX_COMPILER_MSVC
-#pragma warning(disable : 4005)
+#    pragma warning(disable : 4005)
 #endif
 
 // General
@@ -17,16 +19,14 @@
 #include <iostream>
 #include <memory>
 #include <numeric>
+#include <optional>
 #include <random>
-#include <regex>
 #include <span>
-#include <sstream>
 #include <type_traits>
 #include <typeindex>
 #include <typeinfo>
 #include <utility>
 #include <variant>
-#include <optional>
 
 // Concurrency
 #include <atomic>
@@ -34,9 +34,9 @@
 #include <coroutine>
 #include <future>
 #include <mutex>
+#include <semaphore>
 #include <shared_mutex>
 #include <thread>
-#include <semaphore>
 
 // Legacy
 #include <charconv>
@@ -52,36 +52,44 @@
 #include <initializer_list>
 #include <map>
 #include <queue>
+#include <stack>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include <stack>
 
 // Reflection
 #include <source_location>
 
+// String, Formatting & Locale
+#include <codecvt>
+#include <iomanip>
+#include <locale>
+#include <regex>
+#include <sstream>
+#include <string>
+
 // Platform specific
 #if defined(CX_PLATFORM_UNIX)
-#include <cxxabi.h>
-#include <dlfcn.h>
-#include <fcntl.h>
-#include <pwd.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <syslog.h>
-#include <unistd.h>
+#    include <cxxabi.h>
+#    include <dlfcn.h>
+#    include <fcntl.h>
+#    include <pwd.h>
+#    include <sys/types.h>
+#    include <sys/wait.h>
+#    include <syslog.h>
+#    include <unistd.h>
 
 #elif defined(CX_PLATFORM_WINDOWS)
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
+#    ifndef NOMINMAX
+#        define NOMINMAX
+#    endif
 
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#if defined(CreateWindow)
-#undef CreateWindow
-#endif
+#    define WIN32_LEAN_AND_MEAN
+#    include <windows.h>
+#    if defined(CreateWindow)
+#        undef CreateWindow
+#    endif
 
 #endif
 

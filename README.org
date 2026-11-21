@@ -16,296 +16,198 @@ is written in C++20 and includes:
 - An ImGui editor with a scene hierarchy, property inspector, profiler, and
   content browser
 
-Linux, Windows, and macOS CMake presets are provided. The editor and macOS
-support are under active development.
+CMake presets are provided for Linux and Windows. The editor is under active
+development.
 
 ** Repository layout
 
 #+begin_src text
-Codex.nb/
-├── codex/          # Engine sources, public headers, assets, and vendored FMOD
-├── editor/         # CodexEditor and the native-behaviour project template
-├── runtime/        # Standalone shipped runtime target
-├── test_work/      # Development/test executable
-├── cmake/          # Project CMake helpers
-├── scripts/        # Python build and project-generation helpers
-├── conanfile.py    # Conan dependency recipe
+Codex/
+├── codex/            # Engine sources, public headers, assets, and vendored FMOD
+├── codex-shipped/    # Shipped runtime (ShippedRuntime) and launcher (CodexLauncher)
+├── editor/           # CodexEditor and the native-behaviour project templates
+├── test_work/        # Development/test executable (off by default)
+├── cmake/            # CMake helpers
+├── scripts/          # Python build and project-generation helpers
+├── doc/              # Design notes
+├── legacy/           # Older CodexAPI, editor, and networking projects; not built
+├── conanfile.py      # Conan dependency recipe
 ├── CMakePresets.json
-├── builds/         # Generated build trees and Conan files
-└── installs/       # Local install trees
+├── builds/           # Build trees, one per preset
+└── installs/         # Installs, one per preset
 #+end_src
 
-* Prerequisites
+* Getting started
 
-Install these tools before building:
+** Prerequisites
 
-| Tool | Requirement | Purpose |
-|------+-------------+---------|
-| Python | 3.10 or newer | Runs the build and project-generation scripts |
-| Conan | 2.x | Installs C/C++ dependencies and generates the CMake toolchain |
-| CMake | 3.21 or newer | Required by the version 3 CMake preset schema |
-| C++ compiler | C++23-capable | The engine uses C++20; the editor and project template use C++23 |
-| Git | With GitHub access | CMake fetches ImGuizmo and nativefiledialog-extended |
+| Tool         | Version                                   |
+|--------------+-------------------------------------------|
+| Python       | 3.10 or newer                             |
+| Conan        | 2.x                                       |
+| CMake        | 3.24 or newer; 4.2 or newer for VS 2026   |
+| Ninja        | Any recent version                        |
+| C++ compiler | GCC or Clang on Linux; MSVC or clang-cl on Windows, all with C++20 |
+| Git          | Any recent version                        |
 
-The ImGuizmo dependency currently uses a GitHub SSH URL. Your SSH key must
-therefore be configured for GitHub before the first CMake configure.
+See [[*Platform notes][Platform notes]] for the packages to install on each platform.
 
-FMOD Studio API 2.03.13 is included under ~codex/vendor/fmod~. Its license and
-redistribution terms still apply.
+FMOD Studio API 2.03.15 is included under ~codex/vendor/fmod~. Its license and
+redistribution terms apply.
 
-* Python virtual environment and Conan
-
-Conan is a Python application. Install it in a project-local virtual
-environment instead of modifying the system Python installation.
-
-** Linux and macOS
-
-Run these commands from the repository root:
+** Clone
 
 #+begin_src bash
-python3 -m venv .venv
-source .venv/bin/activate
+git clone --recurse-submodules <repository-url>
+#+end_src
+
+In an existing clone without submodules, run ~git submodule update --init~.
+
+** Install Conan
+
+Install Conan either globally or in a virtual environment.
+
+Globally:
+
+#+begin_src bash
 pip install conan
-
-conan --version
-conan profile detect --force
 #+end_src
 
-Activate the environment again when opening a new shell:
+In a virtual environment (activate it again in every new shell):
 
 #+begin_src bash
-source .venv/bin/activate
-#+end_src
-
-** Windows PowerShell
-
-Run these commands from the repository root:
-
-#+begin_src powershell
-py -3 -m venv .venv
-.\.venv\Scripts\Activate.ps1
+python3 -m venv .venv            # Windows: py -3 -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\Activate.ps1
 pip install conan
-
-conan --version
-conan profile detect --force
-#+end_src
-
-If PowerShell blocks the activation script, allow locally created scripts for
-the current user:
-
-#+begin_src powershell
-Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
-#+end_src
-
-The virtual environment only supplies Python tooling. Compilers, CMake, Git,
-OpenGL development files, and other platform SDKs remain system packages.
-
-* Dependencies managed by Conan
-
-The root ~conanfile.py~ currently installs:
-
-- SDL 2, Box2D, ImGui, GLM, EnTT, and stb
-- fmt and spdlog
-- nlohmann/json and LZ4
-- Abseil, magic_enum, and cxxopts
-
-Conan writes its generated CMake toolchain, dependency configuration files, and
-copied ImGui backend sources to ~builds/conan~. Every configure preset refers to
-~builds/conan/conan_toolchain.cmake~, so Conan installation must happen before
-the first CMake configure.
-
-To install the dependencies manually for a debug build:
-
-#+begin_src bash
-conan install . \
-  --output-folder=builds/conan \
-  --build=missing \
-  -s build_type=Debug # or Release
-#+end_src
-
-For a release build, use ~-s build_type=Release~. Re-run ~conan install~ when
-~conanfile.py~ changes, after deleting ~builds/conan~, or when switching the
-dependency build type.
-
-On Linux, the recipe selects SDL's Wayland support from ~XDG_SESSION_TYPE~. If
-that variable is absent in your shell, set it before running Conan:
-
-#+begin_src bash
-export XDG_SESSION_TYPE=x11       # or: wayland
 #+end_src
 
 * Building
 
-The recommended interface is ~scripts/build.py~. It can synchronize Conan
-packages, configure CMake, build, install, and run the editor.
+** build.py
 
-** Quick start
-
-After activating the Python virtual environment:
+~scripts/build.py~ configures, builds, installs, and runs the engine with one
+command. The first build of a preset also downloads or builds its
+dependencies, which takes a while.
 
 #+begin_src bash
-# First build: install Conan dependencies, configure, build, and install.
-python scripts/build.py build --conan-sync --install
-
-# Later debug builds, when dependencies have not changed.
-python scripts/build.py build --install
+# Build Debug with the default preset.
+python scripts/build.py
 
 # Build, install, and launch CodexEditor.
-python scripts/build.py build --install --run
+python scripts/build.py --run
+
+# Build and install Release for a specific preset.
+python scripts/build.py --preset linux-gcc --config release --install
+
+# List this host's presets; * marks the default.
+python scripts/build.py --list
 #+end_src
 
-With no subcommand, the script also defaults to ~build~:
+| Option                 | Effect                                                              |
+|------------------------+---------------------------------------------------------------------|
+| ~--list~               | List this host's presets and what is configured and installed       |
+| ~--preset NAME~        | Preset to use                                                       |
+| ~--config CONFIG~      | ~Debug~ (default), ~Release~, or ~Shipping~                         |
+| ~--configure~          | Configure again, e.g. after editing ~CMakePresets.json~             |
+| ~--fresh~              | Configure from scratch                                              |
+| ~--clean~              | Clean the configuration before building                             |
+| ~-t~, ~--target NAME~  | Build only this target (repeatable)                                 |
+| ~-j~, ~--jobs N~       | Parallel jobs (default: number of CPUs); ~--no-parallel~ uses one   |
+| ~--install~            | Install the configuration after building                            |
+| ~--run [PROGRAM]~      | Install, then launch an installed program (default: ~CodexEditor~)  |
+| ~--vglrun~             | Launch through VirtualGL's ~vglrun~ (Linux); implies ~--run~        |
+| ~--no-launch-json~     | Don't update ~.vscode/launch.json~ after installing                 |
+| ~--no-out~             | Hide build output unless a step fails                               |
+
+Arguments after ~--~ are passed to the program started by ~--run~. Without
+~--preset~, the most recently configured preset is used, otherwise
+~windows-vs2022~ on Windows and ~linux-gcc~ on Linux. ~python scripts/build.py -h~
+shows all options.
+
+** Direct CMake workflow
+
+Choose the configuration when building and installing:
 
 #+begin_src bash
-python scripts/build.py --conan-sync --install
+cmake --preset linux-gcc
+cmake --build builds/linux-gcc --config Debug --parallel
+cmake --install builds/linux-gcc --config Debug
 #+end_src
 
-The default is the platform's debug preset with Debug Conan packages. Keep the
-CMake configuration and Conan library configuration aligned:
+To also build TestWork, configure with ~-DCX_ENABLE_TESTWORK=ON~.
 
-#+begin_src bash
-python scripts/build.py build \
-  --preset linux-any-release \
-  --config release \
-  --lib-config release \
-  --conan-sync \
-  --install
-#+end_src
+** Presets
 
-Useful commands:
+| Preset           | Platform | Compiler | Generator             |
+|------------------+----------+----------+-----------------------|
+| ~windows-msvc~   | Windows  | MSVC     | Ninja                 |
+| ~windows-llvm~   | Windows  | clang-cl | Ninja                 |
+| ~windows-vs2022~ | Windows  | MSVC     | Visual Studio 2022    |
+| ~windows-vs2026~ | Windows  | MSVC     | Visual Studio 2026    |
+| ~linux-gcc~      | Linux    | GCC      | Ninja                 |
+| ~linux-llvm~     | Linux    | Clang    | Ninja                 |
 
-#+begin_src bash
-python scripts/build.py list
-python scripts/build.py build --help
-python scripts/build.py clear --preset linux-any-debug
-#+end_src
+** Install layout
 
-~--run~ implies ~--install~. ~--vglrun~ implies both and launches the editor
-through VirtualGL.
+| Path                         | Contents         |
+|------------------------------+------------------|
+| ~installs/<preset>/debug/~   | Debug install    |
+| ~installs/<preset>/release/~ | Release install  |
+| ~installs/<preset>/~         | Shipping install |
 
-** Direct Conan and CMake workflow
+The executables are in each install's ~bin/~, for example
+~installs/windows-vs2022/debug/bin/CodexEditor.exe~. Ninja builds also copy
+~compile_commands.json~ to the repository root for clangd and other language
+servers.
 
-The equivalent commands without the build helper are:
+* Running and debugging
 
-#+begin_src bash
-conan install . \
-  --output-folder=builds/conan \
-  --build=missing \
-  -s build_type=Debug
+Always run the editor from its install, not from the build tree:
+~python scripts/build.py --run~ builds, installs, and launches it.
 
-cmake --preset linux-any-debug
-cmake --build builds/linux-any-debug --parallel
-cmake --install builds/linux-any-debug
-#+end_src
-
-Installed debug and release builds are written below ~installs/<preset>~.
-Shipping presets install to a system location and may require elevated
-permissions.
-
-** Available configure presets
-
-| Platform | Debug | Release | Shipping / IDE |
-|----------+-------+---------+----------------|
-| Linux | ~linux-any-debug~ | ~linux-any-release~ | ~linux-any-shipping~ |
-| macOS | ~osx-any-debug~ | ~osx-any-release~ | ~osx-any-shipping~ |
-| Windows MSVC | ~windows-msvc-any-debug~ | ~windows-msvc-any-release~ | ~windows-msvc-any-shipping~, ~vs2022~ |
-| Windows LLVM | ~windows-llvm-any-debug~ | ~windows-llvm-any-release~ | ~windows-llvm-any-shipping~ |
-
-Run ~python scripts/build.py list~ to show only the presets available on the
-current host.
+- *VS Code:* ~--install~ adds a launch entry for each installed configuration
+  to ~.vscode/launch.json~ (CodeLLDB extension). Your own entries are kept.
+- *Visual Studio:* open ~builds/windows-vs2022/Codex.sln~ (or
+  ~builds/windows-vs2026/Codex.slnx~) after building that preset once. F5
+  builds, installs, and debugs the installed editor.
 
 * Platform notes
 
 ** Linux
 
-Install a compiler, CMake, Python, Git, and OpenGL/window-system development
-headers through the distribution package manager. The editor's native file
-dialog currently requires pkg-config and GTK 3 development files. Conan builds
-or downloads the libraries declared in ~conanfile.py~.
-
-Typical package sets are:
-
-*** Ubuntu/Debian
+Install the build tools plus the OpenGL, X11, and GTK 3 development packages:
 
 #+begin_src bash
-sudo apt update
-sudo apt install \
-  build-essential clang cmake git python3 python3-venv pkg-config libgtk-3-dev \
-  libgl1-mesa-dev libx11-dev libxext-dev libxrandr-dev libxi-dev \
-  libxcursor-dev libxinerama-dev libxfixes-dev
-#+end_src
+# Ubuntu/Debian
+sudo apt install build-essential clang cmake ninja-build git python3 \
+  pkg-config libgtk-3-dev libgl1-mesa-dev libx11-dev libxext-dev libxrandr-dev \
+  libxi-dev libxcursor-dev libxinerama-dev libxfixes-dev
 
-*** Fedora
+# Fedora
+sudo dnf install gcc-c++ clang cmake ninja-build git python3 pkgconf-pkg-config \
+  gtk3-devel mesa-libGL-devel libX11-devel libXext-devel libXrandr-devel \
+  libXi-devel libXcursor-devel libXinerama-devel libXfixes-devel
 
-#+begin_src bash
-sudo dnf install \
-  gcc-c++ clang cmake git python3 pkgconf-pkg-config gtk3-devel \
-  mesa-libGL-devel libX11-devel libXext-devel libXrandr-devel libXi-devel \
-  libXcursor-devel libXinerama-devel libXfixes-devel
-#+end_src
-
-*** Arch Linux
-
-#+begin_src bash
-sudo pacman -S --needed \
-  base-devel clang cmake git python pkgconf gtk3 \
+# Arch Linux
+sudo pacman -S --needed base-devel clang cmake ninja git python pkgconf gtk3 \
   mesa libx11 libxext libxrandr libxi libxcursor libxinerama libxfixes
 #+end_src
 
-Wayland builds may require additional Wayland, xkbcommon, and libdecor
-development packages if Conan has to build SDL from source.
+~XDG_SESSION_TYPE~ must be set (~x11~ or ~wayland~); desktop sessions set it
+already. Wayland builds may also need the Wayland, xkbcommon, and libdecor
+development packages.
 
 ** Windows
 
-Install:
+Install Visual Studio 2022 or 2026 with the *Desktop development with C++*
+workload, plus Python, CMake, Git, and Ninja. Install LLVM for ~windows-llvm~.
 
-- Visual Studio 2022 with the *Desktop development with C++* workload
-- Python 3.10 or newer
-- CMake and Git
-- Ninja for the ~windows-msvc-*~ and ~windows-llvm-*~ presets
-- LLVM when using a ~windows-llvm-*~ preset
-
-Run MSVC and LLVM/Ninja builds from a *Developer PowerShell for VS 2022* so the
-Windows SDK and linker environment are available.
-
-For a Visual Studio solution:
-
-#+begin_src powershell
-conan install . `
-  --output-folder=builds/conan `
-  --build=missing `
-  -s build_type=Debug
-
-cmake --preset vs2022
-#+end_src
-
-Then open ~builds/vs2022/Codex.sln~.
+~build.py~ works from any terminal. When calling ~cmake~ directly with
+~windows-msvc~, use a *Developer PowerShell for VS*.
 
 ** macOS
 
-Install the Xcode command-line tools, CMake, Git, and Python 3.10 or newer. Then
-create the virtual environment, install Conan, and use an ~osx-*~ preset.
-
-#+begin_src bash
-xcode-select --install
-python scripts/build.py build \
-  --preset osx-any-debug \
-  --lib-config debug \
-  --conan-sync \
-  --install
-#+end_src
-
-* Build outputs
-
-| Path | Contents |
-|------+----------|
-| ~builds/conan/~ | Conan toolchain, CMake dependency files, and ImGui backends |
-| ~builds/<preset>/~ | CMake build tree |
-| ~installs/<preset>/~ | Locally installed editor, engine libraries, and assets |
-| ~compile_commands.json~ | Compilation database copied from non-Visual-Studio builds |
-
-The installed editor executable is ~bin/CodexEditor~ on Unix and
-~bin/CodexEditor.exe~ on Windows.
+As of now there's no intention to continue the support for macOS (this is because I don't own an Apple machine).
 
 * Trademarks
 

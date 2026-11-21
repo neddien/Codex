@@ -7,7 +7,7 @@
 #include <engine/scene/public/sprite.h>
 
 namespace codex::gfx {
-    class CODEX_API Renderer : public System<Renderer>, public Loggable<"Renderer">
+    class CX_API Renderer : public System<Renderer>, public Loggable<"Renderer">
     {
     public:
         Renderer() = default;

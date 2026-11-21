@@ -16,6 +16,7 @@ namespace codex::editor {
     public:
         [[nodiscard]] static std::filesystem::path  get_app_data_path() noexcept;
         [[nodiscard]] static std::filesystem::path  get_var_app_data_path() noexcept;
+        [[nodiscard]] static std::filesystem::path  get_install_path() noexcept;
         [[nodiscard]] static fs::VirtualFilesystem& vfs() noexcept;
 
     public:
@@ -24,6 +25,7 @@ namespace codex::editor {
     private:
         static std::filesystem::path s_app_data_path_;
         static std::filesystem::path s_var_app_data_path_;
+        static std::filesystem::path s_install_path_;
         static fs::VirtualFilesystem s_vfs_;
     };
 } // namespace codex::editor

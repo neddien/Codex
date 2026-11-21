@@ -2,16 +2,27 @@
     "version": 3,
     "configurePresets": [
         {
-            "name": "windows-msvc",
-            "hidden": true,
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/builds/${presetName}",
+            "name": "base", "hidden": true,
+            "generator": "Ninja Multi-Config",
+            "binaryDir":  "${sourceDir}/builds/${presetName}",
+            "installDir": "${sourceDir}/installs/${presetName}",
             "cacheVariables": {
+                "CMAKE_PROJECT_TOP_LEVEL_INCLUDES": "${sourceDir}/cmake/conan-provider/conan_provider.cmake",
+                "CMAKE_CONFIGURATION_TYPES": "Debug;Release;Shipping",
+                "CMAKE_DEFAULT_BUILD_TYPE": "Debug",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
                 "CMAKE_POLICY_VERSION_MINIMUM": "3.5",
-                "CMAKE_C_COMPILER": "cl.exe",
-                "CMAKE_CXX_COMPILER": "cl.exe",
-                "CMAKE_PRESET_NAME": "${presetName}",
-                "CX_ENABLE_CEDITOR": "on"
+                "CX_ENABLE_CEDITOR": "ON",
+                "CX_ENABLE_TESTWORK": "OFF"
+            }
+        },
+        {
+            "name": "windows",
+            "hidden": true,
+            "inherits": "base",
+            "architecture": {
+                "value": "x64",
+                "strategy": "external"
             },
             "condition": {
                 "type": "equals",
@@ -20,202 +31,78 @@
             }
         },
         {
-            "name": "vs2022",
-            "hidden": false,
-            "generator": "Visual Studio 17",
-            "binaryDir": "${sourceDir}/builds/${presetName}",
-            "installDir": "C:/Program Files/Carbine/CEditor",
-            "displayName": "vs2022",
-            "cacheVariables": {
-                "CMAKE_POLICY_VERSION_MINIMUM": "3.5",
-                "CMAKE_PRESET_NAME": "${presetName}",
-                "CX_ENABLE_CEDITOR": "on"
-            },
-            "condition": {
-                "type": "equals",
-                "lhs": "${hostSystemName}",
-                "rhs": "Windows"
-            }
-        },
-        {
-            "name": "windows-llvm",
+            "name": "linux",
             "hidden": true,
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/builds/${presetName}",
-            "cacheVariables": {
-                "CMAKE_POLICY_VERSION_MINIMUM": "3.5",
-                "CMAKE_C_COMPILER": "clang.exe",
-                "CMAKE_CXX_COMPILER": "clang++.exe",
-                "CMAKE_PRESET_NAME": "${presetName}",
-                "CX_ENABLE_CEDITOR": "on",
-                "CMAKE_CXX_FLAGS": "-fuse-ld=link"
-            },
-            "condition": {
-                "type": "equals",
-                "lhs": "${hostSystemName}",
-                "rhs": "Windows"
-            }
-        },
-        {
-            "name": "linux-base",
-            "hidden": true,
-            "generator": "Unix Makefiles",
-            "binaryDir": "${sourceDir}/builds/${presetName}",
-            "cacheVariables": {
-                "CMAKE_POLICY_VERSION_MINIMUM": "3.5",
-                "CMAKE_PRESET_NAME": "${presetName}",
-                "CX_ENABLE_CEDITOR": "on"
-            },
+            "inherits": "base",
             "condition": {
                 "type": "equals",
                 "lhs": "${hostSystemName}",
                 "rhs": "Linux"
             }
         },
+
         {
-            "name": "osx-base",
+            "name": "windows-msvc",
+            "inherits": "windows",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "cl",
+                "CMAKE_CXX_COMPILER": "cl"
+            }
+        },
+        {
+            "name": "windows-llvm",
+            "inherits": "windows",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "clang-cl",
+                "CMAKE_CXX_COMPILER": "clang-cl",
+                "CONAN_HOST_PROFILE": "default;auto-cmake;${sourceDir}/cmake/conan-clangcl-profile"
+            }
+        },
+        {
+            "name": "windows-vs",
             "hidden": true,
-            "generator": "Unix Makefiles",
-            "binaryDir": "${sourceDir}/builds/${presetName}",
-            "cacheVariables": {
-                "CMAKE_POLICY_VERSION_MINIMUM": "3.5",
-                "CMAKE_PRESET_NAME": "${presetName}",
-                "CX_ENABLE_CEDITOR": "on"
+            "inherits": "windows",
+            "architecture": {
+                "value": "x64",
+                "strategy": "set"
             },
-            "condition": {
-                "type": "equals",
-                "lhs": "${hostSystemName}",
-                "rhs": "Darwin"
+            "cacheVariables": {
+                "CMAKE_DEFAULT_BUILD_TYPE": null,
+                "CONAN_HOST_PROFILE": "default;auto-cmake;${sourceDir}/cmake/conan-ninja-profile"
             }
         },
         {
-            "name": "windows-msvc-any-debug",
-            "displayName": "any Debug",
-            "installDir": "${sourceDir}/installs/${presetName}",
-            "inherits": "windows-msvc",
-            "toolchainFile": "${sourceDir}/builds/conan-debug/conan_toolchain.cmake",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug",
-                "CX_ENABLE_TESTWORK": "1"
+            "name": "windows-vs2022",
+            "inherits": "windows-vs",
+            "generator": "Visual Studio 17 2022",
+            "architecture": {
+                "value": "x64",
+                "strategy": "set"
             }
         },
         {
-            "name": "windows-llvm-any-debug",
-            "displayName": "any Debug",
-            "installDir": "${sourceDir}/installs/${presetName}",
-            "inherits": "windows-llvm",
-            "toolchainFile": "${sourceDir}/builds/conan-debug/conan_toolchain.cmake",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug",
-		            "CX_ENABLE_TESTGAME": "1"
+            "name": "windows-vs2026",
+            "inherits": "windows-vs",
+            "generator": "Visual Studio 18 2026",
+            "architecture": {
+                "value": "x64",
+                "strategy": "set"
             }
         },
         {
-            "name": "windows-llvm-any-release",
-            "displayName": "any Release",
-            "installDir": "${sourceDir}/installs/${presetName}",
-            "inherits": "windows-llvm-any-debug",
-            "toolchainFile": "${sourceDir}/builds/conan-release/conan_toolchain.cmake",
+            "name": "linux-gcc",
+            "inherits": "linux",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release"
+                "CMAKE_C_COMPILER": "gcc",
+                "CMAKE_CXX_COMPILER": "g++"
             }
         },
         {
-            "name": "windows-llvm-any-shipping",
-            "displayName": "any Shipping",
-            "installDir": "C:/Program Files/Carbine/CEditor",
-            "inherits": "windows-llvm-any-debug",
-            "toolchainFile": "${sourceDir}/builds/conan-release/conan_toolchain.cmake",
+            "name": "linux-llvm",
+            "inherits": "linux",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Shipping"
-            }
-        },
-        {
-            "name": "windows-msvc-any-release",
-            "displayName": "any Release",
-            "installDir": "${sourceDir}/installs/${presetName}",
-            "inherits": "windows-msvc-any-debug",
-            "toolchainFile": "${sourceDir}/builds/conan-release/conan_toolchain.cmake",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release",
-                "CMAKE_CXX_FLAGS": "/fsanitize=address",
-                "CMAKE_C_FLAGS": "/fsanitize=address"
-            }
-        },
-        {
-            "name": "windows-msvc-any-shipping",
-            "displayName": "any Shipping",
-            "installDir": "C:/Program Files/Carbine/Codex Editor",
-            "inherits": "windows-msvc-any-debug",
-            "toolchainFile": "${sourceDir}/builds/conan-release/conan_toolchain.cmake",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Shipping"
-            }
-        },
-        {
-            "name": "linux-any-debug",
-            "displayName": "any Debug",
-            "installDir": "${sourceDir}/installs/${presetName}",
-            "inherits": "linux-base",
-            "toolchainFile": "${sourceDir}/builds/conan-debug/conan_toolchain.cmake",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug",
-                "CMAKE_CXX_FLAGS": "-O0 -g -fno-omit-frame-pointer",
-                "CMAKE_C_FLAGS": "-O0 -g -fno-omit-frame-pointer",
-                "CX_ENABLE_TESTWORK": "1"
-            }
-        },
-        {
-            "name": "linux-any-release",
-            "displayName": "any Release",
-            "installDir": "${sourceDir}/installs/${presetName}",
-            "inherits": "linux-any-debug",
-            "toolchainFile": "${sourceDir}/builds/conan-release/conan_toolchain.cmake",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release",
-                "CMAKE_CXX_FLAGS": "-fno-omit-frame-pointer -fsanitize=undefined",
-                "CMAKE_C_FLAGS": "-fno-omit-frame-pointer -fsanitize=undefined"
-            }
-        },
-        {
-            "name": "linux-any-shipping",
-            "displayName": "any Shipping",
-            "installDir": "/usr/local",
-            "inherits": "linux-any-debug",
-            "toolchainFile": "${sourceDir}/builds/conan-release/conan_toolchain.cmake",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Shipping"
-            }
-        },
-        {
-            "name": "osx-any-debug",
-            "displayName": "any Debug",
-            "installDir": "${sourceDir}/installs/${presetName}",
-            "inherits": "osx-base",
-            "toolchainFile": "${sourceDir}/builds/conan-debug/conan_toolchain.cmake",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug",
-                "CX_ENABLE_TESTWORK": "1"
-            }
-        },
-        {
-            "name": "osx-any-release",
-            "displayName": "any Release",
-            "installDir": "${sourceDir}/installs/${presetName}",
-            "inherits": "osx-any-debug",
-            "toolchainFile": "${sourceDir}/builds/conan-release/conan_toolchain.cmake",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release",
-                "CMAKE_CXX_FLAGS": "-fsanitize=address -fno-omit-frame-pointer -fsanitize=undefined", "CMAKE_C_FLAGS": "-fsanitize=address -fno-omit-frame-pointer -fsanitize=undefined" }
-        },
-        {
-            "name": "osx-any-shipping",
-            "displayName": "any Shipping",
-            "installDir": "/usr/local",
-            "inherits": "osx-any-debug",
-            "toolchainFile": "${sourceDir}/builds/conan-debug/conan_toolchain.cmake",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Shipping"
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++"
             }
         }
     ]

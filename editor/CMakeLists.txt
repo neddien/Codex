@@ -1,184 +1,90 @@
-project("CEditor")
+project("CEditor" LANGUAGES C CXX)
+
+# For running Python scripts from CMake.
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
 # Fetch modules
 FetchContent_Declare(
   imguizmo
-  GIT_REPOSITORY git@github.com:CedricGuillemet/ImGuizmo
+  GIT_REPOSITORY https://github.com/CedricGuillemet/ImGuizmo
   GIT_TAG ba662b1)
-FetchContent_MakeAvailable(imguizmo)
-
-# For running Python scripts from CMake.
-find_package(
-  Python3
-  COMPONENTS Interpreter
-  REQUIRED)
-
-file(GLOB_RECURSE CEDITOR_SOURCE_FILES "src/*.cpp")
-file(GLOB_RECURSE CEDITOR_HEADER_FILES "src/*.h")
-file(GLOB_RECURSE CEDITOR_MODULE_FILES "src/*.ixx")
-
-add_executable(CodexEditor ${CEDITOR_HEADER_FILES} ${CEDITOR_SOURCE_FILES}
-                           ${CEDITOR_MODULE_FILES})
-
-# Set the C++ Standard to 23 for this target
-set_property(TARGET CodexEditor PROPERTY CXX_STANDARD 23)
-
-target_link_libraries(CodexEditor CodexEngine)
-add_dependencies(CodexEditor CodexEngine)
-target_include_directories(CodexEditor PRIVATE "${CMAKE_SOURCE_DIR}/codex-shipped/common")
-
-get_target_property(CODEX_BUILD_DIR CodexEngine BINARY_DIR)
-
-get_target_property(CODEX_CMAKE_SOURCE_DIR CodexEngine SOURCE_DIR)
-
-if(DEFINED CX_BUILD_TYPE_RELEASE OR DEFINED CX_BUILD_TYPE_SHIPPING)
-  if(DEFINED CX_COMPILER_GNUC)
-    target_compile_options(CodexEditor PRIVATE -Wall -Wextra -Werror -pedantic
-                                               ${CX_STRICT_WARNINGS_GNU})
-  elseif(DEFINED CX_COMPILER_CLANG)
-    target_compile_options(CodexEditor PRIVATE -Wall -Wextra -Werror -pedantic
-                                               ${CX_STRICT_WARNINGS_CLANG})
-  elseif(DEFINED CX_COMPILER_MSVC)
-    target_compile_options(CodexEditor PRIVATE /Wall /W4 /WX ${CX_STRICT_WARNINGS_MSVC})
-  endif()
-elseif(DEFINED CX_BUILD_TYPE_DEBUG)
-  # Disable warnings for debug builds.
-  if(DEFINED CX_COMPILER_MSVC)
-    target_compile_options(CodexEditor PRIVATE /W0)
-  else()
-    target_compile_options(CodexEditor PRIVATE -w)
-  endif()
-endif()
 
 # nativefiledialog-extended (Wayland-compatible file dialogs via xdg-desktop-portal)
 set(NFD_PORTAL OFF CACHE BOOL "Use xdg-desktop-portal instead of GTK")
-#set(NFD_PORTAL OFF CACHE BOOL "Hella nah")
 FetchContent_Declare(
   nativefiledialog-extended
   GIT_REPOSITORY https://github.com/btzy/nativefiledialog-extended
   GIT_TAG v1.2.1)
 FetchContent_MakeAvailable(nativefiledialog-extended)
-target_link_libraries(CodexEditor nfd)
+FetchContent_MakeAvailable(imguizmo)
 
-# ImGuizmo
-set(IMGUIZMO_INCLUDE_DIRS ${imguizmo_SOURCE_DIR})
-set(IMGUIZMO_SOURCE_FILES ${imguizmo_SOURCE_DIR}/ImGuizmo.cpp)
+# Retrieve neccessary variables from our engine's target
+get_target_property(cx_engine_src_dir CodexEngine SOURCE_DIR)
+get_target_property(cx_engine_assets_dir CodexEngine CX_ASSET_DIR)
+get_target_property(cx_imgui_backends_dir CodexEngine CX_IMGUI_BACKENDS_DIR)
 
-# Export the installation path to the engine.
-if(DEFINED CX_PLATFORM_WINDOWS)
-  set(CE_TEMPLATE_PROJECT_PATH "${CMAKE_INSTALL_PREFIX}/bin/projects/template_project")
+file(GLOB_RECURSE CEDITOR_SOURCES "src/*.cpp" "src/*.h")
+set(CEDITOR_THIRDPARTY_SOURCES
+  "${imguizmo_SOURCE_DIR}/ImGuizmo.cpp"
+  # imgui_stdlib isn't exported from the engine so we compile our own here.
+  "${cx_imgui_backends_dir}/imgui_stdlib.cpp"
+)
+
+# Disable warnings on these third-party files, also, I hate generator expressions
+set_source_files_properties(${CEDITOR_THIRDPARTY_SOURCES} PROPERTIES COMPILE_OPTIONS "$<IF:$<BOOL:${MSVC}>,/w,-w>")
+
+# Define our editor target.
+add_executable(CodexEditor "${CEDITOR_SOURCES}" "${CEDITOR_THIRDPARTY_SOURCES}")
+set_property(TARGET CodexEditor PROPERTY CXX_STANDARD 20)
+target_include_directories(CodexEditor PRIVATE "src/" "${CMAKE_SOURCE_DIR}/codex-shipped/common")
+target_include_directories(CodexEditor SYSTEM PRIVATE "${imguizmo_SOURCE_DIR}")
+target_link_libraries(CodexEditor PRIVATE CodexEngine codex_warnings nfd) # Link NFD and the warnings iface
+
+# Installation
+if(WIN32)
+    set(cx_editor_data_dir "${CX_INSTALL_BIN}/data")
 else()
-  set(CE_TEMPLATE_PROJECT_PATH "${CMAKE_INSTALL_PREFIX}/share/CEditor/projects/template_project")
+    set(cx_editor_data_dir "${CX_INSTALL_ROOT}share/CEditor")
+endif()
+install(TARGETS CodexEditor RUNTIME DESTINATION "${CX_INSTALL_BIN}")
+install(DIRECTORY "assets/" "${cx_engine_assets_dir}/" DESTINATION "${cx_editor_data_dir}")
+if(WIN32)
+    # Copy the dependency DLLs, Windows only
+    install(FILES "$<TARGET_RUNTIME_DLLS:CodexEditor>" DESTINATION "${CX_INSTALL_BIN}")
 endif()
 
-if(DEFINED CX_COMPILER_GNUC OR DEFINED CX_COMPILER_CLANG)
-  add_definitions(-DCE_INSTALL_DIR="${CMAKE_INSTALL_PREFIX}")
-  add_definitions(-DCE_TEMPLATE_PROJECT_PATH="${CE_TEMPLATE_PROJECT_PATH}")
-elseif(DEFINED CX_COMPILER_MSVC)
-  add_definitions(/DCE_INSTALL_DIR="${CMAKE_INSTALL_PREFIX}")
-  add_definitions(/DCE_TEMPLATE_PROJECT_PATH="${CE_TEMPLATE_PROJECT_PATH}")
-endif()
+add_custom_target(engine_header_gen COMMENT ":: Generate engine headers for template projects.")
+add_dependencies(engine_header_gen CodexEngine)
+add_dependencies(CodexEditor engine_header_gen)
 
-# Export CEditor's install directory to the Environmennt for dap-mode.
-set(ENV{CE_INSTALL_DIR} "${CMAKE_INSTALL_PREFIX}")
-get_target_property(CE_BIN_NAME CodexEditor NAME)
-set(ENV{CE_BIN_NAME} "${CE_BIN_NAME}")
-message(STATUS "${PROJECT_NAME}: Install directory: $ENV{CE_INSTALL_DIR}")
-
-# === Dependencies ===
-if(DEFINED CX_PLATFORM_WINDOWS)
-  install(TARGETS CodexEditor DESTINATION bin)
-  install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/assets/" DESTINATION bin)
-  install(DIRECTORY "${CX_ENGINE_ASSET_PATH}/" DESTINATION bin)
-elseif(DEFINED CX_PLATFORM_UNIX)
-  install(TARGETS CodexEditor DESTINATION bin)
-  install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/assets/"
-          DESTINATION share/${PROJECT_NAME})
-  install(DIRECTORY "${CX_ENGINE_ASSET_PATH}/"
-          DESTINATION share/${PROJECT_NAME})
-endif()
-
-target_include_directories(CodexEditor SYSTEM PUBLIC ${IMGUIZMO_INCLUDE_DIRS})
-target_sources(CodexEditor PRIVATE ${IMGUIZMO_SOURCE_FILES})
-
-# ImGuizmo.cpp is vendored (FetchContent) and compiled directly as one of our
-# own sources, so the SYSTEM include dir above doesn't exempt the file itself
-# from our strict/-Werror flags. -w overrides everything earlier on the
-# command line and disables warnings outright for just this file.
-set_source_files_properties(${IMGUIZMO_SOURCE_FILES} PROPERTIES COMPILE_OPTIONS "-w")
-
-# === Misc ===
-# Run the python script responsible for creating the template project for all
-# projects inside Projects/
-add_custom_target(
-  engine_header_gen
-  COMMENT ":: Generate engine headers for template projects."
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  VERBATIM)
-
-# Iterate over all subdirectories in assets/Projects and apply the generation
-# and copying steps
-file(
-  GLOB PROJECT_DIRS
-  RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/assets/projects"
-  "${CMAKE_CURRENT_SOURCE_DIR}/assets/projects/*")
-
-# Iterate over each project directory in Projects/
-foreach(PROJECT_DIR ${PROJECT_DIRS})
-  if(NOT PROJECT_DIR STREQUAL "*"
-     AND IS_DIRECTORY
-         "${CMAKE_CURRENT_SOURCE_DIR}/assets/projects/${PROJECT_DIR}")
-
-    set(CX_ENGINE_COPY_SPECS
-        "include:engine/include:public"
-        "src/engine:engine/src/engine:public"
-        "src/pch:engine/src/pch:headers"
-        "src/platform:engine/src/platform:headers"
-        "vendor/entt:engine/vendor/entt:headers"
-        "vendor/glm:engine/vendor/glm:headers"
-        "vendor/magic_enum:engine/vendor/magic_enum"
-    )
-    string(REPLACE ";" "," CX_ENGINE_COPY_SPECS_PROC "${CX_ENGINE_COPY_SPECS}")
-
-    # Run the python script for each project
-    add_custom_command(
-      TARGET engine_header_gen
-      POST_BUILD
-      COMMAND
-        ${Python3_EXECUTABLE}
-        "${CX_ROOT_DIR}/scripts/generate-template-project.py"
-        "--src-dir=${CX_ENGINE_ROOT_DIR}"
-        "--dest-dir=${CMAKE_CURRENT_SOURCE_DIR}/assets/projects/${PROJECT_DIR}"
-        "--root-dir=${CX_ROOT_DIR}"
-        "--copy-specs=${CX_ENGINE_COPY_SPECS_PROC}"
-      COMMENT ":: Generating engine headers for ${PROJECT_DIR}...")
-
-    # If we're on Windows, copy the libraries for each project
-    if(DEFINED CX_PLATFORM_WINDOWS)
-      add_custom_command(
-        TARGET engine_header_gen
-        POST_BUILD
-        COMMAND
-          ${CMAKE_COMMAND} -E make_directory
-          "${CMAKE_CURRENT_SOURCE_DIR}/assets/projects/${PROJECT_DIR}/lib/"
-        COMMAND
-          ${CMAKE_COMMAND} -E copy
-          "$<TARGET_FILE_DIR:CodexEngine>/CodexEngine.lib"
-          "${CMAKE_CURRENT_SOURCE_DIR}/assets/projects/${PROJECT_DIR}/lib/CodexEngine.lib"
-        COMMENT ":: Copying object libraries to ${PROJECT_DIR}/lib/...")
-    endif()
-
+file(GLOB cx_project_dirs LIST_DIRECTORIES true "${CMAKE_CURRENT_SOURCE_DIR}/assets/projects/*")
+foreach(project_dir IN LISTS cx_project_dirs)
+  if(NOT IS_DIRECTORY "${project_dir}")
+      continue()
   endif()
+
+  add_custom_command(TARGET engine_header_gen POST_BUILD
+      COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/scripts/generate-template-project.py"
+      "--src-dir=${cx_engine_src_dir}"
+      "--dest-dir=${project_dir}"
+      "--root-dir=${CMAKE_SOURCE_DIR}"
+      "--copy-specs=include:engine/include:public,src/engine:engine/src/engine:public,src/pch:engine/src/pch:headers,src/platform:engine/src/platform:headers")
 endforeach()
 
-add_dependencies(CodexEditor engine_header_gen)
-target_include_directories(CodexEditor PRIVATE "src/")
-target_precompile_headers(CodexEditor PRIVATE <sdafx.h>)
+# This is exclusively for VS2022, install and debug the Editor
+set(cx_editor_install_bin "${CMAKE_INSTALL_PREFIX}/${CX_INSTALL_BIN}")
+add_custom_target(CodexEditor-installed
+  COMMAND "${CMAKE_COMMAND}" --install "${CMAKE_BINARY_DIR}" --config "$<CONFIG>"
+  COMMENT "Installing $<CONFIG> for debugging"
+  VERBATIM)
 
-# Multicore compilation for MSVC if CX_PARALLEL is not 0.
-if(DEFINED CX_COMPILER_MSVC AND NOT CX_PARALLEL EQUAL 0)
-  target_compile_options(CodexEditor PRIVATE "/MP")
+add_dependencies(CodexEditor-installed CodexEditor ShippedRuntime CodexLauncher)
+if(TARGET TestWork)
+    add_dependencies(CodexEditor-installed TestWork)
 endif()
 
-# Set default startup project to be this one when generating a VS Solution.
-set_target_properties(CodexEditor PROPERTIES VS_STARTUP_PROJECT CEditor)
+set_target_properties(CodexEditor-installed CodexEditor PROPERTIES
+  VS_DEBUGGER_COMMAND "${cx_editor_install_bin}/$<TARGET_FILE_NAME:CodexEditor>"
+  VS_DEBUGGER_COMMAND_DIRECTORY "${cx_editor_install_bin}")
+
+target_precompile_headers(CodexEditor PRIVATE <sdafx.h>)

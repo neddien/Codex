@@ -15,7 +15,7 @@ public:
         log(Info, "VFS: Mounted /assets as {}", std::filesystem::current_path().generic_string());
 
         gfx::Renderer::init(width, height);
-        gfx::BatchRenderer2D::init(vfs_, "/assets/batch_renderer2d_quad.glsl");
+        gfx::BatchRenderer2D::init(vfs_, "/assets/gl_shaders/batch_renderer2d_quad.glsl");
         gfx::Renderer::set_clear_colour(0.2f, 0.2f, 0.2f, 1.0f);
 
         camera_ = scene::Camera(width, height);
@@ -101,10 +101,13 @@ public:
 
 Engine* codex::create_engine(const codex::EngineArgs args)
 {
-    return new TestWork(EngineProperties{
-        .name             = "TestWork",
-        .cwd              = "./",
-        .args             = args,
-        .flags            = codex::EngineFlags::Video | codex::EngineFlags::Logger,
-        .video_properties = { .window_width = 800, .window_height = 600, .frame_cap = 300, .vsync = false } });
+    return new TestWork(EngineProperties{ .name             = "TestWork",
+                                          .cwd              = "./",
+                                          .args             = args,
+                                          .flags            = codex::EngineFlags::Video | codex::EngineFlags::Logger,
+                                          .video_properties = { .window_width  = 854,
+                                                                .window_height = 480,
+                                                                .frame_cap     = 300,
+                                                                .window_flags  = WindowFlags::PositionCentre,
+                                                                .vsync         = false } });
 }

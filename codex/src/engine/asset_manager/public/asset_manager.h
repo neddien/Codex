@@ -15,7 +15,7 @@ namespace codex {
         class VirtualFilesystem;
     }
 
-    class AssetManager : public System<AssetManager>, public Loggable<"AssetManager">
+    class CX_API AssetManager : public System<AssetManager>, public Loggable<"AssetManager">
     {
     public:
         static void init(fs::VirtualFilesystem& vfs, const std::string_view asset_root) noexcept;

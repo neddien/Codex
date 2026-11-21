@@ -10,7 +10,7 @@ namespace codex {
     }
 
     // TODO: Move impl over to TRU
-    struct AssetMetadata : public ISerializable
+    struct CX_API AssetMetadata : public ISerializable
     {
         AssetPath                 path;
         std::string               storage_path;
@@ -39,7 +39,7 @@ namespace codex {
         void archive(Archive& archive);
     };
 
-    class AssetRegistry : public Loggable<"AssetRegistry">
+    class CX_API AssetRegistry : public Loggable<"AssetRegistry">
     {
         using MetadataCallback = std::function<void(const AssetMetadata&)>;
 

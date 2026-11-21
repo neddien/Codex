@@ -3,7 +3,7 @@
 #include "ivfs_mount.h"
 
 namespace codex::fs {
-    class DiskMount : public IVFSMount, private Loggable<"DiskMount">
+    class CX_API DiskMount : public IVFSMount, private Loggable<"DiskMount">
     {
     public:
         DiskMount(std::filesystem::path root, const i32 priority);

@@ -4,7 +4,7 @@
 #include "ivfs_mount.h"
 
 namespace codex::fs {
-    class PakMount : public IVFSMount, public std::enable_shared_from_this<PakMount>
+    class CX_API PakMount : public IVFSMount, public std::enable_shared_from_this<PakMount>
     {
     public:
         PakMount(Shared<FileHandle> handle, const i32 priority);

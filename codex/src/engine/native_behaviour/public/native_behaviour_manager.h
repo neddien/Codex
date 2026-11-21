@@ -14,7 +14,7 @@ namespace codex {
     }
 
     // TODO: Add  thread safety
-    class CODEX_API NBMan : public System<NBMan>, public Loggable<"NativeBehaviourManager">
+    class CX_API NBMan : public System<NBMan>, public Loggable<"NativeBehaviourManager">
     {
     public:
         using FactoryFn = std::function<Box<NativeBehaviour>()>;

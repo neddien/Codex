@@ -95,7 +95,7 @@ namespace codex::editor {
             current_project_file    = std::filesystem::path{};
             compilation_state       = CompilationState::Idle;
             pending_nb_load         = false;
-            compilation_finish_time = .0f;
+            compilation_finish_time = .0;
             registry_state          = AssetRegistryState::Idle;
             asset_registry_revision = 0;
             registry_state_ready    = false;
