@@ -1,0 +1,2 @@
+[conf]
+tools.cmake.cmakedeps:new=will_break_next
