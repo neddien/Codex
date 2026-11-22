@@ -1289,7 +1289,7 @@ namespace codex::editor {
             }
         }
 
-        const auto installed_lib_path   = stdfs::path{ CE_INSTALL_DIR } / "data/shipped/lib";
+        const auto installed_lib_path   = sys::module_path() / "data/shipped/lib";
         const auto exported_lib_path    = output_host_path / "lib";
         const auto library_copy_options = stdfs::copy_options::recursive | stdfs::copy_options::overwrite_existing |
                                           stdfs::copy_options::copy_symlinks;

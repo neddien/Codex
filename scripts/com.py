@@ -11,6 +11,7 @@ import platform
 from enum import Enum
 import subprocess as sb
 from datetime import datetime
+from typing import NoReturn
 
 
 class Chrono:
@@ -93,22 +94,91 @@ class CMakePresetInspector:
         return preset_list
 
 
-def log(msg):
-    print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}] [Info] (Build) :: {msg}')
+# ---------------------------------------------------------------------------
+# Logging: same format and colours as the engine's console sink
+# (codex_stdout_color_sink in codex/src/engine/core/log.cpp)
+#
+#   Nov 22 11:31:02 Build info: message
+#
+# Call set_tag() once at the top of a script to name it in the log lines.
+# ---------------------------------------------------------------------------
+
+_log_tag = "Script"
+_DARK_GRAY = (169, 169, 169)
+_DEEP_SKY_BLUE = (0, 191, 255)
+_LEVEL_COLOURS = {
+    "info": _DARK_GRAY,
+    "warn": (255, 255, 0),
+    "error": (255, 0, 0),
+    "fatal": (139, 0, 0),
+    "debug": (144, 238, 144),
+    "verbose": (128, 128, 128),
+}
 
 
-def warn(msg):
-    print(
-        f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}] [Warning] (Build) :: {msg}'
-    )
+def _colour_supported() -> bool:
+    if not sys.stdout.isatty() or "NO_COLOR" in os.environ:
+        return False
+    if platform.system() != "Windows":
+        return True
+    try:  # Turn on ANSI escape handling for this console.
+        from ctypes import wintypes
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.GetStdHandle.restype = wintypes.HANDLE
+        kernel32.GetConsoleMode.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
+        kernel32.SetConsoleMode.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+        handle = kernel32.GetStdHandle(-11)  # STD_OUTPUT_HANDLE
+        mode = wintypes.DWORD()
+        if not kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+            return False
+        return bool(kernel32.SetConsoleMode(handle, mode.value | 0x0004))  # ENABLE_VIRTUAL_TERMINAL_PROCESSING
+    except (AttributeError, OSError):
+        return False
 
 
-def err(msg):
-    print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}] [Panic] (Build) :: {msg}')
+_COLOUR = _colour_supported()
 
 
-def panic(msg, exit_code=1):
-    err(msg)
+def set_tag(tag: str) -> None:
+    """Name shown after the timestamp, like the engine's logger tag."""
+    global _log_tag
+    _log_tag = tag
+
+
+def _styled(text: str, rgb: tuple[int, int, int]) -> str:
+    return f"\x1b[38;2;{rgb[0]};{rgb[1]};{rgb[2]}m{text}\x1b[0m" if _COLOUR else text
+
+
+def _log(level: str, msg: str) -> None:
+    now = datetime.now()
+    colour = _LEVEL_COLOURS[level]
+    print(f"{_styled(now.strftime('%b %d'), _DARK_GRAY)} {_styled(now.strftime('%H:%M:%S'), _DARK_GRAY)} "
+          f"{_styled(_log_tag, _DEEP_SKY_BLUE)} {_styled(level, colour)}: {_styled(msg, colour)}", flush=True)
+
+
+def verbose(msg: str) -> None:
+    _log("verbose", msg)
+
+
+def debug(msg: str) -> None:
+    _log("debug", msg)
+
+
+def info(msg: str) -> None:
+    _log("info", msg)
+
+
+def warn(msg: str) -> None:
+    _log("warn", msg)
+
+
+def error(msg: str) -> None:
+    _log("error", msg)
+
+
+def fatal(msg: str, exit_code: int = 1) -> NoReturn:
+    """Log at the fatal level and exit the script."""
+    _log("fatal", msg)
     sys.exit(exit_code)
 
 

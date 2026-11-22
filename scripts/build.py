@@ -18,9 +18,12 @@ import platform
 import argparse
 import functools
 import subprocess
-from datetime import datetime
 from pathlib import Path
-from typing import NoReturn
+
+import com
+from com import info, warn, fatal
+
+com.set_tag("Build")
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -34,72 +37,6 @@ DEFAULT_PRESET = {"Windows": "windows-vs2022", "Linux": "linux-gcc"}
 EDITOR = "CodexEditor"
 # Name prefix of the launch.json entries this script owns (other entries are kept).
 LAUNCH_PREFIX = "(LLDB) Codex Editor"
-
-
-# ---------------------------------------------------------------------------
-# Logging: same format and colours as the engine's console sink
-# (codex_stdout_color_sink in codex/src/engine/core/log.cpp)
-# ---------------------------------------------------------------------------
-
-LOG_TAG = "Build"
-_DARK_GRAY = (169, 169, 169)
-_DEEP_SKY_BLUE = (0, 191, 255)
-_LEVEL_COLOURS = {
-    "info": _DARK_GRAY,
-    "warn": (255, 255, 0),
-    "error": (255, 0, 0),
-    "fatal": (139, 0, 0),
-    "debug": (144, 238, 144),
-    "verbose": (128, 128, 128),
-}
-
-
-def _colour_supported() -> bool:
-    if not sys.stdout.isatty() or "NO_COLOR" in os.environ:
-        return False
-    if HOST != "Windows":
-        return True
-    try:  # Turn on ANSI escape handling for this console.
-        import ctypes
-        from ctypes import wintypes
-        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
-        kernel32.GetStdHandle.restype = wintypes.HANDLE
-        kernel32.GetConsoleMode.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
-        kernel32.SetConsoleMode.argtypes = [wintypes.HANDLE, wintypes.DWORD]
-        handle = kernel32.GetStdHandle(-11)  # STD_OUTPUT_HANDLE
-        mode = wintypes.DWORD()
-        if not kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
-            return False
-        return bool(kernel32.SetConsoleMode(handle, mode.value | 0x0004))  # ENABLE_VIRTUAL_TERMINAL_PROCESSING
-    except (AttributeError, OSError):
-        return False
-
-
-_COLOUR = _colour_supported()
-
-
-def _styled(text: str, rgb: tuple[int, int, int]) -> str:
-    return f"\x1b[38;2;{rgb[0]};{rgb[1]};{rgb[2]}m{text}\x1b[0m" if _COLOUR else text
-
-
-def _log(level: str, msg: str) -> None:
-    now = datetime.now()
-    colour = _LEVEL_COLOURS[level]
-    print(f"{_styled(now.strftime('%b %d'), _DARK_GRAY)} {_styled(now.strftime('%H:%M:%S'), _DARK_GRAY)} "
-          f"{_styled(LOG_TAG, _DEEP_SKY_BLUE)} {_styled(level, colour)}: {_styled(msg, colour)}", flush=True)
-
-
-def info(msg: str) -> None:
-    _log("info", msg)
-
-
-def warn(msg: str) -> None:
-    _log("warn", msg)
-
-
-def fatal(msg: str, exit_code: int = 1) -> NoReturn:
-    _log("error", msg)
-    sys.exit(exit_code)
 
 
 # ---------------------------------------------------------------------------

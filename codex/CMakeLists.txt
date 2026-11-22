@@ -145,16 +145,21 @@ set(FMOD_MINOR_VER 15)
 # Set the appropriate platform
 if(LINUX)
   set(FMOD_PLATFORM "linux")
+  if(CX_ARCH MATCHES "^(x86_64|amd64)$")
+      set(FMOD_ARCH "x86_64")
+  elseif(CX_ARCH MATCHES "^(aarch64|arm64)$")
+      set(FMOD_ARCH "arm64")
+  endif()
 elseif(WIN32)
   set(FMOD_PLATFORM "win")
+  if(CX_ARCH MATCHES "^(x86_64|amd64)$")
+      set(FMOD_ARCH "x64")
+  elseif(CX_ARCH MATCHES "^(aarch64|arm64)$")
+      set(FMOD_ARCH "arm64")
+  endif()
 endif()
 
 # Set the appropriate architecture
-if(CX_ARCH MATCHES "^(x86_64|amd64)$")
-    set(FMOD_ARCH "x64")
-elseif(CX_ARCH MATCHES "^(aarch64|arm64)$")
-    set(FMOD_ARCH "arm64")
-endif()
 
 set(FMOD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vendor/fmod/fmodstudioapi${FMOD_MAJOR_VER}${FMOD_MINOR_VER}${FMOD_PLATFORM}")
 function(cx_import_fmod tgt subdir base)
@@ -178,8 +183,19 @@ cx_import_fmod(fmod::studio studio fmodstudio)
 
 # ======================= # INSTALLATION # ======================= #
 install(TARGETS CodexEngine RUNTIME DESTINATION "${CX_INSTALL_BIN}" LIBRARY DESTINATION "${CX_INSTALL_LIB}")
-install(IMPORTED_RUNTIME_ARTIFACTS fmt::fmt SDL2::SDL2 fmod::core fmod::studio
+install(IMPORTED_RUNTIME_ARTIFACTS fmod::core fmod::studio
         RUNTIME DESTINATION "${CX_INSTALL_BIN}" LIBRARY DESTINATION "${CX_INSTALL_LIB}")
+if(WIN32)
+  install(IMPORTED_RUNTIME_ARTIFACTS fmt::fmt SDL2::SDL2 RUNTIME DESTINATION "${CX_INSTALL_LIB}")
+else()
+  install(CODE "
+    file(INSTALL
+      DESTINATION \"${CMAKE_INSTALL_PREFIX}/${CX_INSTALL_LIB}\"
+      TYPE SHARED_LIBRARY
+      FOLLOW_SYMLINK_CHAIN
+      FILES \"$<TARGET_FILE:fmt::fmt>\" \"$<TARGET_FILE:SDL2::SDL2>\")
+  ")
+endif()
 
   # /etc/appname for global configuration files. /usr/local/share/appname for
   # unmodifiable data. /usr/local/(lib, bin)/appname for unmodifiable and

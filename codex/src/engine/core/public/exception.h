@@ -56,7 +56,7 @@ namespace codex {
     public:
         static inline std::string type_name_demangle(const char* name)
         {
-#if CX_PLATFORM_UNIX
+#ifdef CX_PLATFORM_UNIX
             int                                    status = 0;
             std::unique_ptr<char, void (*)(void*)> res{ abi::__cxa_demangle(name, NULL, NULL, &status), std::free };
             return (status == 0) ? res.get() : name;

@@ -13,6 +13,8 @@ import platform
 from enum import Enum
 import com
 
+com.set_tag("Template")
+
 args = sys.argv
 
 SRC = None
@@ -65,10 +67,10 @@ def create_folder_structure(src_path):
 def copy_files(src_folder, dest_folder, ext_list=None):
     """Copy files from src_folder to dest_folder, optionally filtering by extension."""
     if not os.path.exists(src_folder):
-        com.log(f'Warning: Source folder does not exist: {src_folder}')
+        com.warn(f'Source folder does not exist: {src_folder}')
         return
 
-    com.log(f'Copying files from: {src_folder} to: {dest_folder} with extensions: {ext_list}')
+    com.info(f'Copying files from:{src_folder} to: {dest_folder} with extensions: {ext_list}')
 
     for root, dirs, files in os.walk(src_folder):
         for directory in dirs:
@@ -86,10 +88,10 @@ def copy_public_headers(src_engine_dir, dest_engine_dir):
     Recursively find and copy all public folder headers from the engine source.
     """
     if not os.path.exists(src_engine_dir):
-        com.log(f'Warning: Source engine directory does not exist: {src_engine_dir}')
+        com.warn(f'Source engine directory does not exist: {src_engine_dir}')
         return
 
-    com.log(f'Copying public headers from: {src_engine_dir}')
+    com.info(f'Copying public headers from:{src_engine_dir}')
 
     for root, dirs, files in os.walk(src_engine_dir):
         # Check if current directory is named "public"
@@ -107,7 +109,7 @@ def copy_public_headers(src_engine_dir, dest_engine_dir):
                 if file.endswith(HEADERS_EXT_LIST):
                     src_file = os.path.join(root, file)
                     dest_file = os.path.join(dest_path, file)
-                    com.log(f'  Copying: {os.path.relpath(src_file, src_engine_dir)}')
+                    com.verbose(f'  Copying: {os.path.relpath(src_file, src_engine_dir)}')
                     shutil.copy2(src_file, dest_file)
 
 def process_copy_spec(spec, base_src_dir, base_dest_dir):
@@ -116,7 +118,7 @@ def process_copy_spec(spec, base_src_dir, base_dest_dir):
     dest_path = os.path.join(base_dest_dir, spec['dest_rel'])
     copy_type = spec['type']
 
-    com.log(f'Processing copy spec: {spec["src_rel"]} -> {spec["dest_rel"]} (type: {copy_type})')
+    com.info(f'Processing copy spec:{spec["src_rel"]} -> {spec["dest_rel"]} (type: {copy_type})')
 
     # Create destination directory
     create_folder_structure(dest_path)
@@ -129,29 +131,28 @@ def process_copy_spec(spec, base_src_dir, base_dest_dir):
     elif copy_type == 'all':
         copy_files(src_path, dest_path, None)
     else:
-        com.log(f'Warning: Unknown copy type: {copy_type}')
+        com.warn(f'Unknown copy type: {copy_type}')
 
 def main():
     """Main function to orchestrate the copying process."""
     parse_arguments()
 
-    com.log('Copying minimal engine headers...')
+    com.info('Copying minimal engine headers...')
 
     # Validate required arguments
     if not SRC or not DEST:
-        com.log('Error: --src-dir and --dest-dir are required')
-        sys.exit(1)
+        com.fatal('--src-dir and --dest-dir are required')
 
     # Create base destination structure
     create_folder_structure(DEST)
 
     # Process copy specifications
     if COPY_SPECS:
-        com.log(f'Processing {len(COPY_SPECS)} copy specifications...')
+        com.info(f'Processing {len(COPY_SPECS)}copy specifications...')
         for spec in COPY_SPECS:
             process_copy_spec(spec, SRC, DEST)
     else:
-        com.log('No copy specifications provided, using default behavior')
+        com.info('No copy specifications provided,using default behavior')
         # Default behavior (backwards compatibility)
         default_specs = [
             {'src_rel': 'include', 'dest_rel': 'engine/include', 'type': 'all'},
@@ -165,7 +166,7 @@ def main():
 
     # Process vendor directories
     if VENDOR_DIRS:
-        com.log(f'Processing {len(VENDOR_DIRS)} vendor directories...')
+        com.info(f'Processing {len(VENDOR_DIRS)}vendor directories...')
         for vendor_dir in VENDOR_DIRS:
             vendor_dir = vendor_dir.strip()
             if vendor_dir:
@@ -182,7 +183,7 @@ def main():
             create_folder_structure(scripts_dest)
             copy_files(scripts_src, scripts_dest)
         else:
-            com.log(f'Warning: Scripts directory not found: {scripts_src}')
+            com.warn(f'Scripts directory not found: {scripts_src}')
 
 if __name__ == '__main__':
     main()

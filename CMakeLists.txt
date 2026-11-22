@@ -10,7 +10,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 # Enable CMakeConfigDeps in Conan, an experimental feature.
 list(APPEND CONAN_HOST_PROFILE "${CMAKE_SOURCE_DIR}/cmake/conan-codex-profile")
 
-# This code here detects the current MSVC runtime and writes it to a Conna Host Profile file
+# This code here detects the current MSVC runtime and writes it to a Conan Host Profile file
 # for Conan, so I don't have to hardcode the MSVC runtime version thus locking the whole engine to
 # exclusively VS2022 (because I personally use VS2022) or VS2026 (which I think is a downgrade from VS2022).
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC")
